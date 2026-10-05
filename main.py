@@ -31,6 +31,29 @@ MIN_STARS = 50
 MAX_STARS = 1_000_000
 
 # ═══════════════════════════════════════════════════════════
+# DARAJALAR
+# ═══════════════════════════════════════════════════════════
+DEFAULT_LEVELS = [
+    {"name": "Bronza",  "emoji": "🥉", "min": 0,   "max": 10},
+    {"name": "Kumush",  "emoji": "🥈", "min": 11,  "max": 50},
+    {"name": "Oltin",   "emoji": "🥇", "min": 51,  "max": 200},
+    {"name": "Platina", "emoji": "💎", "min": 201, "max": 500},
+    {"name": "Olmos",   "emoji": "👑", "min": 501, "max": 999999999},
+]
+
+def get_levels():
+    """DB dan darajalarni olish"""
+    rows = db_exec("SELECT * FROM levels ORDER BY min_stars ASC", fetchall=True)
+    return [dict(r) for r in rows] if rows else DEFAULT_LEVELS
+
+def get_user_level(stars):
+    """Starsga qarab daraja"""
+    for lvl in get_levels():
+        if lvl["min_stars"] <= stars <= lvl["max_stars"]:
+            return lvl
+    return get_levels()[-1] if get_levels() else DEFAULT_LEVELS[-1]
+
+# ═══════════════════════════════════════════════════════════
 # TILLAR
 # ═══════════════════════════════════════════════════════════
 LANGS = {
@@ -45,6 +68,8 @@ LANGS = {
         "rating": "🏆 Reyting",
         "withdraw": "💰 Yechib olish",
         "support": "💬 Admin bilan aloqa",
+        "gift_stars": "🎁 Stars sovg'a qilish",
+        "review": "⭐ Sharh qoldirish",
         "admin": "🛠 Admin Panel",
         "share": "📤 Havolani ulashish",
         "back": "⬅️ Orqaga",
@@ -82,37 +107,51 @@ LANGS = {
         "support_sent": "✅ <b>Savolingiz adminga yuborildi!</b>\n\n⏳ Javobni kuting...",
         "support_new_msg": "📩 <b>Yangi murojaat!</b>\n\n👤 <b>User:</b> {name}\n🔗 <b>Username:</b> {username}\n🆔 <b>ID:</b> <code>{uid}</code>\n📅 <b>Vaqt:</b> {time}",
         "reply_sent": "✅ <b>Javob yuborildi!</b>",
-        "chat_active": "💬 <b>Suhbat faol</b>\n\nXabaringizni yozing. Tugatish uchun «🔚 Suhbatni tugatish» tugmasini bosing.",
-        "chat_closed_by_user": "🔚 <b>Suhbat tugatildi!</b>\n\nYangi savol berish uchun «💬 Admin bilan aloqa» tugmasini bosing.",
-        "chat_closed_by_admin": "🔚 <b>Admin suhbatni tugatdi.</b>\n\nYangi savol berish uchun «💬 Admin bilan aloqa» tugmasini bosing.",
+        "chat_active": "💬 <b>Suhbat faol</b>\n\nXabaringizni yozing.",
+        "chat_closed_by_admin": "🔚 <b>Admin suhbatni tugatdi.</b>",
         "no_active_chat": "ℹ️ Sizda faol suhbat yo'q.",
         "admin_reply": "📬 <b>Admindan javob:</b>",
         "user_msg": "📩 <b>Foydalanuvchidan xabar:</b>",
+        # YANGI
+        "gift_stars_title": "🎁 <b>Stars sovg'a qilish</b>\n\n💰 Sizda: <b>{bal} ⭐</b>\n\nFoydalanuvchi <b>username</b> yoki <b>ID</b> sini kiriting:",
+        "gift_stars_amount": "👤 Qabul qiluvchi: <b>{name}</b>\n\nNechta stars sovg'a qilasiz?",
+        "gift_stars_confirm": "🎁 <b>Tasdiqlang</b>\n\n👤 Kimga: <b>{name}</b>\n⭐ Miqdor: <b>{n} ⭐</b>\n\nTasdiqlaysizmi?",
+        "gift_stars_sent": "✅ <b>{n} ⭐ {name} ga yuborildi!</b>",
+        "gift_stars_received": "🎁 <b>Sizga stars sovg'a qilindi!</b>\n\n👤 Kimdan: <b>{name}</b>\n⭐ Miqdor: <b>+{n} ⭐</b>\n\n💰 Jami: <b>{total} ⭐</b>",
+        "gift_stars_not_found": "❌ Foydalanuvchi topilmadi.",
+        "gift_stars_self": "❌ O'zingizga sovg'a qila olmaysiz.",
+        "review_title": "⭐ <b>Sharh qoldirish</b>\n\nBot haqida fikringizni yozing — admin tasdiqlasa kanalga chiqadi:",
+        "review_sent": "✅ <b>Sharhingiz yuborildi!</b>\n\n⏳ Admin tasdiqlashini kuting.",
+        "review_approved": "✅ <b>Sharhingiz tasdiqlandi va kanalga chiqdi!</b>\n\nRahmat! 🎉",
+        "review_rejected": "❌ <b>Sharhingiz rad etildi.</b>",
+        "level": "Daraja",
     },
     "ru": {
         "flag": "🇷🇺", "name": "Русский",
         "choose_lang": "🌐 <b>Выберите язык</b>\n\nПожалуйста, выберите удобный для вас язык:",
         "lang_set": "✅ Язык успешно изменён!",
-        "welcome": "👋 <b>Привет, {name}!</b>\n\n🎯 <i>Добро пожаловать в реферальный бот!</i>\n\nВыберите нужный раздел из меню 👇",
+        "welcome": "👋 <b>Привет, {name}!</b>\n\n🎯 <i>Добро пожаловать!</i>\n\nВыберите раздел 👇",
         "menu_title": "🏠 <b>Главное меню</b>\n\nВыберите раздел:",
         "profile": "👤 Профиль",
-        "ref_link": "🔗 Реферальная ссылка",
+        "ref_link": "🔗 Реф. ссылка",
         "rating": "🏆 Рейтинг",
         "withdraw": "💰 Вывод",
         "support": "💬 Связь с админом",
+        "gift_stars": "🎁 Подарить Stars",
+        "review": "⭐ Оставить отзыв",
         "admin": "🛠 Админ панель",
-        "share": "📤 Поделиться ссылкой",
+        "share": "📤 Поделиться",
         "back": "⬅️ Назад",
         "menu": "🏠 Главное меню",
         "cancel": "❌ Отмена",
         "close_chat": "🔚 Завершить чат",
-        "banned": "🚫 <b>Вы забанены!</b>\n\nСвяжитесь с админом.",
-        "subscribe": "📢 <b>Подпишитесь на каналы:</b>\n\nПосле подписки нажмите «✅ Проверить».",
+        "banned": "🚫 <b>Вы забанены!</b>",
+        "subscribe": "📢 <b>Подпишитесь на каналы:</b>",
         "check": "✅ Проверить",
-        "bot_check": "🤖 <b>Подтвердите, что вы не бот</b>\n\n❓ <b>Вопрос:</b> {q}\n\nВыберите правильный ответ 👇",
+        "bot_check": "🤖 <b>Подтвердите, что вы не бот</b>\n\n❓ <b>Вопрос:</b> {q}",
         "wrong_answer": "❌ Неправильный ответ!",
         "correct": "✅ Подтверждено!",
-        "wrong_ans_retry": "❌ <b>Неправильно!</b>\n\nПопробуйте снова: /start",
+        "wrong_ans_retry": "❌ <b>Неправильно!</b> /start",
         "start_first": "ℹ️ Напишите /start",
         "not_enough": "❌ <b>Недостаточно!</b>",
         "min_withdraw": "❌ Минимум: <b>{n} ⭐</b>",
@@ -121,83 +160,107 @@ LANGS = {
         "choose_reward": "🎁 Выберите тип награды:",
         "stars_withdraw": "⭐ Получить Stars",
         "gift_withdraw": "🎁 Получить Telegram Gift",
-        "stars_title": "⭐ <b>Вывод Stars</b>\n\n💰 У вас: <b>{bal} ⭐</b>\n📉 Мин: {min} ⭐\n📈 Макс: {max} ⭐\n\n💬 Сколько вывести?\nВведите число:",
+        "stars_title": "⭐ <b>Вывод Stars</b>\n\n💰 У вас: <b>{bal} ⭐</b>\n📉 Мин: {min} ⭐\n📈 Макс: {max} ⭐\n\n💬 Сколько вывести?",
         "gift_title": "🎁 <b>Telegram Gift</b>\n\n💰 У вас: <b>{bal} ⭐</b>\n\n👇 Выберите gift:",
-        "sent_to_admin": "✅ <b>Запрос отправлен!</b>\n\n⭐ Сумма: <b>{n} ⭐</b>\n⏳ Ожидайте подтверждения...",
-        "gift_sent": "✅ <b>Запрос отправлен!</b>\n\n🎁 Gift: <b>{gift}</b>\n⭐ Цена: <b>{n} ⭐</b>\n⏳ Ожидайте подтверждения...",
-        "approved": "✅ <b>Ваш запрос подтверждён!</b>",
-        "rejected": "❌ <b>Ваш запрос отклонён.</b>",
-        "referral_reward": "🎉 <b>Новый реферал!</b>\n\n➕ +{n} ⭐ добавлено",
+        "sent_to_admin": "✅ <b>Запрос отправлен!</b>\n\n⭐ Сумма: <b>{n} ⭐</b>",
+        "gift_sent": "✅ <b>Запрос отправлен!</b>\n\n🎁 Gift: <b>{gift}</b>",
+        "approved": "✅ <b>Подтверждено!</b>",
+        "rejected": "❌ <b>Отклонено.</b>",
+        "referral_reward": "🎉 <b>Новый реферал!</b>\n\n➕ +{n} ⭐",
         "total": "Всего",
         "balance": "У вас",
         "need": "Нужно",
-        "stars_added": "🎁 <b>Вам добавлены stars!</b>\n\n➕ Сумма: <b>+{n} ⭐</b>\n📝 Причина: <i>{reason}</i>\n\n💰 Всего: <b>{total} ⭐</b>",
-        "stars_removed": "⚠️ <b>У вас списаны stars!</b>\n\n➖ Сумма: <b>{n} ⭐</b>\n📝 Причина: <i>{reason}</i>\n\n💰 Всего: <b>{total} ⭐</b>",
-        "support_title": "💬 <b>Связь с админом</b>\n\nНапишите ваш вопрос — админ скоро ответит.\n\nМожно отправить текст, фото, видео или файл.",
-        "support_sent": "✅ <b>Ваш вопрос отправлен админу!</b>\n\n⏳ Ожидайте ответа...",
-        "support_new_msg": "📩 <b>Новое сообщение!</b>\n\n👤 <b>User:</b> {name}\n🔗 <b>Username:</b> {username}\n🆔 <b>ID:</b> <code>{uid}</code>\n📅 <b>Время:</b> {time}",
+        "stars_added": "🎁 <b>Вам добавлены stars!</b>\n\n➕ <b>+{n} ⭐</b>\n📝 <i>{reason}</i>\n\n💰 Всего: <b>{total} ⭐</b>",
+        "stars_removed": "⚠️ <b>Списаны stars!</b>\n\n➖ <b>{n} ⭐</b>\n📝 <i>{reason}</i>\n\n💰 Всего: <b>{total} ⭐</b>",
+        "support_title": "💬 <b>Связь с админом</b>\n\nНапишите вопрос:",
+        "support_sent": "✅ <b>Отправлено админу!</b>",
+        "support_new_msg": "📩 <b>Новое сообщение!</b>\n\n👤 {name}\n🔗 {username}\n🆔 <code>{uid}</code>\n📅 {time}",
         "reply_sent": "✅ <b>Ответ отправлен!</b>",
-        "chat_active": "💬 <b>Чат активен</b>\n\nНапишите сообщение. Для завершения нажмите «🔚 Завершить чат».",
-        "chat_closed_by_user": "🔚 <b>Чат завершён!</b>\n\nДля нового вопроса нажмите «💬 Связь с админом».",
-        "chat_closed_by_admin": "🔚 <b>Админ завершил чат.</b>\n\nДля нового вопроса нажмите «💬 Связь с админом».",
-        "no_active_chat": "ℹ️ У вас нет активного чата.",
+        "chat_active": "💬 <b>Чат активен</b>",
+        "chat_closed_by_admin": "🔚 <b>Админ завершил чат.</b>",
+        "no_active_chat": "ℹ️ Нет активного чата.",
         "admin_reply": "📬 <b>Ответ от админа:</b>",
-        "user_msg": "📩 <b>Сообщение от пользователя:</b>",
+        "user_msg": "📩 <b>От пользователя:</b>",
+        "gift_stars_title": "🎁 <b>Подарить Stars</b>\n\n💰 У вас: <b>{bal} ⭐</b>\n\nВведите username или ID:",
+        "gift_stars_amount": "👤 Получатель: <b>{name}</b>\n\nСколько stars подарить?",
+        "gift_stars_confirm": "🎁 <b>Подтвердите</b>\n\n👤 Кому: <b>{name}</b>\n⭐ Сумма: <b>{n} ⭐</b>",
+        "gift_stars_sent": "✅ <b>{n} ⭐ отправлено {name}!</b>",
+        "gift_stars_received": "🎁 <b>Вам подарили stars!</b>\n\n👤 От: <b>{name}</b>\n⭐ <b>+{n} ⭐</b>\n\n💰 Всего: <b>{total} ⭐</b>",
+        "gift_stars_not_found": "❌ Пользователь не найден.",
+        "gift_stars_self": "❌ Нельзя подарить себе.",
+        "review_title": "⭐ <b>Оставить отзыв</b>\n\nНапишите отзыв — админ одобрит:",
+        "review_sent": "✅ <b>Отзыв отправлен!</b>",
+        "review_approved": "✅ <b>Ваш отзыв одобрен и опубликован!</b>",
+        "review_rejected": "❌ <b>Ваш отзыв отклонён.</b>",
+        "level": "Уровень",
     },
     "en": {
         "flag": "🇬🇧", "name": "English",
-        "choose_lang": "🌐 <b>Choose language</b>\n\nPlease select your preferred language:",
-        "lang_set": "✅ Language changed successfully!",
-        "welcome": "👋 <b>Hi, {name}!</b>\n\n🎯 <i>Welcome to the referral bot!</i>\n\nChoose a section from the menu below 👇",
-        "menu_title": "🏠 <b>Main menu</b>\n\nChoose a section:",
+        "choose_lang": "🌐 <b>Choose language</b>:",
+        "lang_set": "✅ Language changed!",
+        "welcome": "👋 <b>Hi, {name}!</b>\n\n🎯 <i>Welcome!</i>",
+        "menu_title": "🏠 <b>Main menu</b>:",
         "profile": "👤 Profile",
-        "ref_link": "🔗 Referral link",
+        "ref_link": "🔗 Referral",
         "rating": "🏆 Rating",
         "withdraw": "💰 Withdraw",
         "support": "💬 Contact admin",
+        "gift_stars": "🎁 Gift Stars",
+        "review": "⭐ Leave review",
         "admin": "🛠 Admin Panel",
-        "share": "📤 Share link",
+        "share": "📤 Share",
         "back": "⬅️ Back",
         "menu": "🏠 Main menu",
         "cancel": "❌ Cancel",
         "close_chat": "🔚 Close chat",
-        "banned": "🚫 <b>You are banned!</b>\n\nContact admin.",
-        "subscribe": "📢 <b>Subscribe to channels:</b>\n\nAfter subscribing, press «✅ Check».",
+        "banned": "🚫 <b>You are banned!</b>",
+        "subscribe": "📢 <b>Subscribe:</b>",
         "check": "✅ Check",
-        "bot_check": "🤖 <b>Confirm you are not a bot</b>\n\n❓ <b>Question:</b> {q}\n\nChoose the correct answer 👇",
+        "bot_check": "🤖 <b>Confirm you're not a bot</b>\n\n❓ <b>Question:</b> {q}",
         "wrong_answer": "❌ Wrong answer!",
         "correct": "✅ Confirmed!",
-        "wrong_ans_retry": "❌ <b>Wrong!</b>\n\nTry again: /start",
-        "start_first": "ℹ️ Please send /start",
+        "wrong_ans_retry": "❌ <b>Wrong!</b> /start",
+        "start_first": "ℹ️ Send /start",
         "not_enough": "❌ <b>Not enough!</b>",
-        "min_withdraw": "❌ Minimum: <b>{n} ⭐</b>",
-        "max_withdraw": "❌ Maximum: <b>{n} ⭐</b>",
+        "min_withdraw": "❌ Min: <b>{n} ⭐</b>",
+        "max_withdraw": "❌ Max: <b>{n} ⭐</b>",
         "enter_number": "❌ Numbers only.",
-        "choose_reward": "🎁 Choose reward type:",
+        "choose_reward": "🎁 Choose reward:",
         "stars_withdraw": "⭐ Get Stars",
         "gift_withdraw": "🎁 Get Telegram Gift",
-        "stars_title": "⭐ <b>Withdraw Stars</b>\n\n💰 You have: <b>{bal} ⭐</b>\n📉 Min: {min} ⭐\n📈 Max: {max} ⭐\n\n💬 How many to withdraw?\nEnter number:",
-        "gift_title": "🎁 <b>Telegram Gift</b>\n\n💰 You have: <b>{bal} ⭐</b>\n\n👇 Choose gift:",
-        "sent_to_admin": "✅ <b>Request sent!</b>\n\n⭐ Amount: <b>{n} ⭐</b>\n⏳ Wait for approval...",
-        "gift_sent": "✅ <b>Request sent!</b>\n\n🎁 Gift: <b>{gift}</b>\n⭐ Price: <b>{n} ⭐</b>\n⏳ Wait for approval...",
-        "approved": "✅ <b>Your request approved!</b>",
-        "rejected": "❌ <b>Your request rejected.</b>",
-        "referral_reward": "🎉 <b>New referral!</b>\n\n➕ +{n} ⭐ added",
+        "stars_title": "⭐ <b>Withdraw Stars</b>\n\n💰 You have: <b>{bal} ⭐</b>\n📉 Min: {min} ⭐\n📈 Max: {max} ⭐\n\n💬 How many?",
+        "gift_title": "🎁 <b>Telegram Gift</b>\n\n💰 You have: <b>{bal} ⭐</b>\n\n👇 Choose:",
+        "sent_to_admin": "✅ <b>Sent!</b>\n\n⭐ <b>{n} ⭐</b>",
+        "gift_sent": "✅ <b>Sent!</b>\n\n🎁 <b>{gift}</b>",
+        "approved": "✅ <b>Approved!</b>",
+        "rejected": "❌ <b>Rejected.</b>",
+        "referral_reward": "🎉 <b>New referral!</b>\n\n➕ +{n} ⭐",
         "total": "Total",
         "balance": "You have",
         "need": "Need",
-        "stars_added": "🎁 <b>Stars added!</b>\n\n➕ Amount: <b>+{n} ⭐</b>\n📝 Reason: <i>{reason}</i>\n\n💰 Total: <b>{total} ⭐</b>",
-        "stars_removed": "⚠️ <b>Stars removed!</b>\n\n➖ Amount: <b>{n} ⭐</b>\n📝 Reason: <i>{reason}</i>\n\n💰 Total: <b>{total} ⭐</b>",
-        "support_title": "💬 <b>Contact admin</b>\n\nWrite your question — admin will reply soon.\n\nYou can send text, photo, video or file.",
-        "support_sent": "✅ <b>Your question sent to admin!</b>\n\n⏳ Wait for reply...",
-        "support_new_msg": "📩 <b>New message!</b>\n\n👤 <b>User:</b> {name}\n🔗 <b>Username:</b> {username}\n🆔 <b>ID:</b> <code>{uid}</code>\n📅 <b>Time:</b> {time}",
+        "stars_added": "🎁 <b>Stars added!</b>\n\n➕ <b>+{n} ⭐</b>\n📝 <i>{reason}</i>\n\n💰 Total: <b>{total} ⭐</b>",
+        "stars_removed": "⚠️ <b>Stars removed!</b>\n\n➖ <b>{n} ⭐</b>\n📝 <i>{reason}</i>",
+        "support_title": "💬 <b>Contact admin</b>:",
+        "support_sent": "✅ <b>Sent to admin!</b>",
+        "support_new_msg": "📩 <b>New message!</b>\n\n👤 {name}\n🔗 {username}\n🆔 <code>{uid}</code>\n📅 {time}",
         "reply_sent": "✅ <b>Reply sent!</b>",
-        "chat_active": "💬 <b>Chat active</b>\n\nSend your message. To finish, press «🔚 Close chat».",
-        "chat_closed_by_user": "🔚 <b>Chat closed!</b>\n\nFor a new question press «💬 Contact admin».",
-        "chat_closed_by_admin": "🔚 <b>Admin closed the chat.</b>\n\nFor a new question press «💬 Contact admin».",
-        "no_active_chat": "ℹ️ You have no active chat.",
+        "chat_active": "💬 <b>Chat active</b>",
+        "chat_closed_by_admin": "🔚 <b>Admin closed the chat.</b>",
+        "no_active_chat": "ℹ️ No active chat.",
         "admin_reply": "📬 <b>Reply from admin:</b>",
-        "user_msg": "📩 <b>Message from user:</b>",
+        "user_msg": "📩 <b>From user:</b>",
+        "gift_stars_title": "🎁 <b>Gift Stars</b>\n\n💰 You have: <b>{bal} ⭐</b>\n\nEnter username or ID:",
+        "gift_stars_amount": "👤 To: <b>{name}</b>\n\nHow many stars?",
+        "gift_stars_confirm": "🎁 <b>Confirm</b>\n\n👤 To: <b>{name}</b>\n⭐ Amount: <b>{n} ⭐</b>",
+        "gift_stars_sent": "✅ <b>{n} ⭐ sent to {name}!</b>",
+        "gift_stars_received": "🎁 <b>You received stars!</b>\n\n👤 From: <b>{name}</b>\n⭐ <b>+{n} ⭐</b>\n\n💰 Total: <b>{total} ⭐</b>",
+        "gift_stars_not_found": "❌ User not found.",
+        "gift_stars_self": "❌ Can't gift yourself.",
+        "review_title": "⭐ <b>Leave review</b>\n\nWrite review — admin approves:",
+        "review_sent": "✅ <b>Review sent!</b>",
+        "review_approved": "✅ <b>Your review approved and published!</b>",
+        "review_rejected": "❌ <b>Your review rejected.</b>",
+        "level": "Level",
     },
 }
 
@@ -292,10 +355,28 @@ def init_db():
         admin_id INTEGER DEFAULT 0,
         updated_at TEXT
     )""")
+    # YANGI: Sharhlar
+    c.execute("""CREATE TABLE IF NOT EXISTS reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        text TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TEXT
+    )""")
+    # YANGI: Darajalar
+    c.execute("""CREATE TABLE IF NOT EXISTS levels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        emoji TEXT,
+        min_stars INTEGER,
+        max_stars INTEGER
+    )""")
+
     defaults = {
         "stars_per_referral": "2",
         "min_withdraw": "50",
         "max_withdraw": "1000000",
+        "review_channel": "",
     }
     for k, v in defaults.items():
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
@@ -303,6 +384,13 @@ def init_db():
     for a in SUPER_ADMIN_IDS:
         c.execute("INSERT OR IGNORE INTO admins (user_id, added_by, added_at) VALUES (?, ?, ?)",
                   (a, a, datetime.now().isoformat()))
+
+    # Darajalarni to'ldirish
+    c.execute("SELECT COUNT(*) FROM levels")
+    if c.fetchone()[0] == 0:
+        for lvl in DEFAULT_LEVELS:
+            c.execute("INSERT INTO levels (name, emoji, min_stars, max_stars) VALUES (?, ?, ?, ?)",
+                      (lvl["name"], lvl["emoji"], lvl["min"], lvl["max"]))
 
     c.execute("SELECT COUNT(*) FROM gifts")
     if c.fetchone()[0] == 0:
@@ -349,6 +437,11 @@ def set_setting(key, value):
 
 def get_user(user_id):
     row = db_exec("SELECT * FROM users WHERE user_id=?", (user_id,), fetch=True)
+    return dict(row) if row else None
+
+def get_user_by_username(username):
+    uname = username.lstrip("@").lower()
+    row = db_exec("SELECT * FROM users WHERE LOWER(username)=?", (uname,), fetch=True)
     return dict(row) if row else None
 
 def get_user_lang(user_id):
@@ -476,6 +569,9 @@ class US(StatesGroup):
     answer = State()
     withdraw_stars = State()
     support_msg = State()
+    gift_username = State()
+    gift_amount = State()
+    review_text = State()
 
 class AS(StatesGroup):
     channel = State()
@@ -495,6 +591,11 @@ class AS(StatesGroup):
     gift_name = State()
     gift_stars = State()
     reply_to_user = State()
+    review_channel = State()
+    level_name = State()
+    level_emoji = State()
+    level_min = State()
+    level_max = State()
 
 # ═══════════════════════════════════════════════════════════
 # KLAVIATURALAR
@@ -506,11 +607,13 @@ def main_menu(uid):
     b.button(text=T(lang, "ref_link"), callback_data="m_reflink")
     b.button(text=T(lang, "rating"), callback_data="m_rating")
     b.button(text=T(lang, "withdraw"), callback_data="m_withdraw")
+    b.button(text=T(lang, "gift_stars"), callback_data="m_gift")
+    b.button(text=T(lang, "review"), callback_data="m_review")
     b.button(text=T(lang, "support"), callback_data="m_support")
     b.button(text="🌐 Til / Язык / Lang", callback_data="m_lang")
     if is_admin(uid):
         b.button(text=T(lang, "admin"), callback_data="m_admin")
-    b.adjust(2, 2, 2, 1)
+    b.adjust(2, 2, 2, 2, 1)
     return b.as_markup()
 
 def admin_menu(uid):
@@ -524,6 +627,8 @@ def admin_menu(uid):
     b.button(text="💸 Yechib olish", callback_data="a_withdrawals")
     b.button(text="👤 User boshqarish", callback_data="a_users")
     b.button(text="💬 Suhbatlar", callback_data="a_chats")
+    b.button(text="⭐ Sharhlar", callback_data="a_reviews")
+    b.button(text="🏅 Darajalar", callback_data="a_levels")
     if is_super_admin(uid):
         b.button(text="👑 Adminlar", callback_data="a_admins")
     b.button(text="🏠 Asosiy menyu", callback_data="m_menu")
@@ -704,12 +809,15 @@ async def cb_profile(cb: types.CallbackQuery, state: FSMContext):
     uname = f"@{user['username']}" if user["username"] else "—"
     ver = "✅" if user["is_verified"] else "❌"
     joined = user["joined_at"][:10] if user["joined_at"] else "—"
+    lvl = get_user_level(user["stars"])
+    lvl_text = f"{lvl.get('emoji', '🥉')} <b>{lvl.get('name', 'Bronza')}</b>"
     text = (
         f"╭━━━〔 👤 <b>{T(lang, 'profile')}</b> 〕━━━╮\n\n"
         f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
         f"👤 <b>Ism:</b> {user['first_name'] or 'N/A'}\n"
         f"🔗 <b>Username:</b> {uname}\n"
         f"⭐ <b>Stars:</b> {user['stars']}\n"
+        f"🏅 <b>{T(lang, 'level')}:</b> {lvl_text}\n"
         f"👥 <b>Referallar:</b> {ref_count}\n"
         f"✅ <b>Tasdiqlangan:</b> {ver}\n"
         f"📅 <b>Qo'shilgan:</b> {joined}\n\n"
@@ -743,7 +851,7 @@ async def cb_reflink(cb: types.CallbackQuery, state: FSMContext):
         f"🎁 <b>Har bir referal:</b> +{reward} ⭐\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
-    share_url = f"https://t.me/share/url?url={link}&text=🚀 Botga qo'shiling va stars yig'ing!"
+    share_url = f"https://t.me/share/url?url={link}&text=🚀 Botga qo'shiling!"
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "share"), url=share_url)
     b.button(text=T(lang, "menu"), callback_data="m_menu")
@@ -983,7 +1091,6 @@ async def cb_support(cb: types.CallbackQuery, state: FSMContext):
     chat_status = get_chat_status(uid)
     if chat_status == "open":
         b = InlineKeyboardBuilder()
-        b.button(text=T(lang, "close_chat"), callback_data="chat_close_user")
         b.button(text=T(lang, "menu"), callback_data="m_menu")
         b.adjust(1)
         try:
@@ -996,7 +1103,6 @@ async def cb_support(cb: types.CallbackQuery, state: FSMContext):
 
     open_chat(uid)
     b = InlineKeyboardBuilder()
-    b.button(text=T(lang, "close_chat"), callback_data="chat_close_user")
     b.button(text=T(lang, "menu"), callback_data="m_menu")
     b.adjust(1)
     try:
@@ -1005,40 +1111,6 @@ async def cb_support(cb: types.CallbackQuery, state: FSMContext):
         await cb.message.answer(T(lang, "support_title"), reply_markup=b.as_markup(), parse_mode="HTML")
     await state.set_state(US.support_msg)
     await cb.answer()
-
-@dp.callback_query(F.data == "chat_close_user")
-async def chat_close_user(cb: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    uid = cb.from_user.id
-    lang = get_user_lang(uid)
-
-    if not is_chat_open(uid):
-        await cb.answer(T(lang, "no_active_chat"), show_alert=True)
-        return
-
-    close_chat(uid, closed_by="user")
-    user = get_user(uid)
-    uname = f"@{user['username']}" if user and user["username"] else "—"
-    for a in list_admins():
-        try:
-            await bot.send_message(
-                a["user_id"],
-                f"🔚 <b>Suhbat foydalanuvchi tomonidan tugatildi!</b>\n\n"
-                f"👤 <b>User:</b> {user['first_name'] if user else 'User'}\n"
-                f"🔗 <b>Username:</b> {uname}\n"
-                f"🆔 <b>ID:</b> <code>{uid}</code>",
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
-
-    try:
-        await cb.message.edit_text(T(lang, "chat_closed_by_user"),
-                                   reply_markup=back_to_menu_kb(uid), parse_mode="HTML")
-    except Exception:
-        await cb.message.answer(T(lang, "chat_closed_by_user"),
-                                reply_markup=back_to_menu_kb(uid), parse_mode="HTML")
-    await cb.answer("✅")
 
 @dp.message(US.support_msg)
 async def support_send(message: types.Message, state: FSMContext):
@@ -1069,8 +1141,6 @@ async def support_send(message: types.Message, state: FSMContext):
         msg_type, content = "audio", message.audio.file_id
     elif message.sticker:
         msg_type, content = "sticker", message.sticker.file_id
-    elif message.animation:
-        msg_type, content = "animation", message.animation.file_id
     else:
         await message.answer("❌ Bu turdagi xabar qo'llab-quvvatlanmaydi.")
         return
@@ -1108,7 +1178,7 @@ async def support_send(message: types.Message, state: FSMContext):
 @dp.callback_query(F.data.startswith("reply_"))
 async def reply_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
-        await cb.answer("❌ Siz admin emassiz!", show_alert=True)
+        await cb.answer("❌", show_alert=True)
         return
     uid = int(cb.data.replace("reply_", ""))
     user = get_user(uid)
@@ -1117,13 +1187,12 @@ async def reply_start(cb: types.CallbackQuery, state: FSMContext):
         return
 
     if not is_chat_open(uid):
-        await cb.answer("⚠️ Bu suhbat allaqachon yopilgan!", show_alert=True)
+        await cb.answer("⚠️ Suhbat yopilgan!", show_alert=True)
         return
 
     await state.update_data(reply_to_uid=uid)
     await cb.message.answer(
-        f"✉️ <b>Javob yozing</b>\n\n"
-        f"👤 {user['first_name']} (<code>{uid}</code>)\n\n"
+        f"✉️ <b>Javob yozing</b>\n\n👤 {user['first_name']} (<code>{uid}</code>)\n\n"
         f"Matn, rasm, video yoki fayl yuboring:",
         parse_mode="HTML"
     )
@@ -1188,10 +1257,8 @@ async def chat_close_admin(cb: types.CallbackQuery):
         await cb.answer("❌", show_alert=True)
         return
     uid = int(cb.data.replace("chat_close_admin_", ""))
-    user = get_user(uid)
-
     if not is_chat_open(uid):
-        await cb.answer("⚠️ Suhbat allaqachon yopilgan!", show_alert=True)
+        await cb.answer("⚠️ Suhbat yopilgan!", show_alert=True)
         return
 
     close_chat(uid, closed_by="admin")
@@ -1210,7 +1277,264 @@ async def chat_close_admin(cb: types.CallbackQuery):
     except Exception:
         pass
 
-    await cb.answer("✅ Suhbat tugatildi")
+    await cb.answer("✅")
+
+# ═══════════════════════════════════════════════════════════
+# STARS SOVG'A QILISH (YANGI)
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "m_gift")
+async def cb_gift_stars(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    user = get_user(uid)
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
+
+    b = InlineKeyboardBuilder()
+    b.button(text=T(lang, "cancel"), callback_data="gift_cancel")
+    b.adjust(1)
+
+    try:
+        await cb.message.edit_text(
+            T(lang, "gift_stars_title", bal=user["stars"]),
+            reply_markup=b.as_markup(),
+            parse_mode="HTML"
+        )
+    except Exception:
+        await cb.message.answer(
+            T(lang, "gift_stars_title", bal=user["stars"]),
+            reply_markup=b.as_markup(),
+            parse_mode="HTML"
+        )
+    await state.set_state(US.gift_username)
+    await cb.answer()
+
+@dp.callback_query(F.data == "gift_cancel")
+async def gift_cancel(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    try:
+        await cb.message.edit_text(
+            T(lang, "menu_title"),
+            reply_markup=main_menu(uid),
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+    await cb.answer("OK")
+
+@dp.message(US.gift_username)
+async def gift_username_input(message: types.Message, state: FSMContext):
+    uid = message.from_user.id
+    lang = get_user_lang(uid)
+    text = message.text.strip()
+
+    target = None
+    if text.startswith("@") or text.replace("_", "").isalnum():
+        target = get_user_by_username(text)
+    if not target and text.isdigit():
+        target = get_user(int(text))
+
+    if not target:
+        await message.answer(T(lang, "gift_stars_not_found"))
+        return
+
+    if target["user_id"] == uid:
+        await message.answer(T(lang, "gift_stars_self"))
+        return
+
+    await state.update_data(gift_target=target["user_id"])
+    await message.answer(
+        T(lang, "gift_stars_amount", name=target["first_name"] or "User"),
+        parse_mode="HTML"
+    )
+    await state.set_state(US.gift_amount)
+
+@dp.message(US.gift_amount)
+async def gift_amount_input(message: types.Message, state: FSMContext):
+    uid = message.from_user.id
+    lang = get_user_lang(uid)
+    try:
+        amount = int(message.text.strip())
+    except ValueError:
+        await message.answer(T(lang, "enter_number"))
+        return
+    if amount <= 0:
+        await message.answer(T(lang, "enter_number"))
+        return
+
+    user = get_user(uid)
+    if amount > user["stars"]:
+        await message.answer(
+            f"{T(lang, 'not_enough')}\n💰 {T(lang, 'balance')}: <b>{user['stars']} ⭐</b>",
+            parse_mode="HTML"
+        )
+        return
+
+    data = await state.get_data()
+    target_id = data.get("gift_target")
+    target = get_user(target_id)
+    if not target:
+        await state.clear()
+        await message.answer(T(lang, "gift_stars_not_found"))
+        return
+
+    await state.update_data(gift_amount=amount)
+    b = InlineKeyboardBuilder()
+    b.button(text="✅ Tasdiqlash", callback_data="gift_confirm")
+    b.button(text=T(lang, "cancel"), callback_data="gift_cancel")
+    b.adjust(2)
+
+    await message.answer(
+        T(lang, "gift_stars_confirm", name=target["first_name"] or "User", n=amount),
+        reply_markup=b.as_markup(),
+        parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data == "gift_confirm")
+async def gift_confirm(cb: types.CallbackQuery, state: FSMContext):
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    data = await state.get_data()
+    target_id = data.get("gift_target")
+    amount = data.get("gift_amount")
+
+    if not target_id or not amount:
+        await cb.answer("Xato", show_alert=True)
+        return
+
+    user = get_user(uid)
+    target = get_user(target_id)
+    if not user or not target:
+        await cb.answer("Xato", show_alert=True)
+        return
+
+    if amount > user["stars"]:
+        await cb.answer(T(lang, "not_enough"), show_alert=True)
+        return
+
+    # Pul o'tkazish
+    update_user(uid, stars=user["stars"] - amount)
+    update_user(target_id, stars=target["stars"] + amount)
+
+    # Yuboruvchiga
+    await cb.message.edit_text(
+        T(lang, "gift_stars_sent", n=amount, name=target["first_name"] or "User"),
+        parse_mode="HTML"
+    )
+
+    # Qabul qiluvchiga
+    target_lang = get_user_lang(target_id)
+    try:
+        await bot.send_message(
+            target_id,
+            T(target_lang, "gift_stars_received",
+              name=user["first_name"] or "User",
+              n=amount,
+              total=target["stars"] + amount),
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+    await state.clear()
+    await cb.answer("✅")
+
+# ═══════════════════════════════════════════════════════════
+# SHARH QOLDIRISH (YANGI)
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "m_review")
+async def cb_review(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    user = get_user(uid)
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
+
+    b = InlineKeyboardBuilder()
+    b.button(text=T(lang, "cancel"), callback_data="review_cancel")
+    b.adjust(1)
+
+    try:
+        await cb.message.edit_text(
+            T(lang, "review_title"),
+            reply_markup=b.as_markup(),
+            parse_mode="HTML"
+        )
+    except Exception:
+        await cb.message.answer(
+            T(lang, "review_title"),
+            reply_markup=b.as_markup(),
+            parse_mode="HTML"
+        )
+    await state.set_state(US.review_text)
+    await cb.answer()
+
+@dp.callback_query(F.data == "review_cancel")
+async def review_cancel(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    try:
+        await cb.message.edit_text(
+            T(lang, "menu_title"),
+            reply_markup=main_menu(uid),
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+    await cb.answer("OK")
+
+@dp.message(US.review_text)
+async def review_text_input(message: types.Message, state: FSMContext):
+    uid = message.from_user.id
+    lang = get_user_lang(uid)
+    text = message.text.strip()
+    if len(text) < 5:
+        await message.answer("❌ Sharh juda qisqa. Kamida 5 ta belgi.")
+        return
+
+    db_exec(
+        "INSERT INTO reviews (user_id, text, status, created_at) VALUES (?, ?, 'pending', ?)",
+        (uid, text, datetime.now().isoformat())
+    )
+    last = db_exec("SELECT MAX(id) AS id FROM reviews", fetch=True)
+    r_id = last["id"] if last else 0
+
+    await state.clear()
+    await message.answer(T(lang, "review_sent"), parse_mode="HTML")
+    await message.answer(
+        T(lang, "menu_title"),
+        reply_markup=main_menu(uid),
+        parse_mode="HTML"
+    )
+
+    # Adminlarga xabar
+    user = get_user(uid)
+    uname = f"@{user['username']}" if user and user["username"] else "—"
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Tasdiqlash", callback_data=f"revappr_{r_id}")
+    kb.button(text="❌ Rad etish", callback_data=f"revrej_{r_id}")
+    kb.adjust(2)
+
+    for a in list_admins():
+        try:
+            await bot.send_message(
+                a["user_id"],
+                f"⭐ <b>Yangi sharh!</b>\n\n"
+                f"👤 {user['first_name'] if user else 'User'} ({uname})\n"
+                f"🆔 <code>{uid}</code>\n\n"
+                f"💬 <i>{text}</i>",
+                reply_markup=kb.as_markup(),
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
 
 # ═══════════════════════════════════════════════════════════
 # YECHIB OLISH
@@ -1225,8 +1549,6 @@ async def cb_withdraw(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer(T(lang, "start_first"), show_alert=True)
         return
 
-    stars_count = user["stars"]
-
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "stars_withdraw"), callback_data="w_stars")
     b.button(text=T(lang, "gift_withdraw"), callback_data="w_gift")
@@ -1235,7 +1557,7 @@ async def cb_withdraw(cb: types.CallbackQuery, state: FSMContext):
 
     text = (
         f"╭━━━〔 💰 <b>{T(lang, 'withdraw')}</b> 〕━━━╮\n\n"
-        f"⭐ <b>{T(lang, 'balance')}:</b> {stars_count} ⭐\n\n"
+        f"⭐ <b>{T(lang, 'balance')}:</b> {user['stars']} ⭐\n\n"
         f"{T(lang, 'choose_reward')}\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
@@ -1330,11 +1652,7 @@ async def w_stars_process(message: types.Message, state: FSMContext):
 
     await state.clear()
     await message.answer(T(lang, "sent_to_admin", n=amount), parse_mode="HTML")
-    await message.answer(
-        T(lang, "menu_title"),
-        reply_markup=main_menu(uid),
-        parse_mode="HTML"
-    )
+    await message.answer(T(lang, "menu_title"), reply_markup=main_menu(uid), parse_mode="HTML")
 
     uname = f"@{user['username']}" if user["username"] else "—"
     admin_text = (
@@ -1373,7 +1691,7 @@ async def w_gift(cb: types.CallbackQuery, state: FSMContext):
     text = (
         f"╭━━━〔 🎁 <b>Telegram Gift olish</b> 〕━━━╮\n\n"
         f"💰 <b>{T(lang, 'balance')}:</b> {user['stars']} ⭐\n\n"
-        f"<i>Giftni tanlang — narxi yonida:</i>\n\n"
+        f"<i>Giftni tanlang:</i>\n\n"
     )
     b = InlineKeyboardBuilder()
     for g in gifts:
@@ -1432,7 +1750,7 @@ async def gift_select(cb: types.CallbackQuery, state: FSMContext):
     user = get_user(uid)
     if gift["stars"] > user["stars"]:
         await cb.answer(
-            f"{T(lang, 'not_enough')}\n{T(lang, 'need')}: {gift['stars']} ⭐\n{T(lang, 'balance')}: {user['stars']} ⭐",
+            f"{T(lang, 'not_enough')}\n{T(lang, 'need')}: {gift['stars']} ⭐",
             show_alert=True
         )
         return
@@ -1566,8 +1884,7 @@ async def add_ch_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
         return
     await cb.message.edit_text(
-        "📢 <b>Kanal username kiriting</b>\n\n"
-        "Misol: <code>@mychannel</code> yoki <code>mychannel</code>",
+        "📢 <b>Kanal username kiriting</b>\n\nMisol: <code>@mychannel</code>",
         parse_mode="HTML"
     )
     await state.set_state(AS.channel)
@@ -1644,7 +1961,7 @@ async def add_q_text(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     await state.update_data(q_text=message.text.strip())
-    await message.answer("✅ <b>To'g'ri javobni kiriting:</b>", parse_mode="HTML")
+    await message.answer("✅ <b>To'g'ri javob:</b>", parse_mode="HTML")
     await state.set_state(AS.q_correct)
 
 @dp.message(AS.q_correct)
@@ -1652,7 +1969,7 @@ async def add_q_correct(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     await state.update_data(q_correct=message.text.strip())
-    await message.answer("❌ <b>1-xato javobni kiriting:</b>", parse_mode="HTML")
+    await message.answer("❌ <b>1-xato javob:</b>", parse_mode="HTML")
     await state.set_state(AS.q_wrong1)
 
 @dp.message(AS.q_wrong1)
@@ -1660,7 +1977,7 @@ async def add_q_wrong1(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     await state.update_data(q_wrong1=message.text.strip())
-    await message.answer("❌ <b>2-xato javobni kiriting:</b>", parse_mode="HTML")
+    await message.answer("❌ <b>2-xato javob:</b>", parse_mode="HTML")
     await state.set_state(AS.q_wrong2)
 
 @dp.message(AS.q_wrong2)
@@ -1706,7 +2023,7 @@ async def a_gifts(cb: types.CallbackQuery):
     gifts = get_all_gifts()
     text = "╭━━━〔 🎁 <b>GIFTLAR</b> 〕━━━╮\n\n"
     for g in gifts:
-        text += f"{g['emoji']} <b>{g['name']}</b> — {g['stars']} ⭐ (<code>{g['key']}</code>)\n"
+        text += f"{g['emoji']} <b>{g['name']}</b> — {g['stars']} ⭐\n"
     if not gifts:
         text += "— Giftlar yo'q\n"
     text += "\n╰━━━━━━━━━━━━━━━━━╯"
@@ -1723,11 +2040,7 @@ async def a_gifts(cb: types.CallbackQuery):
 async def add_gift_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
         return
-    await cb.message.edit_text(
-        "🎁 <b>Gift kalit so'zini kiriting</b>\n\n"
-        "Misol: <code>star_gift</code>, <code>unicorn</code>",
-        parse_mode="HTML"
-    )
+    await cb.message.edit_text("🎁 <b>Kalit so'z:</b>", parse_mode="HTML")
     await state.set_state(AS.gift_key)
     await cb.answer()
 
@@ -1740,10 +2053,10 @@ async def gift_key_process(message: types.Message, state: FSMContext):
         await message.answer("❌ Faqat harflar va raqamlar.")
         return
     if get_gift(key):
-        await message.answer("❌ Bu kalit allaqachon bor.")
+        await message.answer("❌ Allaqachon bor.")
         return
     await state.update_data(gift_key=key)
-    await message.answer("😀 <b>Emoji kiriting:</b>", parse_mode="HTML")
+    await message.answer("😀 <b>Emoji:</b>", parse_mode="HTML")
     await state.set_state(AS.gift_emoji)
 
 @dp.message(AS.gift_emoji)
@@ -1755,11 +2068,11 @@ async def gift_emoji_process(message: types.Message, state: FSMContext):
         if message.text.strip() != "/skip":
             db_exec("UPDATE gifts SET emoji=? WHERE key=?",
                     (message.text.strip(), data["edit_gift_key"]))
-        await message.answer("📝 <b>Yangi nomini kiriting (yoki /skip):</b>", parse_mode="HTML")
+        await message.answer("📝 <b>Nom (yoki /skip):</b>", parse_mode="HTML")
         await state.set_state(AS.gift_name)
     else:
         await state.update_data(gift_emoji=message.text.strip())
-        await message.answer("📝 <b>Gift nomini kiriting:</b>", parse_mode="HTML")
+        await message.answer("📝 <b>Nom:</b>", parse_mode="HTML")
         await state.set_state(AS.gift_name)
 
 @dp.message(AS.gift_name)
@@ -1771,11 +2084,11 @@ async def gift_name_process(message: types.Message, state: FSMContext):
         if message.text.strip() != "/skip":
             db_exec("UPDATE gifts SET name=? WHERE key=?",
                     (message.text.strip(), data["edit_gift_key"]))
-        await message.answer("⭐ <b>Yangi narxni kiriting (yoki /skip):</b>", parse_mode="HTML")
+        await message.answer("⭐ <b>Narx (yoki /skip):</b>", parse_mode="HTML")
         await state.set_state(AS.gift_stars)
     else:
         await state.update_data(gift_name=message.text.strip())
-        await message.answer("⭐ <b>Stars narxini kiriting:</b>", parse_mode="HTML")
+        await message.answer("⭐ <b>Narx:</b>", parse_mode="HTML")
         await state.set_state(AS.gift_stars)
 
 @dp.message(AS.gift_stars)
@@ -1790,7 +2103,7 @@ async def gift_stars_process(message: types.Message, state: FSMContext):
                 db_exec("UPDATE gifts SET stars=? WHERE key=?",
                         (stars, data["edit_gift_key"]))
             except ValueError:
-                await message.answer("❌ Raqam kiriting.")
+                await message.answer("❌ Raqam.")
                 return
         await state.clear()
         await message.answer("✅ <b>Tahrirlandi!</b>", parse_mode="HTML")
@@ -1799,7 +2112,7 @@ async def gift_stars_process(message: types.Message, state: FSMContext):
         try:
             stars = int(message.text.strip())
         except ValueError:
-            await message.answer("❌ Raqam kiriting.")
+            await message.answer("❌ Raqam.")
             return
         if stars < 1:
             await message.answer("❌ Kamida 1.")
@@ -1862,7 +2175,7 @@ async def edit_gift_start(cb: types.CallbackQuery, state: FSMContext):
     await state.update_data(edit_gift_key=key)
     await cb.message.edit_text(
         f"✏️ <b>{gift['emoji']} {gift['name']}</b> ({gift['stars']}⭐)\n\n"
-        f"Yangi emojini kiriting (yoki /skip):",
+        f"Yangi emoji (yoki /skip):",
         parse_mode="HTML"
     )
     await state.set_state(AS.gift_emoji)
@@ -1877,15 +2190,17 @@ async def a_settings(cb: types.CallbackQuery):
         f"╭━━━〔 ⚙️ <b>SOZLAMALAR</b> 〕━━━╮\n\n"
         f"🎯 1 referal = <b>{get_setting('stars_per_referral')} ⭐</b>\n"
         f"💰 Min yechish = <b>{get_setting('min_withdraw')} ⭐</b>\n"
-        f"💎 Max yechish = <b>{get_setting('max_withdraw')} ⭐</b>\n\n"
+        f"💎 Max yechish = <b>{get_setting('max_withdraw')} ⭐</b>\n"
+        f"📢 Sharh kanali: <b>{get_setting('review_channel') or 'yo\\'q'}</b>\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
     b = InlineKeyboardBuilder()
-    b.button(text="🎯 Referal stars", callback_data="set_ref")
-    b.button(text="💰 Min yechish", callback_data="set_minw")
-    b.button(text="💎 Max yechish", callback_data="set_maxw")
+    b.button(text="🎯 Referal", callback_data="set_ref")
+    b.button(text="💰 Min", callback_data="set_minw")
+    b.button(text="💎 Max", callback_data="set_maxw")
+    b.button(text="📢 Sharh kanali", callback_data="set_rev_ch")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
-    b.adjust(2, 1)
+    b.adjust(2, 2, 1)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
@@ -1895,14 +2210,39 @@ async def set_val_start(cb: types.CallbackQuery, state: FSMContext):
         return
     mapping = {
         "set_ref": ("stars_per_referral", "🎯 <b>1 referal uchun nechta stars?</b>"),
-        "set_minw": ("min_withdraw", "💰 <b>Minimal yechish (stars):</b>"),
-        "set_maxw": ("max_withdraw", "💎 <b>Maksimal yechish (stars):</b>"),
+        "set_minw": ("min_withdraw", "💰 <b>Minimal yechish:</b>"),
+        "set_maxw": ("max_withdraw", "💎 <b>Maksimal yechish:</b>"),
     }
     key, prompt = mapping[cb.data]
     await state.update_data(setting_key=key)
     await cb.message.edit_text(prompt, parse_mode="HTML")
     await state.set_state(AS.setting_val)
     await cb.answer()
+
+@dp.callback_query(F.data == "set_rev_ch")
+async def set_rev_ch_start(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        return
+    await cb.message.edit_text(
+        "📢 <b>Sharh kanali username kiriting</b>\n\n"
+        "Misol: <code>@my_reviews</code>\n\n"
+        "Bot kanalga <b>admin</b> qilingan bo'lishi kerak!",
+        parse_mode="HTML"
+    )
+    await state.set_state(AS.review_channel)
+    await cb.answer()
+
+@dp.message(AS.review_channel)
+async def set_rev_ch_process(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    ch = message.text.strip()
+    if not ch.startswith("@"):
+        ch = "@" + ch
+    set_setting("review_channel", ch)
+    await state.clear()
+    await message.answer(f"✅ Sharh kanali: <b>{ch}</b>", parse_mode="HTML")
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
 @dp.message(AS.setting_val)
 async def set_val_do(message: types.Message, state: FSMContext):
@@ -1911,7 +2251,7 @@ async def set_val_do(message: types.Message, state: FSMContext):
     try:
         val = int(message.text.strip())
     except ValueError:
-        await message.answer("❌ Raqam kiriting.")
+        await message.answer("❌ Raqam.")
         return
     data = await state.get_data()
     set_setting(data["setting_key"], val)
@@ -1927,19 +2267,19 @@ async def a_stats(cb: types.CallbackQuery):
     total = db_exec("SELECT COUNT(*) AS c FROM users", fetch=True)["c"]
     ver = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_verified=1", fetch=True)["c"]
     ban = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_banned=1", fetch=True)["c"]
-    susp = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_suspicious=1", fetch=True)["c"]
     pend = db_exec("SELECT COUNT(*) AS c FROM withdrawals WHERE status='pending'", fetch=True)["c"]
     total_stars = db_exec("SELECT COALESCE(SUM(stars), 0) AS s FROM users", fetch=True)["s"]
     open_chats = db_exec("SELECT COUNT(*) AS c FROM support_chats WHERE status='open'", fetch=True)["c"]
+    pend_reviews = db_exec("SELECT COUNT(*) AS c FROM reviews WHERE status='pending'", fetch=True)["c"]
     text = (
         f"╭━━━〔 📊 <b>STATISTIKA</b> 〕━━━╮\n\n"
         f"👥 <b>Jami:</b> {total}\n"
         f"✅ <b>Tasdiqlangan:</b> {ver}\n"
         f"🚫 <b>Ban:</b> {ban}\n"
-        f"⚠️ <b>Shubhali:</b> {susp}\n"
         f"💸 <b>Pending:</b> {pend}\n"
         f"⭐ <b>Jami stars:</b> {total_stars}\n"
-        f"💬 <b>Faol suhbatlar:</b> {open_chats}\n\n"
+        f"💬 <b>Faol suhbatlar:</b> {open_chats}\n"
+        f"⭐ <b>Pending sharhlar:</b> {pend_reviews}\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
     b = InlineKeyboardBuilder()
@@ -1953,13 +2293,7 @@ async def a_broadcast(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
         return
     await cb.message.edit_text(
-        "📨 <b>Broadcast</b>\n\n"
-        "Yubormoqchi bo'lgan xabaringizni yuboring:\n\n"
-        "✅ Oddiy matn\n"
-        "✅ Rasm / Video / Fayl\n"
-        "✅ Forward qilingan xabar\n"
-        "✅ Albom (bir nechta rasm)\n\n"
-        "<i>Barcha turdagi xabarlar avtomatik aniqlanadi.</i>",
+        "📨 <b>Broadcast</b>\n\nXabar yuboring (matn/rasm/video/forward):",
         parse_mode="HTML"
     )
     await state.set_state(AS.broadcast)
@@ -1982,7 +2316,6 @@ async def broadcast_do(message: types.Message, state: FSMContext):
     ok = 0
     fail = 0
     blocked = 0
-
     is_forward = message.forward_date is not None
 
     for i, u in enumerate(users, 1):
@@ -1999,15 +2332,7 @@ async def broadcast_do(message: types.Message, state: FSMContext):
         except TelegramForbiddenError:
             blocked += 1
             fail += 1
-        except TelegramBadRequest as e:
-            err = str(e).lower()
-            if "blocked" in err or "chat not found" in err or "initiate" in err:
-                blocked += 1
-            else:
-                logger.warning(f"Xato ({u['user_id']}): {e}")
-            fail += 1
-        except Exception as e:
-            logger.warning(f"Xato ({u['user_id']}): {e}")
+        except Exception:
             fail += 1
 
         if i % 25 == 0:
@@ -2015,7 +2340,6 @@ async def broadcast_do(message: types.Message, state: FSMContext):
                 await status.edit_text(f"📨 Yuborilmoqda... {i}/{total}")
             except Exception:
                 pass
-
         await asyncio.sleep(0.05)
 
     result = (
@@ -2045,12 +2369,12 @@ async def a_withdrawals(cb: types.CallbackQuery):
     if not rows:
         await cb.answer("—", show_alert=True)
         return
-    text = "╭━━━〔 💸 <b>PENDING SO'ROVLAR</b> 〕━━━╮\n\n"
+    text = "╭━━━〔 💸 <b>PENDING</b> 〕━━━╮\n\n"
     b = InlineKeyboardBuilder()
     for r in rows:
         if r["reward_type"] == "gift":
             g = get_gift(r["gift_key"]) or {}
-            info = f"{g.get('emoji', '🎁')} {g.get('name', 'Gift')} ({r['stars']}⭐)"
+            info = f"{g.get('emoji', '🎁')} {g.get('name', 'Gift')}"
         else:
             info = f"{r['stars']} ⭐"
         uname = f"@{r['username']}" if r["username"] else "—"
@@ -2092,6 +2416,20 @@ async def approve_w(cb: types.CallbackQuery):
         pass
 
     u_lang = get_user_lang(w["user_id"])
+
+    # OTZIV KANALGA POST
+    review_ch = get_setting("review_channel", "")
+    if review_ch:
+        try:
+            if w["reward_type"] == "stars":
+                text = f"🎉 <b>{user['first_name']}</b> {w['stars']} ⭐ yechib oldi!"
+            else:
+                g = get_gift(w["gift_key"]) or {}
+                text = f"🎉 <b>{user['first_name']}</b> {g.get('emoji', '🎁')} <b>{g.get('name', 'Gift')}</b> oldi!"
+            await bot.send_message(review_ch, text, parse_mode="HTML")
+        except Exception as e:
+            logger.warning(f"Otziv kanalga post: {e}")
+
     if w["reward_type"] == "stars":
         try:
             await bot.send_invoice(
@@ -2105,7 +2443,7 @@ async def approve_w(cb: types.CallbackQuery):
             )
             await bot.send_message(
                 w["user_id"],
-                T(u_lang, "approved") + f"\n\n⭐ <b>{w['stars']} ⭐</b>\n\n<i>To'lovni qabul qiling!</i>",
+                T(u_lang, "approved") + f"\n\n⭐ <b>{w['stars']} ⭐</b>",
                 parse_mode="HTML"
             )
             await cb.answer("✅")
@@ -2143,16 +2481,7 @@ async def reject_w(cb: types.CallbackQuery):
     await cb.answer("❌")
     try:
         u_lang = get_user_lang(w["user_id"])
-        if w["reward_type"] == "gift":
-            g = get_gift(w["gift_key"]) or {}
-            info = f"{g.get('emoji', '🎁')} {g.get('name', 'Gift')}"
-        else:
-            info = f"{w['stars']} ⭐"
-        await bot.send_message(
-            w["user_id"],
-            T(u_lang, "rejected") + f"\n\n{info}",
-            parse_mode="HTML"
-        )
+        await bot.send_message(w["user_id"], T(u_lang, "rejected"), parse_mode="HTML")
     except Exception:
         pass
 
@@ -2170,10 +2499,9 @@ async def a_chats(cb: types.CallbackQuery):
     for c in chats[:20]:
         uname = f"@{c['username']}" if c["username"] else "—"
         status_icon = "🟢" if c["status"] == "open" else "🔴"
-        status_text = c["status"].replace("closed_by_", "closed: ")
-        text += f"{status_icon} {c['first_name'] or 'User'} ({uname})\n  <code>{c['user_id']}</code> — {status_text}\n\n"
+        text += f"{status_icon} {c['first_name'] or 'User'} ({uname})\n  <code>{c['user_id']}</code>\n\n"
         b.button(text=f"💬 {c['first_name'] or 'User'}", callback_data=f"chat_open_{c['user_id']}")
-        b.button(text=f"🗑 O'chirish", callback_data=f"chat_del_{c['user_id']}")
+        b.button(text=f"🗑", callback_data=f"chat_del_{c['user_id']}")
     text += "╰━━━━━━━━━━━━━━━━━╯"
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1)
@@ -2187,41 +2515,32 @@ async def chat_open(cb: types.CallbackQuery):
     uid = int(cb.data.replace("chat_open_", ""))
     user = get_user(uid)
     if not user:
-        await cb.answer("❌ User topilmadi!", show_alert=True)
+        await cb.answer("❌", show_alert=True)
         return
 
     if not is_chat_open(uid):
         open_chat(uid)
-        try:
-            await bot.send_message(
-                uid,
-                "🔄 <b>Admin suhbatni qayta ochdi.</b>\n\nYozishingiz mumkin.",
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
 
     rows = db_exec(
         "SELECT * FROM support_tickets WHERE user_id=? ORDER BY id DESC LIMIT 10",
         (uid,), fetchall=True
     ) or []
-    history = f"╭━━━〔 💬 <b>SUHBAT TARIXI</b> 〕━━━╮\n\n"
-    history += f"👤 <b>{user['first_name']}</b> (<code>{uid}</code>)\n\n"
+    history = f"╭━━━〔 💬 <b>TARIX</b> 〕━━━╮\n\n👤 <b>{user['first_name']}</b> (<code>{uid}</code>)\n\n"
     for r in reversed(rows):
-        who = "👑 Admin" if r["is_from_admin"] else "👤 User"
-        content = r["content"]
+        who = "👑" if r["is_from_admin"] else "👤"
+        c = r["content"]
         if r["message_type"] != "text":
-            content = f"[{r['message_type']}]"
-        elif len(content) > 100:
-            content = content[:100] + "..."
-        history += f"{who}: {content}\n"
+            c = f"[{r['message_type']}]"
+        elif len(c) > 80:
+            c = c[:80] + "..."
+        history += f"{who} {c}\n"
     history += "\n╰━━━━━━━━━━━━━━━━━╯"
 
     b = InlineKeyboardBuilder()
-    b.button(text="✉️ Javob berish", callback_data=f"reply_{uid}")
-    b.button(text="🔚 Suhbatni tugatish", callback_data=f"chat_close_admin_{uid}")
-    b.button(text="🗑 Suhbatni o'chirish", callback_data=f"chat_del_{uid}")
-    b.button(text="⬅️ Orqaga", callback_data="a_chats")
+    b.button(text="✉️ Javob", callback_data=f"reply_{uid}")
+    b.button(text="🔚 Tugatish", callback_data=f"chat_close_admin_{uid}")
+    b.button(text="🗑 O'chirish", callback_data=f"chat_del_{uid}")
+    b.button(text="⬅️", callback_data="a_chats")
     b.adjust(1)
 
     try:
@@ -2236,25 +2555,206 @@ async def chat_del(cb: types.CallbackQuery):
         return
     uid = int(cb.data.replace("chat_del_", ""))
     delete_chat(uid)
-    await cb.answer("✅ Suhbat o'chirildi!")
+    await cb.answer("✅")
+    await a_chats(cb)
+
+# ---------- Sharhlar ----------
+@dp.callback_query(F.data == "a_reviews")
+async def a_reviews(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    rows = db_exec(
+        "SELECT r.*, u.first_name, u.username FROM reviews r "
+        "LEFT JOIN users u ON r.user_id=u.user_id "
+        "WHERE r.status='pending' ORDER BY r.id DESC LIMIT 20",
+        fetchall=True
+    ) or []
+    if not rows:
+        await cb.answer("— Pending sharhlar yo'q", show_alert=True)
+        return
+    text = "╭━━━〔 ⭐ <b>PENDING SHARHLAR</b> 〕━━━╮\n\n"
     b = InlineKeyboardBuilder()
-    b.button(text="⬅️ Orqaga", callback_data="a_chats")
-    b.adjust(1)
+    for r in rows:
+        uname = f"@{r['username']}" if r["username"] else "—"
+        text += f"👤 {r['first_name'] or 'User'} ({uname})\n💬 <i>{r['text'][:150]}</i>\n\n"
+        b.button(text=f"✅ #{r['id']}", callback_data=f"revappr_{r['id']}")
+        b.button(text=f"❌ #{r['id']}", callback_data=f"revrej_{r['id']}")
+    text += "╰━━━━━━━━━━━━━━━━━╯"
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(2, 2, 2, 2, 2, 1)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+@dp.callback_query(F.data.startswith("revappr_"))
+async def review_approve(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    r_id = int(cb.data.replace("revappr_", ""))
+    r = db_exec("SELECT * FROM reviews WHERE id=?", (r_id,), fetch=True)
+    if not r or r["status"] != "pending":
+        await cb.answer("—", show_alert=True)
+        return
+
+    db_exec("UPDATE reviews SET status='approved' WHERE id=?", (r_id,))
+    user = get_user(r["user_id"])
+
+    # Otziv kanalga post
+    review_ch = get_setting("review_channel", "")
+    if review_ch and user:
+        try:
+            uname = f"@{user['username']}" if user["username"] else "—"
+            await bot.send_message(
+                review_ch,
+                f"⭐ <b>Yangi sharh!</b>\n\n"
+                f"👤 {user['first_name']} ({uname})\n\n"
+                f"💬 <i>{r['text']}</i>",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.warning(f"Otziv kanal: {e}")
+
+    # Foydalanuvchiga
+    try:
+        u_lang = get_user_lang(r["user_id"])
+        await bot.send_message(r["user_id"], T(u_lang, "review_approved"), parse_mode="HTML")
+    except Exception:
+        pass
+
     try:
         await cb.message.edit_text(
-            "✅ <b>Suhbat butunlay o'chirildi!</b>\n\nFoydalanuvchi qaytadan yozishi mumkin.",
-            reply_markup=b.as_markup(),
+            cb.message.html_text + f"\n\n✅ <b>#{r_id} TASDIQLANDI</b>",
             parse_mode="HTML"
         )
     except Exception:
         pass
+    await cb.answer("✅")
+
+@dp.callback_query(F.data.startswith("revrej_"))
+async def review_reject(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    r_id = int(cb.data.replace("revrej_", ""))
+    r = db_exec("SELECT * FROM reviews WHERE id=?", (r_id,), fetch=True)
+    if not r or r["status"] != "pending":
+        await cb.answer("—", show_alert=True)
+        return
+
+    db_exec("UPDATE reviews SET status='rejected' WHERE id=?", (r_id,))
+    try:
+        u_lang = get_user_lang(r["user_id"])
+        await bot.send_message(r["user_id"], T(u_lang, "review_rejected"), parse_mode="HTML")
+    except Exception:
+        pass
+
+    try:
+        await cb.message.edit_text(
+            cb.message.html_text + f"\n\n❌ <b>#{r_id} RAD ETILDI</b>",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+    await cb.answer("❌")
+
+# ---------- Darajalar ----------
+@dp.callback_query(F.data == "a_levels")
+async def a_levels(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    lvls = get_levels()
+    text = "╭━━━〔 🏅 <b>DARAJALAR</b> 〕━━━╮\n\n"
+    for lvl in lvls:
+        text += f"{lvl.get('emoji', '')} <b>{lvl.get('name', '')}</b>: {lvl.get('min_stars', 0)}-{lvl.get('max_stars', 0)} ⭐\n"
+    text += "\n╰━━━━━━━━━━━━━━━━━╯"
+
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ Yangi daraja", callback_data="add_level")
+    b.button(text="🗑 O'chirish", callback_data="del_level_list")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(2, 1)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+@dp.callback_query(F.data == "add_level")
+async def add_level_start(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        return
+    await cb.message.edit_text("🏅 <b>Daraja nomi:</b>", parse_mode="HTML")
+    await state.set_state(AS.level_name)
+    await cb.answer()
+
+@dp.message(AS.level_name)
+async def level_name_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    await state.update_data(level_name=message.text.strip())
+    await message.answer("😀 <b>Emoji:</b>", parse_mode="HTML")
+    await state.set_state(AS.level_emoji)
+
+@dp.message(AS.level_emoji)
+async def level_emoji_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    await state.update_data(level_emoji=message.text.strip())
+    await message.answer("📉 <b>Min stars:</b>", parse_mode="HTML")
+    await state.set_state(AS.level_min)
+
+@dp.message(AS.level_min)
+async def level_min_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    try:
+        val = int(message.text.strip())
+    except ValueError:
+        await message.answer("❌ Raqam.")
+        return
+    await state.update_data(level_min=val)
+    await message.answer("📈 <b>Max stars:</b>", parse_mode="HTML")
+    await state.set_state(AS.level_max)
+
+@dp.message(AS.level_max)
+async def level_max_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    try:
+        val = int(message.text.strip())
+    except ValueError:
+        await message.answer("❌ Raqam.")
+        return
+    data = await state.get_data()
+    db_exec("INSERT INTO levels (name, emoji, min_stars, max_stars) VALUES (?, ?, ?, ?)",
+            (data["level_name"], data["level_emoji"], data["level_min"], val))
+    await state.clear()
+    await message.answer("✅ <b>Daraja qo'shildi!</b>", parse_mode="HTML")
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
+@dp.callback_query(F.data == "del_level_list")
+async def del_level_list(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    lvls = get_levels()
+    b = InlineKeyboardBuilder()
+    for lvl in lvls:
+        b.button(text=f"❌ {lvl.get('emoji', '')} {lvl.get('name', '')}", callback_data=f"dellvl_{lvl['id']}")
+    b.button(text="⬅️ Orqaga", callback_data="a_levels")
+    b.adjust(1)
+    await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+@dp.callback_query(F.data.startswith("dellvl_"))
+async def del_level_do(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    lvl_id = int(cb.data.replace("dellvl_", ""))
+    db_exec("DELETE FROM levels WHERE id=?", (lvl_id,))
+    await cb.answer("✅")
+    await a_levels(cb)
 
 # ---------- User boshqarish ----------
 @dp.callback_query(F.data == "a_users")
 async def a_users(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
         return
-    await cb.message.edit_text("👤 <b>Foydalanuvchi ID sini kiriting:</b>", parse_mode="HTML")
+    await cb.message.edit_text("👤 <b>User ID:</b>", parse_mode="HTML")
     await state.set_state(AS.user_id)
     await cb.answer()
 
@@ -2265,7 +2765,7 @@ async def user_info(message: types.Message, state: FSMContext):
     try:
         uid = int(message.text.strip())
     except ValueError:
-        await message.answer("❌ Raqam.")
+        await message.answer("❌")
         return
     user = get_user(uid)
     if not user:
@@ -2274,24 +2774,25 @@ async def user_info(message: types.Message, state: FSMContext):
     await state.clear()
     b = InlineKeyboardBuilder()
     b.button(text="🚫 Ban" if not user["is_banned"] else "✅ Unban", callback_data=f"tog_{uid}")
-    b.button(text="➕ Stars qo'shish", callback_data=f"adp_{uid}")
-    b.button(text="➖ Stars ayirish", callback_data=f"rem_{uid}")
-    b.button(text="✉️ Xabar yuborish", callback_data=f"msg_{uid}")
+    b.button(text="➕ Stars", callback_data=f"adp_{uid}")
+    b.button(text="➖ Stars", callback_data=f"rem_{uid}")
+    b.button(text="✉️ Xabar", callback_data=f"msg_{uid}")
     b.button(text="💬 Suhbat", callback_data=f"chat_open_{uid}")
-    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.button(text="⬅️", callback_data="a_back")
     b.adjust(2, 2, 1, 1)
     uname = f"@{user['username']}" if user["username"] else "—"
-    ban_text = "Ha" if user["is_banned"] else "Yo'q"
-    ver_text = "Ha" if user["is_verified"] else "Yo'q"
+    lvl = get_user_level(user["stars"])
+    lvl_text = f"{lvl.get('emoji', '')} {lvl.get('name', '')}"
     text = (
         f"╭━━━〔 👤 <b>USER INFO</b> 〕━━━╮\n\n"
-        f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
-        f"👤 <b>Ism:</b> {user['first_name']}\n"
-        f"🔗 <b>Username:</b> {uname}\n"
-        f"⭐ <b>Stars:</b> {user['stars']}\n"
-        f"🚫 <b>Ban:</b> {ban_text}\n"
-        f"✅ <b>Tasdiqlangan:</b> {ver_text}\n"
-        f"🌐 <b>Til:</b> {user.get('language', 'uz')}\n\n"
+        f"🆔 <code>{user['user_id']}</code>\n"
+        f"👤 {user['first_name']}\n"
+        f"🔗 {uname}\n"
+        f"⭐ {user['stars']}\n"
+        f"🏅 {lvl_text}\n"
+        f"🚫 Ban: {'Ha' if user['is_banned'] else 'Yoq'}\n"
+        f"✅ Ver: {'Ha' if user['is_verified'] else 'Yoq'}\n"
+        f"🌐 {user.get('language', 'uz')}\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
     await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
@@ -2307,14 +2808,13 @@ async def toggle_ban(cb: types.CallbackQuery):
     update_user(uid, is_banned=0 if user["is_banned"] else 1)
     await cb.answer("✅")
 
-# ---------- Stars qo'shish/ayirish ----------
 @dp.callback_query(F.data.startswith("adp_"))
 async def add_stars_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
         return
     uid = int(cb.data.replace("adp_", ""))
     await state.update_data(target_uid=uid, action="add")
-    await cb.message.edit_text("➕ <b>Qancha stars qo'shilsin?</b>\n\nFaqat raqam kiriting:", parse_mode="HTML")
+    await cb.message.edit_text("➕ <b>Miqdor:</b>", parse_mode="HTML")
     await state.set_state(AS.stars_amount)
     await cb.answer()
 
@@ -2324,7 +2824,7 @@ async def remove_stars_start(cb: types.CallbackQuery, state: FSMContext):
         return
     uid = int(cb.data.replace("rem_", ""))
     await state.update_data(target_uid=uid, action="remove")
-    await cb.message.edit_text("➖ <b>Qancha stars ayirilsin?</b>\n\nFaqat raqam kiriting:", parse_mode="HTML")
+    await cb.message.edit_text("➖ <b>Miqdor:</b>", parse_mode="HTML")
     await state.set_state(AS.stars_amount)
     await cb.answer()
 
@@ -2335,20 +2835,15 @@ async def stars_amount_input(message: types.Message, state: FSMContext):
     try:
         amount = int(message.text.strip())
     except ValueError:
-        await message.answer("❌ Faqat raqam kiriting.")
+        await message.answer("❌")
         return
     if amount <= 0:
-        await message.answer("❌ Miqdor 0 dan katta bo'lishi kerak.")
+        await message.answer("❌ >0")
         return
     data = await state.get_data()
     action = data.get("action", "add")
     await state.update_data(stars_amount=amount)
-    prompt = (
-        "📝 <b>Sababni kiriting:</b>\n\nMasalan: <i>«Referal bonusi»</i>, <i>«Admin sovg'asi»</i>"
-        if action == "add"
-        else
-        "📝 <b>Ayirish sababini kiriting:</b>\n\nMasalan: <i>«Qoidabuzarlik»</i>, <i>«Xato»</i>"
-    )
+    prompt = "📝 <b>Sabab:</b>"
     await message.answer(prompt, parse_mode="HTML")
     await state.set_state(AS.stars_reason)
 
@@ -2358,7 +2853,7 @@ async def stars_reason_input(message: types.Message, state: FSMContext):
         return
     reason = message.text.strip()
     if not reason:
-        await message.answer("❌ Sabab bo'sh bo'lmasligi kerak.")
+        await message.answer("❌")
         return
 
     data = await state.get_data()
@@ -2368,7 +2863,7 @@ async def stars_reason_input(message: types.Message, state: FSMContext):
 
     user = get_user(uid)
     if not user:
-        await message.answer("❌ Foydalanuvchi topilmadi.")
+        await message.answer("❌")
         await state.clear()
         return
 
@@ -2376,10 +2871,7 @@ async def stars_reason_input(message: types.Message, state: FSMContext):
         new_stars = user["stars"] + amount
     else:
         if amount > user["stars"]:
-            await message.answer(
-                f"❌ Foydalanuvchida faqat <b>{user['stars']} ⭐</b> bor.\nAyirish mumkin emas.",
-                parse_mode="HTML"
-            )
+            await message.answer(f"❌ Faqat {user['stars']} ⭐")
             return
         new_stars = user["stars"] - amount
 
@@ -2393,12 +2885,12 @@ async def stars_reason_input(message: types.Message, state: FSMContext):
         else:
             notify = T(u_lang, "stars_removed", n=amount, reason=reason, total=new_stars)
         await bot.send_message(uid, notify, parse_mode="HTML")
-    except Exception as e:
-        logger.warning(f"Xabar yuborishda xato: {e}")
+    except Exception:
+        pass
 
     sign = "➕" if action == "add" else "➖"
     await message.answer(
-        f"✅ <b>Bajarildi!</b>\n\n{sign} <b>{amount} ⭐</b>\n📝 <i>{reason}</i>\n💰 Yangi balans: <b>{new_stars} ⭐</b>",
+        f"✅ {sign} <b>{amount} ⭐</b>\n📝 {reason}\n💰 <b>{new_stars} ⭐</b>",
         parse_mode="HTML"
     )
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
@@ -2409,7 +2901,7 @@ async def user_msg_start(cb: types.CallbackQuery, state: FSMContext):
         return
     uid = int(cb.data.replace("msg_", ""))
     await state.update_data(target_uid=uid)
-    await cb.message.edit_text("✉️ <b>Yubormoqchi bo'lgan xabaringizni yozing:</b>", parse_mode="HTML")
+    await cb.message.edit_text("✉️ <b>Xabar:</b>", parse_mode="HTML")
     await state.set_state(AS.user_msg)
     await cb.answer()
 
@@ -2442,9 +2934,9 @@ async def a_admins(cb: types.CallbackQuery):
         text += f"• {name} — <code>{a['user_id']}</code>{tag}\n"
     text += "\n╰━━━━━━━━━━━━━━━━━╯"
     b = InlineKeyboardBuilder()
-    b.button(text="➕ Qo'shish", callback_data="add_admin")
-    b.button(text="➖ O'chirish", callback_data="del_admin_list")
-    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.button(text="➕", callback_data="add_admin")
+    b.button(text="➖", callback_data="del_admin_list")
+    b.button(text="⬅️", callback_data="a_back")
     b.adjust(2, 1)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
@@ -2453,7 +2945,7 @@ async def a_admins(cb: types.CallbackQuery):
 async def add_admin_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_super_admin(cb.from_user.id):
         return
-    await cb.message.edit_text("👑 <b>Admin ID sini kiriting:</b>", parse_mode="HTML")
+    await cb.message.edit_text("👑 <b>Admin ID:</b>", parse_mode="HTML")
     await state.set_state(AS.add_admin_id)
     await cb.answer()
 
@@ -2468,16 +2960,16 @@ async def add_admin_do(message: types.Message, state: FSMContext):
         return
     user = get_user(uid)
     if not user:
-        await message.answer("❌ User topilmadi.")
+        await message.answer("❌")
         return
     if uid in SUPER_ADMIN_IDS:
-        await message.answer("❌ Super admin.")
+        await message.answer("❌")
         return
     add_admin(uid, message.from_user.id)
     await state.clear()
-    await message.answer(f"✅ <b>{user['first_name']}</b> admin qilindi!", parse_mode="HTML")
+    await message.answer(f"✅ <b>{user['first_name']}</b> admin!", parse_mode="HTML")
     try:
-        await bot.send_message(uid, "🎉 <b>Siz admin etib tayinlandingiz!</b>\n\n/admin buyrug'ini yuboring.", parse_mode="HTML")
+        await bot.send_message(uid, "🎉 <b>Siz admin!</b>\n\n/admin", parse_mode="HTML")
     except Exception:
         pass
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
@@ -2493,10 +2985,10 @@ async def del_admin_list(cb: types.CallbackQuery):
             continue
         u = get_user(a["user_id"])
         name = u["first_name"] if u else "N/A"
-        b.button(text=f"❌ {name} ({a['user_id']})", callback_data=f"deladmin_{a['user_id']}")
-    b.button(text="⬅️ Orqaga", callback_data="a_admins")
+        b.button(text=f"❌ {name}", callback_data=f"deladmin_{a['user_id']}")
+    b.button(text="⬅️", callback_data="a_admins")
     b.adjust(1)
-    await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.message.edit_text("🗑", reply_markup=b.as_markup())
     await cb.answer()
 
 @dp.callback_query(F.data.startswith("deladmin_"))
