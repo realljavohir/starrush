@@ -10,5 +10,5 @@ services:
         sync: false
       - key: ADMIN_IDS
         sync: false
-      - key: WEBHOOK_URL
-        sync: false
+      - key: PORT
+        value: 8080
