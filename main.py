@@ -64,12 +64,12 @@ LANGS = {
         "gift_sent": "✅ <b>{gift}</b> ({n}⭐) so'rovingiz yuborildi.\n\nAdmin tasdiqlashini kuting.",
         "approved": "✅ Tasdiqlandi!",
         "rejected": "❌ Rad etildi!",
-        "your_request": "Sizning so'rovingiz #{id}",
         "referral_reward": "🎉 Yangi referal! +{n} ⭐",
         "total": "Jami",
-        "new_referral": "Yangi referal",
         "hello": "Salom",
         "user": "Foydalanuvchi",
+        "balance": "Sizda",
+        "need": "Kerak",
     },
     "ru": {
         "flag": "🇷🇺", "name": "Русский",
@@ -105,12 +105,12 @@ LANGS = {
         "gift_sent": "✅ Запрос на <b>{gift}</b> ({n}⭐) отправлен.",
         "approved": "✅ Подтверждено!",
         "rejected": "❌ Отклонено!",
-        "your_request": "Ваш запрос #{id}",
         "referral_reward": "🎉 Новый реферал! +{n} ⭐",
         "total": "Всего",
-        "new_referral": "Новый реферал",
         "hello": "Привет",
         "user": "Пользователь",
+        "balance": "У вас",
+        "need": "Нужно",
     },
     "en": {
         "flag": "🇬🇧", "name": "English",
@@ -146,12 +146,12 @@ LANGS = {
         "gift_sent": "✅ Request for <b>{gift}</b> ({n}⭐) sent.",
         "approved": "✅ Approved!",
         "rejected": "❌ Rejected!",
-        "your_request": "Your request #{id}",
         "referral_reward": "🎉 New referral! +{n} ⭐",
         "total": "Total",
-        "new_referral": "New referral",
         "hello": "Hello",
         "user": "User",
+        "balance": "You have",
+        "need": "Need",
     },
 }
 
@@ -241,7 +241,6 @@ def init_db():
         c.execute("INSERT OR IGNORE INTO admins (user_id, added_by, added_at) VALUES (?, ?, ?)",
                   (a, a, datetime.now().isoformat()))
 
-    # Giftlarni birinchi marta to'ldirish
     c.execute("SELECT COUNT(*) FROM gifts")
     if c.fetchone()[0] == 0:
         default_gifts = [
@@ -261,7 +260,6 @@ def init_db():
             c.execute("INSERT OR IGNORE INTO gifts (key, emoji, name, stars) VALUES (?, ?, ?, ?)",
                       (key, emoji, name, stars))
 
-    # Savollarni to'ldirish
     c.execute("SELECT COUNT(*) FROM questions")
     if c.fetchone()[0] == 0:
         default_qs = [
@@ -490,7 +488,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
         create_user(uid, uname, fname, lname, ref_id)
         if susp:
             update_user(uid, is_suspicious=1)
-        # Til tanlash
         await message.answer(
             "🌐 Tilni tanlang / Выберите язык / Choose language:",
             reply_markup=lang_keyboard()
@@ -524,7 +521,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
         )
         return
 
-    # Savol va 3 ta inline javob
     answers = [
         (q["correct_answer"], True),
         (q["wrong1"], False),
@@ -799,7 +795,7 @@ async def withdraw_start(message: types.Message, state: FSMContext):
         await message.answer(
             f"{T(lang, 'not_enough')}\n"
             f"Min: {min_w} ⭐\n"
-            f"Sizda / You have: {user['stars']} ⭐"
+            f"{T(lang, 'balance')}: {user['stars']} ⭐"
         )
         return
 
@@ -867,8 +863,8 @@ async def w_stars_process(message: types.Message, state: FSMContext):
     if amount > user["stars"]:
         await message.answer(
             f"{T(lang, 'not_enough')}\n"
-            f"Sizda: {user['stars']} ⭐\n"
-            f"Kerak: {amount} ⭐"
+            f"{T(lang, 'balance')}: {user['stars']} ⭐\n"
+            f"{T(lang, 'need')}: {amount} ⭐"
         )
         return
 
@@ -882,7 +878,6 @@ async def w_stars_process(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(T(lang, "sent_to_admin", n=amount), parse_mode="HTML")
 
-    # Adminga xabar
     uname = f"@{user['username']}" if user["username"] else "—"
     admin_text = (
         f"💸 <b>Yangi STARS so'rovi!</b>\n\n"
@@ -936,7 +931,6 @@ async def w_back(cb: types.CallbackQuery, state: FSMContext):
     uid = cb.from_user.id
     lang = get_user_lang(uid)
     user = get_user(uid)
-    min_w = int(get_setting("min_withdraw", "50"))
 
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "stars_withdraw"), callback_data="w_stars")
@@ -967,7 +961,7 @@ async def gift_select(cb: types.CallbackQuery, state: FSMContext):
     user = get_user(uid)
     if gift["stars"] > user["stars"]:
         await cb.answer(
-            f"{T(lang, 'not_enough')}\nKerak: {gift['stars']} ⭐\nSizda: {user['stars']} ⭐",
+            f"{T(lang, 'not_enough')}\n{T(lang, 'need')}: {gift['stars']} ⭐\n{T(lang, 'balance')}: {user['stars']} ⭐",
             show_alert=True
         )
         return
@@ -1201,7 +1195,7 @@ async def add_gift_start(cb: types.CallbackQuery, state: FSMContext):
         return
     await cb.message.edit_text(
         "🎁 Gift <b>kalit so'zini</b> kiriting (lotin, bo'sh joysiz):\n\n"
-        "Misol: <code>star_gift</code>, <code>unicorn</code>, <code>newgift</code>",
+        "Misol: <code>star_gift</code>, <code>unicorn</code>",
         parse_mode="HTML"
     )
     await state.set_state(AS.gift_key)
@@ -1219,7 +1213,7 @@ async def gift_key_process(message: types.Message, state: FSMContext):
         await message.answer("❌ Bu kalit allaqachon bor.")
         return
     await state.update_data(gift_key=key)
-    await message.answer("😀 Emoji kiriting (bitta yoki bir nechta):")
+    await message.answer("😀 Emoji kiriting:")
     await state.set_state(AS.gift_emoji)
 
 @dp.message(AS.gift_emoji)
@@ -1227,7 +1221,7 @@ async def gift_emoji_process(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     await state.update_data(gift_emoji=message.text.strip())
-    await message.answer("📝 Gift nomini kiriting (masalan: Rocket):")
+    await message.answer("📝 Gift nomini kiriting:")
     await state.set_state(AS.gift_name)
 
 @dp.message(AS.gift_name)
@@ -1314,76 +1308,6 @@ async def edit_gift_start(cb: types.CallbackQuery, state: FSMContext):
     )
     await state.set_state(AS.gift_emoji)
     await cb.answer()
-
-# Eslatma: gift_emoji, gift_name, gift_stars state lar yuqorida ishlatilgan,
-# lekin tahrirlashda edit_gift_key mavjud bo'lsa — tahrirlash rejimida ishlaydi
-
-# (Tahrirlashni soddalashtirish uchun — bitta state da qayta ishlaymiz)
-# Aslida tahrirlash uchun alohida state lar kerak. Quyida to'liq tahrirlash:
-
-@dp.message(AS.gift_emoji)
-async def edit_gift_emoji(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
-        return
-    data = await state.get_data()
-    if data.get("edit_gift_key"):
-        # Tahrirlash rejimi
-        if message.text.strip() != "/skip":
-            db_exec("UPDATE gifts SET emoji=? WHERE key=?",
-                    (message.text.strip(), data["edit_gift_key"]))
-        await message.answer("📝 Yangi nomini kiriting (yoki /skip):")
-        await state.set_state(AS.gift_name)
-    else:
-        await state.update_data(gift_emoji=message.text.strip())
-        await message.answer("📝 Gift nomini kiriting:")
-        await state.set_state(AS.gift_name)
-
-@dp.message(AS.gift_name)
-async def edit_gift_name(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
-        return
-    data = await state.get_data()
-    if data.get("edit_gift_key"):
-        if message.text.strip() != "/skip":
-            db_exec("UPDATE gifts SET name=? WHERE key=?",
-                    (message.text.strip(), data["edit_gift_key"]))
-        await message.answer("⭐ Yangi stars narxini kiriting (yoki /skip):")
-        await state.set_state(AS.gift_stars)
-    else:
-        await state.update_data(gift_name=message.text.strip())
-        await message.answer("⭐ Stars narxini kiriting:")
-        await state.set_state(AS.gift_stars)
-
-@dp.message(AS.gift_stars)
-async def edit_gift_stars(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
-        return
-    data = await state.get_data()
-    if data.get("edit_gift_key"):
-        if message.text.strip() != "/skip":
-            try:
-                stars = int(message.text.strip())
-                db_exec("UPDATE gifts SET stars=? WHERE key=?",
-                        (stars, data["edit_gift_key"]))
-            except ValueError:
-                await message.answer("❌ Raqam kiriting.")
-                return
-        await state.clear()
-        await message.answer("✅ Tahrirlandi!")
-        await message.answer("🛠 Admin", reply_markup=admin_menu(message.from_user.id))
-    else:
-        try:
-            stars = int(message.text.strip())
-        except ValueError:
-            await message.answer("❌ Raqam kiriting.")
-            return
-        if stars < 1:
-            await message.answer("❌ Kamida 1.")
-            return
-        add_gift(data["gift_key"], data["gift_emoji"], data["gift_name"], stars)
-        await state.clear()
-        await message.answer("✅ Gift qo'shildi!")
-        await message.answer("🛠 Admin", reply_markup=admin_menu(message.from_user.id))
 
 # ---------- Sozlamalar ----------
 @dp.callback_query(F.data == "a_settings")
@@ -1624,14 +1548,16 @@ async def user_info(message: types.Message, state: FSMContext):
     b.button(text="⬅️", callback_data="a_back")
     b.adjust(2)
     uname = f"@{user['username']}" if user["username"] else "—"
+    ban_text = "Ha" if user["is_banned"] else "Yo'q"
+    ver_text = "Ha" if user["is_verified"] else "Yo'q"
     text = (
         f"👤 <b>User:</b>\n\n"
         f"ID: <code>{user['user_id']}</code>\n"
         f"Ism: {user['first_name']}\n"
         f"Username: {uname}\n"
         f"⭐ {user['stars']}\n"
-        f"Ban: {'Ha' if user['is_banned'] else 'Yo\\'q'}\n"
-        f"Ver: {'Ha' if user['is_verified'] else 'Yo\\'q'}\n"
+        f"Ban: {ban_text}\n"
+        f"Ver: {ver_text}\n"
         f"Til: {user.get('language', 'uz')}"
     )
     await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
