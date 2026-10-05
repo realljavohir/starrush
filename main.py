@@ -43,6 +43,7 @@ LANGS = {
         "ref_link": "🔗 Referal linkim",
         "rating": "🏆 Reyting",
         "withdraw": "💰 Yechib olish",
+        "support": "💬 Admin bilan aloqa",
         "admin": "🛠 Admin Panel",
         "share": "📤 Havolani ulashish",
         "back": "⬅️ Orqaga",
@@ -74,6 +75,11 @@ LANGS = {
         "need": "Kerak",
         "stars_added": "🎁 <b>Sizga stars qo'shildi!</b>\n\n➕ Miqdor: <b>+{n} ⭐</b>\n📝 Sabab: <i>{reason}</i>\n\n💰 Jami: <b>{total} ⭐</b>",
         "stars_removed": "⚠️ <b>Sizdan stars ayirildi!</b>\n\n➖ Miqdor: <b>{n} ⭐</b>\n📝 Sabab: <i>{reason}</i>\n\n💰 Jami: <b>{total} ⭐</b>",
+        "support_title": "💬 <b>Admin bilan aloqa</b>\n\nSavolingizni yozing — admin tez orada javob beradi.\n\nMatn, rasm, video yoki fayl yuborishingiz mumkin.",
+        "support_sent": "✅ <b>Savolingiz adminga yuborildi!</b>\n\n⏳ Javobni kuting...",
+        "support_admin_reply": "📬 <b>Admindan javob:</b>\n\n{text}",
+        "support_new_msg": "📩 <b>Yangi murojaat!</b>\n\n👤 <b>User:</b> {name}\n🔗 <b>Username:</b> {username}\n🆔 <b>ID:</b> <code>{uid}</code>\n📅 <b>Vaqt:</b> {time}",
+        "reply_sent": "✅ <b>Javob yuborildi!</b>",
     },
     "ru": {
         "flag": "🇷🇺", "name": "Русский",
@@ -84,6 +90,7 @@ LANGS = {
         "ref_link": "🔗 Реферальная ссылка",
         "rating": "🏆 Рейтинг",
         "withdraw": "💰 Вывод",
+        "support": "💬 Связь с админом",
         "admin": "🛠 Админ панель",
         "share": "📤 Поделиться ссылкой",
         "back": "⬅️ Назад",
@@ -115,6 +122,11 @@ LANGS = {
         "need": "Нужно",
         "stars_added": "🎁 <b>Вам добавлены stars!</b>\n\n➕ Сумма: <b>+{n} ⭐</b>\n📝 Причина: <i>{reason}</i>\n\n💰 Всего: <b>{total} ⭐</b>",
         "stars_removed": "⚠️ <b>У вас списаны stars!</b>\n\n➖ Сумма: <b>{n} ⭐</b>\n📝 Причина: <i>{reason}</i>\n\n💰 Всего: <b>{total} ⭐</b>",
+        "support_title": "💬 <b>Связь с админом</b>\n\nНапишите ваш вопрос — админ скоро ответит.\n\nМожно отправить текст, фото, видео или файл.",
+        "support_sent": "✅ <b>Ваш вопрос отправлен админу!</b>\n\n⏳ Ожидайте ответа...",
+        "support_admin_reply": "📬 <b>Ответ от админа:</b>\n\n{text}",
+        "support_new_msg": "📩 <b>Новое сообщение!</b>\n\n👤 <b>User:</b> {name}\n🔗 <b>Username:</b> {username}\n🆔 <b>ID:</b> <code>{uid}</code>\n📅 <b>Время:</b> {time}",
+        "reply_sent": "✅ <b>Ответ отправлен!</b>",
     },
     "en": {
         "flag": "🇬🇧", "name": "English",
@@ -125,6 +137,7 @@ LANGS = {
         "ref_link": "🔗 Referral link",
         "rating": "🏆 Rating",
         "withdraw": "💰 Withdraw",
+        "support": "💬 Contact admin",
         "admin": "🛠 Admin Panel",
         "share": "📤 Share link",
         "back": "⬅️ Back",
@@ -156,6 +169,11 @@ LANGS = {
         "need": "Need",
         "stars_added": "🎁 <b>Stars added!</b>\n\n➕ Amount: <b>+{n} ⭐</b>\n📝 Reason: <i>{reason}</i>\n\n💰 Total: <b>{total} ⭐</b>",
         "stars_removed": "⚠️ <b>Stars removed!</b>\n\n➖ Amount: <b>{n} ⭐</b>\n📝 Reason: <i>{reason}</i>\n\n💰 Total: <b>{total} ⭐</b>",
+        "support_title": "💬 <b>Contact admin</b>\n\nWrite your question — admin will reply soon.\n\nYou can send text, photo, video or file.",
+        "support_sent": "✅ <b>Your question sent to admin!</b>\n\n⏳ Wait for reply...",
+        "support_admin_reply": "📬 <b>Reply from admin:</b>\n\n{text}",
+        "support_new_msg": "📩 <b>New message!</b>\n\n👤 <b>User:</b> {name}\n🔗 <b>Username:</b> {username}\n🆔 <b>ID:</b> <code>{uid}</code>\n📅 <b>Time:</b> {time}",
+        "reply_sent": "✅ <b>Reply sent!</b>",
     },
 }
 
@@ -234,6 +252,16 @@ def init_db():
         user_id INTEGER PRIMARY KEY,
         added_by INTEGER,
         added_at TEXT
+    )""")
+    # Savol-javob (support) tizimi
+    c.execute("""CREATE TABLE IF NOT EXISTS support_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        admin_id INTEGER,
+        message_type TEXT,
+        content TEXT,
+        is_from_admin INTEGER DEFAULT 0,
+        created_at TEXT
     )""")
     defaults = {
         "stars_per_referral": "2",
@@ -375,6 +403,20 @@ def add_gift(key, emoji, name, stars):
 def remove_gift(key):
     db_exec("DELETE FROM gifts WHERE key=?", (key,))
 
+# ---------- Support ----------
+def save_support_msg(user_id, admin_id, msg_type, content, is_from_admin):
+    db_exec("""INSERT INTO support_tickets (user_id, admin_id, message_type, content, is_from_admin, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (user_id, admin_id, msg_type, content, is_from_admin, datetime.now().isoformat()))
+
+def get_last_admin_for_user(user_id):
+    """Oxirgi javob bergan adminni topish"""
+    row = db_exec(
+        "SELECT admin_id FROM support_tickets WHERE user_id=? AND is_from_admin=1 ORDER BY id DESC LIMIT 1",
+        (user_id,), fetch=True
+    )
+    return row["admin_id"] if row else None
+
 # ═══════════════════════════════════════════════════════════
 # BOT
 # ═══════════════════════════════════════════════════════════
@@ -384,6 +426,7 @@ dp = Dispatcher()
 class US(StatesGroup):
     answer = State()
     withdraw_stars = State()
+    support_msg = State()
 
 class AS(StatesGroup):
     channel = State()
@@ -402,6 +445,7 @@ class AS(StatesGroup):
     gift_emoji = State()
     gift_name = State()
     gift_stars = State()
+    reply_to_user = State()
 
 # ═══════════════════════════════════════════════════════════
 # KLAVIATURALAR
@@ -413,6 +457,7 @@ def main_menu(uid):
     b.button(text=T(lang, "ref_link"))
     b.button(text=T(lang, "rating"))
     b.button(text=T(lang, "withdraw"))
+    b.button(text=T(lang, "support"))
     b.button(text="🌐 Til / Язык / Lang")
     if is_admin(uid):
         b.button(text=T(lang, "admin"))
@@ -429,6 +474,7 @@ def admin_menu(uid):
     b.button(text="📨 Broadcast", callback_data="a_broadcast")
     b.button(text="💸 Yechib olish", callback_data="a_withdrawals")
     b.button(text="👤 User boshqarish", callback_data="a_users")
+    b.button(text="💬 Murojaatlar", callback_data="a_support")
     if is_super_admin(uid):
         b.button(text="👑 Adminlar", callback_data="a_admins")
     b.adjust(2)
@@ -810,6 +856,196 @@ async def leaderboard(message: types.Message):
         text += "—"
     text += "\n╰━━━━━━━━━━━━━━━━━╯"
     await message.answer(text, parse_mode="HTML")
+
+# ═══════════════════════════════════════════════════════════
+# SUPPORT — ADMIN BILAN ALOQA
+# ═══════════════════════════════════════════════════════════
+@dp.message(F.text.in_({LANGS[c]["support"] for c in LANGS}))
+async def support_start(message: types.Message, state: FSMContext):
+    await state.clear()
+    uid = message.from_user.id
+    lang = get_user_lang(uid)
+    user = get_user(uid)
+    if not user:
+        await message.answer(T(lang, "start_first"))
+        return
+
+    b = InlineKeyboardBuilder()
+    b.button(text=T(lang, "cancel"), callback_data="support_cancel")
+    b.adjust(1)
+
+    await message.answer(
+        T(lang, "support_title"),
+        reply_markup=b.as_markup(),
+        parse_mode="HTML"
+    )
+    await state.set_state(US.support_msg)
+
+@dp.callback_query(F.data == "support_cancel")
+async def support_cancel(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
+    await cb.answer("OK")
+
+@dp.message(US.support_msg)
+async def support_send(message: types.Message, state: FSMContext):
+    """Foydalanuvchi xabarini adminga yuborish"""
+    uid = message.from_user.id
+    lang = get_user_lang(uid)
+    user = get_user(uid)
+    if not user:
+        await message.answer(T(lang, "start_first"))
+        return
+
+    # Xabar turi aniqlash
+    if message.text:
+        msg_type = "text"
+        content = message.text
+    elif message.photo:
+        msg_type = "photo"
+        content = message.photo[-1].file_id
+    elif message.video:
+        msg_type = "video"
+        content = message.video.file_id
+    elif message.document:
+        msg_type = "document"
+        content = message.document.file_id
+    elif message.voice:
+        msg_type = "voice"
+        content = message.voice.file_id
+    elif message.audio:
+        msg_type = "audio"
+        content = message.audio.file_id
+    elif message.sticker:
+        msg_type = "sticker"
+        content = message.sticker.file_id
+    elif message.animation:
+        msg_type = "animation"
+        content = message.animation.file_id
+    else:
+        await message.answer("❌ Bu turdagi xabar qo'llab-quvvatlanmaydi.")
+        return
+
+    # Bazaga yozish
+    save_support_msg(uid, 0, msg_type, content, 0)
+
+    # Adminga xabar
+    uname = f"@{user['username']}" if user["username"] else "—"
+    admin_header = T("uz", "support_new_msg",
+                     name=user["first_name"] or "User",
+                     username=uname,
+                     uid=uid,
+                     time=datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✉️ Javob berish", callback_data=f"reply_{uid}")
+    kb.adjust(1)
+
+    sent = 0
+    for a in list_admins():
+        try:
+            await bot.send_message(
+                a["user_id"],
+                admin_header,
+                reply_markup=kb.as_markup(),
+                parse_mode="HTML"
+            )
+            # Asl xabarni forward qilish
+            await message.forward(a["user_id"])
+            sent += 1
+        except Exception as e:
+            logger.warning(f"Adminga yuborishda xato ({a['user_id']}): {e}")
+
+    if sent == 0:
+        await message.answer("⚠️ Hech qanday admin topilmadi. Keyinroq urinib ko'ring.")
+        return
+
+    await state.clear()
+    await message.answer(T(lang, "support_sent"), parse_mode="HTML")
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN JAVOB BERISH
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data.startswith("reply_"))
+async def reply_start(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        await cb.answer("❌ Siz admin emassiz!", show_alert=True)
+        return
+    uid = int(cb.data.replace("reply_", ""))
+    user = get_user(uid)
+    if not user:
+        await cb.answer("❌ User topilmadi!", show_alert=True)
+        return
+
+    await state.update_data(reply_to_uid=uid)
+    await cb.message.answer(
+        f"✉️ <b>Javob yozing</b>\n\n"
+        f"👤 {user['first_name']} (<code>{uid}</code>)\n\n"
+        f"Matn, rasm, video yoki fayl yuboring:",
+        parse_mode="HTML"
+    )
+    await state.set_state(AS.reply_to_user)
+    await cb.answer()
+
+@dp.message(AS.reply_to_user)
+async def reply_send(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    data = await state.get_data()
+    uid = data.get("reply_to_uid")
+    if not uid:
+        await state.clear()
+        return
+
+    user = get_user(uid)
+    if not user:
+        await message.answer("❌ User topilmadi.")
+        await state.clear()
+        return
+
+    # Bazaga yozish
+    if message.text:
+        msg_type, content = "text", message.text
+    elif message.photo:
+        msg_type, content = "photo", message.photo[-1].file_id
+    elif message.video:
+        msg_type, content = "video", message.video.file_id
+    elif message.document:
+        msg_type, content = "document", message.document.file_id
+    elif message.voice:
+        msg_type, content = "voice", message.voice.file_id
+    else:
+        msg_type, content = "text", "(media)"
+
+    save_support_msg(uid, message.from_user.id, msg_type, content, 1)
+
+    u_lang = get_user_lang(uid)
+    try:
+        # Avval header yuborish
+        header = T(u_lang, "support_admin_reply", text="")
+        # Header va xabarni birga yuborish
+        await message.send_copy(
+            chat_id=uid,
+        )
+        await bot.send_message(
+            uid,
+            f"📬 <b>Admindan javob:</b>",
+            parse_mode="HTML"
+        ) if False else None
+    except TelegramForbiddenError:
+        await message.answer("❌ Foydalanuvchi botni bloklagan.")
+        await state.clear()
+        return
+    except Exception as e:
+        await message.answer(f"❌ Xato: {e}")
+        await state.clear()
+        return
+
+    await state.clear()
+    await message.answer("✅ <b>Javob yuborildi!</b>", parse_mode="HTML")
 
 # ═══════════════════════════════════════════════════════════
 # YECHIB OLISH
@@ -1467,6 +1703,7 @@ async def a_stats(cb: types.CallbackQuery):
     susp = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_suspicious=1", fetch=True)["c"]
     pend = db_exec("SELECT COUNT(*) AS c FROM withdrawals WHERE status='pending'", fetch=True)["c"]
     total_stars = db_exec("SELECT COALESCE(SUM(stars), 0) AS s FROM users", fetch=True)["s"]
+    tickets = db_exec("SELECT COUNT(*) AS c FROM support_tickets", fetch=True)["c"]
     text = (
         f"╭━━━〔 📊 <b>STATISTIKA</b> 〕━━━╮\n\n"
         f"👥 <b>Jami:</b> {total}\n"
@@ -1474,7 +1711,8 @@ async def a_stats(cb: types.CallbackQuery):
         f"🚫 <b>Ban:</b> {ban}\n"
         f"⚠️ <b>Shubhali:</b> {susp}\n"
         f"💸 <b>Pending:</b> {pend}\n"
-        f"⭐ <b>Jami stars:</b> {total_stars}\n\n"
+        f"⭐ <b>Jami stars:</b> {total_stars}\n"
+        f"💬 <b>Murojaatlar:</b> {tickets}\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
     b = InlineKeyboardBuilder()
@@ -1518,7 +1756,6 @@ async def broadcast_do(message: types.Message, state: FSMContext):
     fail = 0
     blocked = 0
 
-    # Xabar turi aniqlash
     is_forward = message.forward_date is not None
     has_media = bool(
         message.photo or message.video or message.document or
@@ -1531,20 +1768,16 @@ async def broadcast_do(message: types.Message, state: FSMContext):
 
     for i, u in enumerate(users, 1):
         try:
-            # Forward qilingan xabar — forward_message
             if is_forward:
                 await bot.forward_message(
                     chat_id=u["user_id"],
                     from_chat_id=message.chat.id,
                     message_id=message.message_id
                 )
-            # Poll, location, contact — copy_to
             elif is_poll or is_location or is_contact:
                 await message.copy_to(chat_id=u["user_id"])
-            # Media — copy_to
             elif has_media:
                 await message.copy_to(chat_id=u["user_id"])
-            # Oddiy matn
             else:
                 await message.copy_to(chat_id=u["user_id"])
             ok += 1
@@ -1708,6 +1941,37 @@ async def reject_w(cb: types.CallbackQuery):
     except Exception:
         pass
 
+# ---------- Murojaatlar (Support) ----------
+@dp.callback_query(F.data == "a_support")
+async def a_support(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    # Oxirgi 20 ta xabar
+    rows = db_exec(
+        "SELECT s.*, u.first_name, u.username FROM support_tickets s "
+        "LEFT JOIN users u ON s.user_id=u.user_id "
+        "WHERE s.is_from_admin=0 ORDER BY s.id DESC LIMIT 20",
+        fetchall=True
+    ) or []
+    if not rows:
+        await cb.answer("— Murojaatlar yo'q", show_alert=True)
+        return
+    text = "╭━━━〔 💬 <b>OXIRGI MUROJAATLAR</b> 〕━━━╮\n\n"
+    b = InlineKeyboardBuilder()
+    seen = set()
+    for r in rows:
+        if r["user_id"] in seen:
+            continue
+        seen.add(r["user_id"])
+        uname = f"@{r['username']}" if r["username"] else "—"
+        text += f"• {r['first_name'] or 'User'} ({uname})\n  <code>{r['user_id']}</code>\n\n"
+        b.button(text=f"✉️ {r['first_name'] or 'User'}", callback_data=f"reply_{r['user_id']}")
+    text += "╰━━━━━━━━━━━━━━━━━╯"
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(1)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
 # ---------- User boshqarish ----------
 @dp.callback_query(F.data == "a_users")
 async def a_users(cb: types.CallbackQuery, state: FSMContext):
@@ -1742,8 +2006,9 @@ async def user_info(message: types.Message, state: FSMContext):
     b.button(text="➕ Stars qo'shish", callback_data=f"adp_{uid}")
     b.button(text="➖ Stars ayirish", callback_data=f"rem_{uid}")
     b.button(text="✉️ Xabar yuborish", callback_data=f"msg_{uid}")
+    b.button(text="💬 Javob berish", callback_data=f"reply_{uid}")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
-    b.adjust(2, 2, 1)
+    b.adjust(2, 2, 1, 1)
     uname = f"@{user['username']}" if user["username"] else "—"
     ban_text = "Ha" if user["is_banned"] else "Yo'q"
     ver_text = "Ha" if user["is_verified"] else "Yo'q"
@@ -1772,7 +2037,7 @@ async def toggle_ban(cb: types.CallbackQuery):
     await cb.answer("✅")
 
 # ═══════════════════════════════════════════════════════════
-# STARS QO'SHISH (SABAB BILAN)
+# STARS QO'SHISH/AYIRISH
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data.startswith("adp_"))
 async def add_stars_start(cb: types.CallbackQuery, state: FSMContext):
@@ -1819,7 +2084,7 @@ async def stars_amount_input(message: types.Message, state: FSMContext):
     await state.update_data(stars_amount=amount)
     prompt = (
         "📝 <b>Sababni kiriting:</b>\n\n"
-        "Masalan: <i>«Referal bonusi»</i>, <i>«Admin sovg'asi»</i>, <i>«Xato uchun»</i>"
+        "Masalan: <i>«Referal bonusi»</i>, <i>«Admin sovg'asi»</i>"
         if action == "add"
         else
         "📝 <b>Ayirish sababini kiriting:</b>\n\n"
