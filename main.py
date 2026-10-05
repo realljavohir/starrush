@@ -1,17 +1,28 @@
 import os
+import io
+import html
+import hmac
+import time
+import json
 import asyncio
+import hashlib
 import logging
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
+from urllib.parse import parse_qsl
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import ThreadedConnectionPool
+
+from PIL import Image, ImageDraw, ImageFont
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import BufferedInputFile, WebAppInfo
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiohttp import web
 
@@ -21,6 +32,7 @@ from aiohttp import web
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 SUPER_ADMIN_IDS = [int(x.strip()) for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "")
 PORT = int(os.environ.get("PORT", 8080))
 
 if not BOT_TOKEN:
@@ -31,6 +43,9 @@ if not DATABASE_URL:
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+BOT_NAME = "StarRush Bot"
+BOT_USERNAME = "StarRushUZBot"
+
 MIN_STARS = 50
 MAX_STARS = 1_000_000
 
@@ -38,23 +53,31 @@ MAX_STARS = 1_000_000
 # DARAJALAR
 # ═══════════════════════════════════════════════════════════
 DEFAULT_LEVELS = [
-    {"name": "Bronza",  "emoji": "🥉", "min": 0,   "max": 10},
-    {"name": "Kumush",  "emoji": "🥈", "min": 11,  "max": 50},
-    {"name": "Oltin",   "emoji": "🥇", "min": 51,  "max": 200},
-    {"name": "Platina", "emoji": "💎", "min": 201, "max": 500},
-    {"name": "Olmos",   "emoji": "👑", "min": 501, "max": 999999999},
+    {"name": "Bronza",  "emoji": "🥉", "min_stars": 0,   "max_stars": 10},
+    {"name": "Kumush",  "emoji": "🥈", "min_stars": 11,  "max_stars": 50},
+    {"name": "Oltin",   "emoji": "🥇", "min_stars": 51,  "max_stars": 200},
+    {"name": "Platina", "emoji": "💎", "min_stars": 201, "max_stars": 500},
+    {"name": "Olmos",   "emoji": "👑", "min_stars": 501, "max_stars": 999999999},
 ]
+
 
 def get_levels():
     rows = db_exec("SELECT * FROM levels ORDER BY min_stars ASC", fetchall=True)
     return [dict(r) for r in rows] if rows else DEFAULT_LEVELS
 
+
 def get_user_level(stars):
-    for lvl in get_levels():
+    levels = get_levels()
+    for lvl in levels:
         if lvl["min_stars"] <= stars <= lvl["max_stars"]:
             return lvl
-    levels = get_levels()
-    return levels[-1] if levels else DEFAULT_LEVELS[-1]
+    # oraliqqa tushmasa: eng yaqin pastki daraja
+    best = None
+    for lvl in levels:
+        if lvl["min_stars"] <= stars:
+            best = lvl
+    return best or (levels[0] if levels else DEFAULT_LEVELS[0])
+
 
 # ═══════════════════════════════════════════════════════════
 # TILLAR
@@ -67,6 +90,9 @@ LANGS = {
         "welcome": "👋 <b>Salom, {name}!</b>\n\n🎯 <i>Referal botga xush kelibsiz!</i>\n\nQuyidagi menyudan kerakli bo'limni tanlang 👇",
         "menu_title": "🏠 <b>Asosiy menyu</b>\n\nKerakli bo'limni tanlang:",
         "profile": "👤 Profilim",
+        "stats": "📊 Statistika",
+        "banner": "🎨 Banner",
+        "webapp": "🚀 Mini App",
         "ref_link": "🔗 Referal linkim",
         "rating": "🏆 Reyting",
         "withdraw": "💰 Yechib olish",
@@ -94,8 +120,6 @@ LANGS = {
         "choose_reward": "🎁 Mukofot turini tanlang:",
         "stars_withdraw": "⭐ To'liq Stars olish",
         "gift_withdraw": "🎁 Telegram Gift olish",
-        "stars_title": "⭐ <b>Stars yechib olish</b>\n\n💰 Sizda: <b>{bal} ⭐</b>\n📉 Min: {min} ⭐\n📈 Max: {max} ⭐\n\n💬 Nechta stars yechib olmoqchisiz?\nRaqamni kiriting:",
-        "gift_title": "🎁 <b>Telegram Gift olish</b>\n\n💰 Sizda: <b>{bal} ⭐</b>\n\n👇 Giftni tanlang:",
         "sent_to_admin": "✅ <b>So'rov yuborildi!</b>\n\n⭐ Miqdor: <b>{n} ⭐</b>\n⏳ Admin tasdiqlashini kuting...",
         "gift_sent": "✅ <b>So'rov yuborildi!</b>\n\n🎁 Gift: <b>{gift}</b>\n⭐ Narx: <b>{n} ⭐</b>\n⏳ Admin tasdiqlashini kuting...",
         "approved": "✅ <b>So'rovingiz tasdiqlandi!</b>",
@@ -128,6 +152,8 @@ LANGS = {
         "review_rejected": "❌ <b>Sharhingiz rad etildi.</b>",
         "level": "Daraja",
         "stars_will_send": "✅ <b>So'rovingiz tasdiqlandi!</b>\n\n⭐ Miqdor: <b>{n} ⭐</b>\n\n<i>Admin tez orada sizga Stars yuboradi!</i>",
+        "level_up": "🎉 <b>TABRIKLAYMIZ!</b>\n\nSiz {emoji} <b>{name}</b> darajasiga chiqdingiz!\n\n⬆️ Keyingi: {next_emoji} <b>{next_name}</b>\n📊 Kerak: <b>{need} ⭐</b>\n\n🚀 Davom eting!",
+        "banner_caption": "🎨 <b>Sizning shaxsiy baneringiz</b>\n\n📤 Do'stlaringizga yuboring!",
     },
     "ru": {
         "flag": "🇷🇺", "name": "Русский",
@@ -136,6 +162,9 @@ LANGS = {
         "welcome": "👋 <b>Привет, {name}!</b>\n\n🎯 <i>Добро пожаловать!</i>\n\nВыберите раздел 👇",
         "menu_title": "🏠 <b>Главное меню</b>\n\nВыберите раздел:",
         "profile": "👤 Профиль",
+        "stats": "📊 Статистика",
+        "banner": "🎨 Баннер",
+        "webapp": "🚀 Мини App",
         "ref_link": "🔗 Реф. ссылка",
         "rating": "🏆 Рейтинг",
         "withdraw": "💰 Вывод",
@@ -163,8 +192,6 @@ LANGS = {
         "choose_reward": "🎁 Выберите тип награды:",
         "stars_withdraw": "⭐ Получить Stars",
         "gift_withdraw": "🎁 Получить Telegram Gift",
-        "stars_title": "⭐ <b>Вывод Stars</b>\n\n💰 У вас: <b>{bal} ⭐</b>\n📉 Мин: {min} ⭐\n📈 Макс: {max} ⭐\n\n💬 Сколько вывести?",
-        "gift_title": "🎁 <b>Telegram Gift</b>\n\n💰 У вас: <b>{bal} ⭐</b>\n\n👇 Выберите gift:",
         "sent_to_admin": "✅ <b>Запрос отправлен!</b>\n\n⭐ Сумма: <b>{n} ⭐</b>",
         "gift_sent": "✅ <b>Запрос отправлен!</b>\n\n🎁 Gift: <b>{gift}</b>",
         "approved": "✅ <b>Подтверждено!</b>",
@@ -197,6 +224,8 @@ LANGS = {
         "review_rejected": "❌ <b>Ваш отзыв отклонён.</b>",
         "level": "Уровень",
         "stars_will_send": "✅ <b>Ваш запрос подтверждён!</b>\n\n⭐ Сумма: <b>{n} ⭐</b>\n\n<i>Админ скоро отправит вам Stars!</i>",
+        "level_up": "🎉 <b>ПОЗДРАВЛЯЕМ!</b>\n\nВы достигли уровня {emoji} <b>{name}</b>!\n\n⬆️ Следующий: {next_emoji} <b>{next_name}</b>\n📊 Нужно: <b>{need} ⭐</b>\n\n🚀 Продолжайте!",
+        "banner_caption": "🎨 <b>Ваш личный баннер</b>\n\n📤 Отправьте друзьям!",
     },
     "en": {
         "flag": "🇬🇧", "name": "English",
@@ -205,6 +234,9 @@ LANGS = {
         "welcome": "👋 <b>Hi, {name}!</b>\n\n🎯 <i>Welcome!</i>",
         "menu_title": "🏠 <b>Main menu</b>:",
         "profile": "👤 Profile",
+        "stats": "📊 Statistics",
+        "banner": "🎨 Banner",
+        "webapp": "🚀 Mini App",
         "ref_link": "🔗 Referral",
         "rating": "🏆 Rating",
         "withdraw": "💰 Withdraw",
@@ -232,8 +264,6 @@ LANGS = {
         "choose_reward": "🎁 Choose reward:",
         "stars_withdraw": "⭐ Get Stars",
         "gift_withdraw": "🎁 Get Telegram Gift",
-        "stars_title": "⭐ <b>Withdraw Stars</b>\n\n💰 You have: <b>{bal} ⭐</b>\n📉 Min: {min} ⭐\n📈 Max: {max} ⭐\n\n💬 How many?",
-        "gift_title": "🎁 <b>Telegram Gift</b>\n\n💰 You have: <b>{bal} ⭐</b>\n\n👇 Choose:",
         "sent_to_admin": "✅ <b>Sent!</b>\n\n⭐ <b>{n} ⭐</b>",
         "gift_sent": "✅ <b>Sent!</b>\n\n🎁 <b>{gift}</b>",
         "approved": "✅ <b>Approved!</b>",
@@ -266,8 +296,11 @@ LANGS = {
         "review_rejected": "❌ <b>Your review rejected.</b>",
         "level": "Level",
         "stars_will_send": "✅ <b>Your request approved!</b>\n\n⭐ Amount: <b>{n} ⭐</b>\n\n<i>Admin will send you Stars soon!</i>",
+        "level_up": "🎉 <b>CONGRATULATIONS!</b>\n\nYou reached {emoji} <b>{name}</b> level!\n\n⬆️ Next: {next_emoji} <b>{next_name}</b>\n📊 Need: <b>{need} ⭐</b>\n\n🚀 Keep going!",
+        "banner_caption": "🎨 <b>Your personal banner</b>\n\n📤 Send to friends!",
     },
 }
+
 
 def T(lang, key, **kwargs):
     lang = lang if lang in LANGS else "uz"
@@ -277,26 +310,39 @@ def T(lang, key, **kwargs):
     except Exception:
         return text
 
+
 # ═══════════════════════════════════════════════════════════
-# DB — PostgreSQL
+# DB — PostgreSQL (connection pool)
 # ═══════════════════════════════════════════════════════════
+_pool = None
+
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        _pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
+    return _pool
+
+
 def db_exec(query, params=(), fetch=False, fetchall=False):
-    """Universal DB funksiyasi (PostgreSQL)"""
-    conn = psycopg2.connect(DATABASE_URL)
-    conn.autocommit = True
-    c = conn.cursor(cursor_factory=RealDictCursor)
+    pool = _get_pool()
+    conn = pool.getconn()
+    broken = False
     try:
-        query = query.replace("?", "%s")
-        c.execute(query, params)
-        result = None
-        if fetch:
-            result = c.fetchone()
-        elif fetchall:
-            result = c.fetchall()
-        return result
+        conn.autocommit = True
+        with conn.cursor(cursor_factory=RealDictCursor) as c:
+            c.execute(query.replace("?", "%s"), params)
+            if fetch:
+                return c.fetchone()
+            if fetchall:
+                return c.fetchall()
+            return None
+    except (psycopg2.OperationalError, psycopg2.InterfaceError):
+        broken = True
+        raise
     finally:
-        c.close()
-        conn.close()
+        pool.putconn(conn, close=broken)
+
 
 def init_db():
     conn = psycopg2.connect(DATABASE_URL)
@@ -316,12 +362,10 @@ def init_db():
         is_suspicious INTEGER DEFAULT 0,
         joined_at TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS channels (
         id SERIAL PRIMARY KEY,
         channel_username TEXT UNIQUE
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS questions (
         id SERIAL PRIMARY KEY,
         question TEXT,
@@ -329,14 +373,12 @@ def init_db():
         wrong1 TEXT,
         wrong2 TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS gifts (
         key TEXT PRIMARY KEY,
         emoji TEXT,
         name TEXT,
         stars INTEGER
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS withdrawals (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
@@ -346,18 +388,15 @@ def init_db():
         status TEXT DEFAULT 'pending',
         created_at TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS admins (
         user_id BIGINT PRIMARY KEY,
         added_by BIGINT,
         added_at TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS support_tickets (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
@@ -367,14 +406,12 @@ def init_db():
         is_from_admin INTEGER DEFAULT 0,
         created_at TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS support_chats (
         user_id BIGINT PRIMARY KEY,
         status TEXT DEFAULT 'open',
         admin_id BIGINT DEFAULT 0,
         updated_at TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS reviews (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
@@ -382,7 +419,6 @@ def init_db():
         status TEXT DEFAULT 'pending',
         created_at TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS levels (
         id SERIAL PRIMARY KEY,
         name TEXT,
@@ -401,7 +437,7 @@ def init_db():
         c.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING", (k, v))
 
     for a in SUPER_ADMIN_IDS:
-        c.execute("""INSERT INTO admins (user_id, added_by, added_at) 
+        c.execute("""INSERT INTO admins (user_id, added_by, added_at)
                      VALUES (%s, %s, %s) ON CONFLICT (user_id) DO NOTHING""",
                   (a, a, datetime.now().isoformat()))
 
@@ -409,7 +445,7 @@ def init_db():
     if c.fetchone()[0] == 0:
         for lvl in DEFAULT_LEVELS:
             c.execute("INSERT INTO levels (name, emoji, min_stars, max_stars) VALUES (%s, %s, %s, %s)",
-                      (lvl["name"], lvl["emoji"], lvl["min"], lvl["max"]))
+                      (lvl["name"], lvl["emoji"], lvl["min_stars"], lvl["max_stars"]))
 
     c.execute("SELECT COUNT(*) FROM gifts")
     if c.fetchone()[0] == 0:
@@ -427,7 +463,7 @@ def init_db():
             ("diamond",   "💎", "Diamond",    100),
         ]
         for key, emoji, name, stars in default_gifts:
-            c.execute("""INSERT INTO gifts (key, emoji, name, stars) 
+            c.execute("""INSERT INTO gifts (key, emoji, name, stars)
                          VALUES (%s, %s, %s, %s) ON CONFLICT (key) DO NOTHING""",
                       (key, emoji, name, stars))
 
@@ -441,12 +477,13 @@ def init_db():
             ("5 * 5 nechaga teng?", "25", "20", "30"),
         ]
         for q, correct, w1, w2 in default_qs:
-            c.execute("""INSERT INTO questions (question, correct_answer, wrong1, wrong2) 
+            c.execute("""INSERT INTO questions (question, correct_answer, wrong1, wrong2)
                         VALUES (%s, %s, %s, %s)""", (q, correct, w1, w2))
 
     c.close()
     conn.close()
     logger.info("PostgreSQL DB tayyor")
+
 
 # ═══════════════════════════════════════════════════════════
 # YORDAMCHI FUNKSIYALAR
@@ -455,23 +492,39 @@ def get_setting(key, default=None):
     row = db_exec("SELECT value FROM settings WHERE key=%s", (key,), fetch=True)
     return row["value"] if row else default
 
+
 def set_setting(key, value):
     db_exec("""INSERT INTO settings (key, value) VALUES (%s, %s)
                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
             (key, str(value)))
 
+
+def _clean_user(row):
+    """first_name/last_name/username HTML-escape qilinadi (xavfsiz chiqarish uchun)."""
+    if not row:
+        return None
+    d = dict(row)
+    for k in ("first_name", "last_name", "username"):
+        if d.get(k):
+            d[k] = html.escape(d[k])
+    return d
+
+
 def get_user(user_id):
     row = db_exec("SELECT * FROM users WHERE user_id=%s", (user_id,), fetch=True)
-    return dict(row) if row else None
+    return _clean_user(row)
+
 
 def get_user_by_username(username):
     uname = username.lstrip("@").lower()
     row = db_exec("SELECT * FROM users WHERE LOWER(username)=%s", (uname,), fetch=True)
-    return dict(row) if row else None
+    return _clean_user(row)
+
 
 def get_user_lang(user_id):
-    u = get_user(user_id)
-    return u["language"] if u and u.get("language") in LANGS else "uz"
+    row = db_exec("SELECT language FROM users WHERE user_id=%s", (user_id,), fetch=True)
+    return row["language"] if row and row.get("language") in LANGS else "uz"
+
 
 def update_user(user_id, **kwargs):
     if not kwargs:
@@ -480,11 +533,36 @@ def update_user(user_id, **kwargs):
     values = list(kwargs.values()) + [user_id]
     db_exec(f"UPDATE users SET {fields} WHERE user_id=%s", values)
 
+
 def create_user(user_id, username, first_name, last_name, referrer_id=0):
-    db_exec("""INSERT INTO users 
-        (user_id, username, first_name, last_name, referrer_id, joined_at) 
+    db_exec("""INSERT INTO users
+        (user_id, username, first_name, last_name, referrer_id, joined_at)
         VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (user_id) DO NOTHING""",
         (user_id, username, first_name, last_name, referrer_id, datetime.now().isoformat()))
+
+
+def spend_stars(user_id, n):
+    """Atomik ayirish. Yetmasa None qaytaradi."""
+    row = db_exec(
+        "UPDATE users SET stars = stars - %s WHERE user_id=%s AND stars >= %s RETURNING stars",
+        (n, user_id, n), fetch=True)
+    return row["stars"] if row else None
+
+
+def add_stars(user_id, n):
+    """Atomik qo'shish. Yangi balansni qaytaradi."""
+    row = db_exec(
+        "UPDATE users SET stars = stars + %s WHERE user_id=%s RETURNING stars",
+        (n, user_id), fetch=True)
+    return row["stars"] if row else None
+
+
+def pending_total(user_id):
+    row = db_exec(
+        "SELECT COALESCE(SUM(stars), 0) AS s FROM withdrawals WHERE user_id=%s AND status='pending'",
+        (user_id,), fetch=True)
+    return int(row["s"]) if row else 0
+
 
 def is_admin(user_id):
     if user_id in SUPER_ADMIN_IDS:
@@ -492,69 +570,87 @@ def is_admin(user_id):
     row = db_exec("SELECT 1 FROM admins WHERE user_id=%s", (user_id,), fetch=True)
     return row is not None
 
+
 def is_super_admin(user_id):
     return user_id in SUPER_ADMIN_IDS
+
 
 def add_admin(user_id, added_by):
     db_exec("""INSERT INTO admins (user_id, added_by, added_at) VALUES (%s, %s, %s)
                ON CONFLICT (user_id) DO NOTHING""",
             (user_id, added_by, datetime.now().isoformat()))
 
+
 def remove_admin(user_id):
     db_exec("DELETE FROM admins WHERE user_id=%s", (user_id,))
+
 
 def list_admins():
     rows = db_exec("SELECT * FROM admins", fetchall=True)
     return [dict(r) for r in rows] if rows else []
 
+
 def get_channels():
     rows = db_exec("SELECT channel_username FROM channels", fetchall=True)
     return [r["channel_username"] for r in rows] if rows else []
 
+
 def add_channel(ch):
     db_exec("INSERT INTO channels (channel_username) VALUES (%s) ON CONFLICT DO NOTHING", (ch,))
 
+
 def remove_channel(ch):
     db_exec("DELETE FROM channels WHERE channel_username=%s", (ch,))
+
 
 def get_random_question():
     row = db_exec("SELECT * FROM questions ORDER BY RANDOM() LIMIT 1", fetch=True)
     return dict(row) if row else None
 
+
 def get_question(q_id):
     row = db_exec("SELECT * FROM questions WHERE id=%s", (q_id,), fetch=True)
     return dict(row) if row else None
 
+
 def add_question(q, correct, wrong1, wrong2):
-    db_exec("""INSERT INTO questions (question, correct_answer, wrong1, wrong2) 
+    db_exec("""INSERT INTO questions (question, correct_answer, wrong1, wrong2)
                VALUES (%s, %s, %s, %s)""", (q, correct, wrong1, wrong2))
+
 
 def remove_question(q_id):
     db_exec("DELETE FROM questions WHERE id=%s", (q_id,))
 
+
 def get_questions():
-    rows = db_exec("SELECT * FROM questions", fetchall=True)
+    rows = db_exec("SELECT * FROM questions ORDER BY id", fetchall=True)
     return [dict(r) for r in rows] if rows else []
+
 
 def get_all_gifts():
     rows = db_exec("SELECT * FROM gifts ORDER BY stars", fetchall=True)
     return [dict(r) for r in rows] if rows else []
 
+
 def get_gift(key):
     row = db_exec("SELECT * FROM gifts WHERE key=%s", (key,), fetch=True)
     return dict(row) if row else None
+
 
 def add_gift(key, emoji, name, stars):
     db_exec("""INSERT INTO gifts (key, emoji, name, stars) VALUES (%s, %s, %s, %s)
                ON CONFLICT (key) DO UPDATE SET emoji=EXCLUDED.emoji, name=EXCLUDED.name, stars=EXCLUDED.stars""",
             (key, emoji, name, stars))
 
+
 def remove_gift(key):
     db_exec("DELETE FROM gifts WHERE key=%s", (key,))
+
 
 def get_chat_status(user_id):
     row = db_exec("SELECT status FROM support_chats WHERE user_id=%s", (user_id,), fetch=True)
     return row["status"] if row else None
+
 
 def open_chat(user_id):
     db_exec("""INSERT INTO support_chats (user_id, status, admin_id, updated_at)
@@ -562,22 +658,27 @@ def open_chat(user_id):
                ON CONFLICT (user_id) DO UPDATE SET status='open', updated_at=EXCLUDED.updated_at""",
             (user_id, datetime.now().isoformat()))
 
+
 def close_chat(user_id, closed_by="user"):
     status = f"closed_by_{closed_by}"
     db_exec("UPDATE support_chats SET status=%s, updated_at=%s WHERE user_id=%s",
             (status, datetime.now().isoformat(), user_id))
 
+
 def is_chat_open(user_id):
     return get_chat_status(user_id) == "open"
+
 
 def save_support_msg(user_id, admin_id, msg_type, content, is_from_admin):
     db_exec("""INSERT INTO support_tickets (user_id, admin_id, message_type, content, is_from_admin, created_at)
                VALUES (%s, %s, %s, %s, %s, %s)""",
             (user_id, admin_id, msg_type, content, is_from_admin, datetime.now().isoformat()))
 
+
 def delete_chat(user_id):
     db_exec("DELETE FROM support_tickets WHERE user_id=%s", (user_id,))
     db_exec("DELETE FROM support_chats WHERE user_id=%s", (user_id,))
+
 
 def get_chat_users():
     rows = db_exec(
@@ -588,11 +689,17 @@ def get_chat_users():
     )
     return [dict(r) for r in rows] if rows else []
 
+
+def esc(s):
+    return html.escape(str(s)) if s is not None else ""
+
+
 # ═══════════════════════════════════════════════════════════
-# BOT
+# BOT VA DISPATCHER
 # ═══════════════════════════════════════════════════════════
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
 
 class US(StatesGroup):
     answer = State()
@@ -601,6 +708,7 @@ class US(StatesGroup):
     gift_username = State()
     gift_amount = State()
     review_text = State()
+
 
 class AS(StatesGroup):
     channel = State()
@@ -626,6 +734,7 @@ class AS(StatesGroup):
     level_min = State()
     level_max = State()
 
+
 # ═══════════════════════════════════════════════════════════
 # KLAVIATURALAR
 # ═══════════════════════════════════════════════════════════
@@ -633,17 +742,24 @@ def main_menu(uid):
     lang = get_user_lang(uid)
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "profile"), callback_data="m_profile")
+    b.button(text=T(lang, "stats"), callback_data="m_stats")
+    b.button(text=T(lang, "banner"), callback_data="m_banner")
     b.button(text=T(lang, "ref_link"), callback_data="m_reflink")
     b.button(text=T(lang, "rating"), callback_data="m_rating")
     b.button(text=T(lang, "withdraw"), callback_data="m_withdraw")
     b.button(text=T(lang, "gift_stars"), callback_data="m_gift")
     b.button(text=T(lang, "review"), callback_data="m_review")
     b.button(text=T(lang, "support"), callback_data="m_support")
+
+    if WEBAPP_URL:
+        b.button(text=T(lang, "webapp"), web_app=WebAppInfo(url=WEBAPP_URL))
+
     b.button(text="🌐 Til / Язык / Lang", callback_data="m_lang")
     if is_admin(uid):
         b.button(text=T(lang, "admin"), callback_data="m_admin")
-    b.adjust(2, 2, 2, 2, 1)
+    b.adjust(2, 2, 2, 2, 2, 1)
     return b.as_markup()
+
 
 def admin_menu(uid):
     b = InlineKeyboardBuilder()
@@ -664,12 +780,14 @@ def admin_menu(uid):
     b.adjust(2)
     return b.as_markup()
 
+
 def lang_keyboard():
     b = InlineKeyboardBuilder()
     for code, info in LANGS.items():
         b.button(text=f"{info['flag']} {info['name']}", callback_data=f"lang_{code}")
     b.adjust(1)
     return b.as_markup()
+
 
 def back_to_menu_kb(uid):
     lang = get_user_lang(uid)
@@ -678,8 +796,9 @@ def back_to_menu_kb(uid):
     b.adjust(1)
     return b.as_markup()
 
+
 # ═══════════════════════════════════════════════════════════
-# OBUNA
+# OBUNA TEKSHIRUVI
 # ═══════════════════════════════════════════════════════════
 async def check_subs(uid):
     channels = get_channels()
@@ -698,6 +817,7 @@ async def check_subs(uid):
             continue
     return True
 
+
 async def subs_kb(uid):
     lang = get_user_lang(uid)
     channels = get_channels()
@@ -713,6 +833,43 @@ async def subs_kb(uid):
     b.adjust(1)
     return b.as_markup()
 
+
+# ═══════════════════════════════════════════════════════════
+# BOT EMASLIKNI TEKSHIRISH (savol yuborish)
+# ═══════════════════════════════════════════════════════════
+async def send_human_check(target: types.Message, state: FSMContext, uid: int, lang: str, user: dict):
+    """Tasdiqlanmagan userga random savol yuboradi. Savol yo'q bo'lsa avtomatik tasdiqlaydi."""
+    q = get_random_question()
+    if not q:
+        update_user(uid, is_verified=1)
+        await target.answer(
+            T(lang, "welcome", name=user["first_name"] or "User"),
+            reply_markup=main_menu(uid),
+            parse_mode="HTML"
+        )
+        return
+
+    answers = [
+        (q["correct_answer"], True),
+        (q["wrong1"], False),
+        (q["wrong2"], False),
+    ]
+    random.shuffle(answers)
+
+    b = InlineKeyboardBuilder()
+    for ans, is_correct in answers:
+        b.button(text=ans, callback_data=f"ans_{q['id']}_{'1' if is_correct else '0'}")
+    b.adjust(1)
+
+    await state.update_data(q_id=q["id"], ref_id=user["referrer_id"] or 0)
+    await state.set_state(US.answer)
+    await target.answer(
+        T(lang, "bot_check", q=esc(q["question"])),
+        reply_markup=b.as_markup(),
+        parse_mode="HTML"
+    )
+
+
 # ═══════════════════════════════════════════════════════════
 # /start
 # ═══════════════════════════════════════════════════════════
@@ -724,7 +881,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     fname = message.from_user.first_name or "User"
     lname = message.from_user.last_name
 
-    args = message.text.split(maxsplit=1)
+    args = (message.text or "").split(maxsplit=1)
     ref_id = 0
     if len(args) > 1 and args[1].startswith("ref_"):
         try:
@@ -747,6 +904,11 @@ async def cmd_start(message: types.Message, state: FSMContext):
         )
         return
 
+    # Tasdiqlanmagan user qayta /start bossa referrer yo'qolmasin
+    if not user["is_verified"] and not user["referrer_id"] and ref_id:
+        update_user(uid, referrer_id=ref_id)
+        user["referrer_id"] = ref_id
+
     lang = get_user_lang(uid)
 
     if user["is_banned"]:
@@ -760,47 +922,17 @@ async def cmd_start(message: types.Message, state: FSMContext):
 
     if user["is_verified"]:
         await message.answer(
-            T(lang, "welcome", name=fname),
+            T(lang, "welcome", name=user["first_name"] or html.escape(fname)),
             reply_markup=main_menu(uid),
             parse_mode="HTML"
         )
         return
 
-    q = get_random_question()
-    if not q:
-        update_user(uid, is_verified=1)
-        await message.answer(
-            T(lang, "welcome", name=fname),
-            reply_markup=main_menu(uid),
-            parse_mode="HTML"
-        )
-        return
+    await send_human_check(message, state, uid, lang, user)
 
-    answers = [
-        (q["correct_answer"], True),
-        (q["wrong1"], False),
-        (q["wrong2"], False),
-    ]
-    random.shuffle(answers)
-
-    b = InlineKeyboardBuilder()
-    for ans, is_correct in answers:
-        b.button(
-            text=ans,
-            callback_data=f"ans_{q['id']}_{'1' if is_correct else '0'}"
-        )
-    b.adjust(1)
-
-    await state.update_data(q_id=q["id"], ref_id=ref_id)
-    await state.set_state(US.answer)
-    await message.answer(
-        T(lang, "bot_check", q=q["question"]),
-        reply_markup=b.as_markup(),
-        parse_mode="HTML"
-    )
 
 # ═══════════════════════════════════════════════════════════
-# MENYU
+# ASOSIY MENYU
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_menu")
 async def cb_menu(cb: types.CallbackQuery, state: FSMContext):
@@ -821,6 +953,215 @@ async def cb_menu(cb: types.CallbackQuery, state: FSMContext):
         )
     await cb.answer()
 
+
+@dp.callback_query(F.data == "m_lang")
+async def cb_lang(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    try:
+        await cb.message.edit_text(
+            "🌐 <b>Tilni tanlang / Выберите язык / Choose language:</b>",
+            reply_markup=lang_keyboard(),
+            parse_mode="HTML"
+        )
+    except Exception:
+        await cb.message.answer(
+            "🌐 <b>Tilni tanlang / Выберите язык / Choose language:</b>",
+            reply_markup=lang_keyboard(),
+            parse_mode="HTML"
+        )
+    await cb.answer()
+
+
+# ═══════════════════════════════════════════════════════════
+# TIL TANLASH
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data.startswith("lang_"))
+async def set_lang(cb: types.CallbackQuery, state: FSMContext):
+    code = cb.data.replace("lang_", "")
+    if code not in LANGS:
+        return
+    uid = cb.from_user.id
+    if not get_user(uid):
+        await cb.answer(T(code, "start_first"), show_alert=True)
+        return
+    update_user(uid, language=code)
+    user = get_user(uid)
+    lang = code
+
+    await cb.answer(T(lang, "lang_set"))
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
+
+    if user["is_banned"]:
+        await cb.message.answer(T(lang, "banned"), parse_mode="HTML")
+        return
+
+    if not await check_subs(uid):
+        kb = await subs_kb(uid)
+        await cb.message.answer(T(lang, "subscribe"), reply_markup=kb, parse_mode="HTML")
+        return
+
+    if user["is_verified"]:
+        await cb.message.answer(
+            T(lang, "welcome", name=user["first_name"] or "User"),
+            reply_markup=main_menu(uid),
+            parse_mode="HTML"
+        )
+        return
+
+    await send_human_check(cb.message, state, uid, lang, user)
+
+
+# ═══════════════════════════════════════════════════════════
+# BOT EMASLIKNI TASDIQLASH
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data.startswith("ans_"))
+async def check_ans(cb: types.CallbackQuery, state: FSMContext):
+    parts = cb.data.split("_")
+    if len(parts) != 3:
+        return
+
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    user = get_user(uid)
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
+
+    is_correct = parts[2] == "1"
+
+    if not is_correct:
+        await cb.answer(T(lang, "wrong_answer"), show_alert=True)
+        await state.clear()
+        try:
+            await cb.message.delete()
+        except Exception:
+            pass
+        await cb.message.answer(T(lang, "wrong_ans_retry"), parse_mode="HTML")
+        return
+
+    # Allaqachon tasdiqlangan bo'lsa, qayta mukofot berilmaydi
+    if not user["is_verified"]:
+        update_user(uid, is_verified=1)
+        ref_id = user["referrer_id"] or 0
+
+        if ref_id and ref_id != uid:
+            ref = get_user(ref_id)
+            if ref and not ref["is_banned"]:
+                reward = int(get_setting("stars_per_referral", "2"))
+                new_stars = add_stars(ref_id, reward)
+                if new_stars is not None:
+                    old_stars = new_stars - reward
+                    ref_lang = get_user_lang(ref_id)
+                    try:
+                        await bot.send_message(
+                            ref_id,
+                            T(ref_lang, "referral_reward", n=reward)
+                            + f"\n💰 {T(ref_lang, 'total')}: <b>{new_stars} ⭐</b>",
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
+                    await check_level_up(ref_id, old_stars, new_stars)
+
+    await state.clear()
+    await cb.answer(T(lang, "correct"))
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
+    await cb.message.answer(
+        T(lang, "welcome", name=user["first_name"] or "User"),
+        reply_markup=main_menu(uid),
+        parse_mode="HTML"
+    )
+
+
+# ═══════════════════════════════════════════════════════════
+# OBUNA CALLBACK
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "check_sub")
+async def check_sub_cb(cb: types.CallbackQuery, state: FSMContext):
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+
+    if not await check_subs(uid):
+        await cb.answer(T(lang, "not_enough"), show_alert=True)
+        return
+
+    await cb.answer(T(lang, "correct"))
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
+
+    user = get_user(uid)
+    if not user:
+        await cb.message.answer(T(lang, "start_first"))
+        return
+
+    if user["is_verified"]:
+        await cb.message.answer(
+            T(lang, "welcome", name=user["first_name"] or "User"),
+            reply_markup=main_menu(uid),
+            parse_mode="HTML"
+        )
+        return
+
+    await send_human_check(cb.message, state, uid, lang, user)
+
+
+# ═══════════════════════════════════════════════════════════
+# DARAJA OSHGANDA TABRIK
+# ═══════════════════════════════════════════════════════════
+async def check_level_up(user_id, old_stars, new_stars):
+    """Daraja oshgan bo'lsa tabrik xabari yuborish"""
+    old_lvl = get_user_level(old_stars)
+    new_lvl = get_user_level(new_stars)
+
+    if old_lvl.get("name") == new_lvl.get("name"):
+        return
+
+    lang = get_user_lang(user_id)
+
+    levels = get_levels()
+    next_lvl = None
+    for l in levels:
+        if l["min_stars"] > new_stars:
+            next_lvl = l
+            break
+
+    if next_lvl:
+        next_emoji = next_lvl.get("emoji", "")
+        next_name = next_lvl.get("name", "")
+        need = next_lvl["min_stars"] - new_stars
+    else:
+        next_emoji = "👑"
+        next_name = "MAX"
+        need = 0
+
+    try:
+        await bot.send_message(
+            user_id,
+            T(
+                lang, "level_up",
+                emoji=new_lvl.get("emoji", ""),
+                name=new_lvl.get("name", ""),
+                next_emoji=next_emoji,
+                next_name=next_name,
+                need=need,
+            ),
+            parse_mode="HTML",
+        )
+    except Exception:
+        pass
+
+
+# ═══════════════════════════════════════════════════════════
+# PROFIL
+# ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_profile")
 async def cb_profile(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -914,6 +1255,200 @@ async def cb_profile(cb: types.CallbackQuery, state: FSMContext):
         await cb.message.answer(text, parse_mode="HTML", reply_markup=b.as_markup())
     await cb.answer()
 
+
+# ═══════════════════════════════════════════════════════════
+# STATISTIKA
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "m_stats")
+async def cb_stats(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    user = get_user(uid)
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
+
+    refs = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1",
+        (uid,), fetch=True
+    )
+    ref_count = refs["c"] if refs else 0
+
+    week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+    week_refs = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1 AND joined_at >= %s",
+        (uid, week_ago), fetch=True
+    )
+    week_ref_count = week_refs["c"] if week_refs else 0
+
+    rank_row = db_exec(
+        "SELECT COUNT(*) + 1 AS rank FROM users WHERE stars > %s AND is_verified=1 AND is_banned=0",
+        (user["stars"],), fetch=True
+    )
+    rank = rank_row["rank"] if rank_row else "—"
+
+    lvl = get_user_level(user["stars"])
+    lvl_emoji = lvl.get("emoji", "🥉")
+    lvl_name = lvl.get("name", "Bronza")
+    lvl_min = lvl.get("min_stars", 0)
+    lvl_max = lvl.get("max_stars", 10)
+
+    total = lvl_max - lvl_min
+    if total > 0:
+        progress = int(((user["stars"] - lvl_min) / total) * 10)
+    else:
+        progress = 10
+    progress = max(0, min(10, progress))
+    progress_bar = "▰" * progress + "▱" * (10 - progress)
+
+    levels = get_levels()
+    next_lvl = None
+    for l in levels:
+        if l["min_stars"] > user["stars"]:
+            next_lvl = l
+            break
+    if next_lvl:
+        next_text = f"{next_lvl.get('emoji', '')} <b>{next_lvl.get('name', '')}</b>"
+        need = next_lvl["min_stars"] - user["stars"]
+    else:
+        next_text = "👑 <b>ENG YUQORI DARAJA!</b>"
+        need = 0
+
+    text = (
+        f"╭━━━〔 📊 <b>STATISTIKA</b> 〕━━━╮\n\n"
+        f"👤 <b>{user['first_name']}</b>\n\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"⭐ <b>Stars:</b> <b>{user['stars']} ⭐</b>\n"
+        f"👥 <b>Referallar:</b> {ref_count} ta\n"
+        f"📈 <b>Bu hafta:</b> +{week_ref_count} ta\n"
+        f"🏆 <b>O'rningiz:</b> #{rank}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"🏅 <b>DARAJA</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"{lvl_emoji} <b>{lvl_name}</b>\n"
+        f"{progress_bar}\n"
+        f"📊 <b>{user['stars']}</b> / {lvl_max} ⭐\n"
+        f"⬆️ Keyingi: {next_text}\n"
+        f"📉 Kerak: <b>{need} ⭐</b>\n\n"
+        f"╰━━━━━━━━━━━━━━━━━╯"
+    )
+
+    b = InlineKeyboardBuilder()
+    b.button(text="🔄 Yangilash", callback_data="m_stats")
+    b.button(text="🏠 Menyu", callback_data="m_menu")
+    b.adjust(2)
+
+    try:
+        await cb.message.edit_text(text, parse_mode="HTML", reply_markup=b.as_markup())
+    except Exception:
+        await cb.message.answer(text, parse_mode="HTML", reply_markup=b.as_markup())
+    await cb.answer()
+
+
+# ═══════════════════════════════════════════════════════════
+# BANNER GENERATSIYA
+# ═══════════════════════════════════════════════════════════
+def _load_font(size, bold=False):
+    names = (
+        ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "DejaVuSans-Bold.ttf",
+         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"]
+        if bold else
+        ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "DejaVuSans.ttf",
+         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"]
+    )
+    for p in names:
+        try:
+            return ImageFont.truetype(p, size)
+        except Exception:
+            continue
+    try:
+        return ImageFont.load_default(size=size)   # Pillow >= 10.1
+    except TypeError:
+        return ImageFont.load_default()
+
+
+def generate_banner(user, ref_link):
+    """Banner generatsiya qilish (emoji shrift yo'qligi sababli matn bilan)"""
+    W, H = 900, 500
+    img = Image.new("RGB", (W, H), (10, 15, 30))
+    draw = ImageDraw.Draw(img)
+
+    for y in range(H):
+        r = int(10 + (y / H) * 40)
+        g = int(15 + (y / H) * 30)
+        b = int(40 + (y / H) * 80)
+        draw.rectangle([0, y, W, y + 1], fill=(r, g, b))
+
+    font_title = _load_font(72, bold=True)
+    font_big = _load_font(36, bold=True)
+    font_med = _load_font(28)
+    font_small = _load_font(22)
+
+    draw.text((50, 40), "STAR RUSH", font=font_title, fill=(255, 215, 0))
+    draw.rectangle([50, 140, 850, 145], fill=(255, 215, 0))
+
+    name = html.unescape(user["first_name"] or "User")
+    draw.text((50, 180), name, font=font_big, fill=(255, 255, 255))
+    draw.text((50, 240), f"{user['stars']} Stars", font=font_big, fill=(255, 215, 0))
+
+    lvl = get_user_level(user["stars"])
+    draw.text((50, 300), f"{lvl.get('name', 'Bronza')} darajasi",
+              font=font_med, fill=(200, 220, 255))
+
+    draw.text((50, 380), "Referal link:", font=font_small, fill=(180, 180, 180))
+    draw.text((50, 415), ref_link, font=font_med, fill=(100, 200, 255))
+
+    draw.rectangle([0, H - 10, W, H], fill=(255, 215, 0))
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+
+@dp.callback_query(F.data == "m_banner")
+async def cb_banner(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    user = get_user(uid)
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
+
+    await cb.answer("🎨 Banner yaratilmoqda...")
+    msg = await cb.message.answer(
+        "🎨 <b>Banner yaratilmoqda...</b>\n\n⏳ Iltimos kuting",
+        parse_mode="HTML"
+    )
+
+    me = await bot.get_me()
+    ref_link = f"t.me/{me.username}?start=ref_{uid}"
+
+    try:
+        banner = await asyncio.to_thread(generate_banner, user, ref_link)
+
+        b = InlineKeyboardBuilder()
+        b.button(text="🔄 Qayta", callback_data="m_banner")
+        b.button(text="🏠 Menyu", callback_data="m_menu")
+        b.adjust(2)
+
+        await msg.delete()
+        await cb.message.answer_photo(
+            photo=BufferedInputFile(banner.getvalue(), filename="banner.png"),
+            caption=T(lang, "banner_caption"),
+            parse_mode="HTML",
+            reply_markup=b.as_markup(),
+        )
+    except Exception as e:
+        logger.error(f"Banner xato: {e}")
+        await msg.edit_text(f"❌ Banner yaratishda xato: {esc(e)}", parse_mode="HTML")
+
+
+# ═══════════════════════════════════════════════════════════
+# REFERAL LINK
+# ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_reflink")
 async def cb_reflink(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -947,6 +1482,10 @@ async def cb_reflink(cb: types.CallbackQuery, state: FSMContext):
         await cb.message.answer(text, parse_mode="HTML", reply_markup=b.as_markup())
     await cb.answer()
 
+
+# ═══════════════════════════════════════════════════════════
+# REYTING
+# ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_rating")
 async def cb_rating(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -960,7 +1499,7 @@ async def cb_rating(cb: types.CallbackQuery, state: FSMContext):
     if rows:
         for i, r in enumerate(rows, 1):
             medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-            text += f"{medal} {r['first_name'] or 'N/A'} — <b>{r['stars']} ⭐</b>\n"
+            text += f"{medal} {esc(r['first_name'] or 'N/A')} — <b>{r['stars']} ⭐</b>\n"
     else:
         text += "—"
     text += "\n╰━━━━━━━━━━━━━━━━━╯"
@@ -970,195 +1509,6 @@ async def cb_rating(cb: types.CallbackQuery, state: FSMContext):
         await cb.message.answer(text, parse_mode="HTML", reply_markup=back_to_menu_kb(uid))
     await cb.answer()
 
-@dp.callback_query(F.data == "m_lang")
-async def cb_lang(cb: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    try:
-        await cb.message.edit_text(
-            "🌐 <b>Tilni tanlang / Выберите язык / Choose language:</b>",
-            reply_markup=lang_keyboard(),
-            parse_mode="HTML"
-        )
-    except Exception:
-        await cb.message.answer(
-            "🌐 <b>Tilni tanlang / Выберите язык / Choose language:</b>",
-            reply_markup=lang_keyboard(),
-            parse_mode="HTML"
-        )
-    await cb.answer()
-
-# ═══════════════════════════════════════════════════════════
-# TIL
-# ═══════════════════════════════════════════════════════════
-@dp.callback_query(F.data.startswith("lang_"))
-async def set_lang(cb: types.CallbackQuery, state: FSMContext):
-    code = cb.data.replace("lang_", "")
-    if code not in LANGS:
-        return
-    uid = cb.from_user.id
-    update_user(uid, language=code)
-    user = get_user(uid)
-    lang = code
-
-    await cb.answer(T(lang, "lang_set"))
-    try:
-        await cb.message.delete()
-    except Exception:
-        pass
-
-    if user["is_banned"]:
-        await cb.message.answer(T(lang, "banned"), parse_mode="HTML")
-        return
-
-    if not await check_subs(uid):
-        kb = await subs_kb(uid)
-        await cb.message.answer(T(lang, "subscribe"), reply_markup=kb, parse_mode="HTML")
-        return
-
-    if user["is_verified"]:
-        await cb.message.answer(
-            T(lang, "welcome", name=user["first_name"] or "User"),
-            reply_markup=main_menu(uid),
-            parse_mode="HTML"
-        )
-        return
-
-    q = get_random_question()
-    if not q:
-        update_user(uid, is_verified=1)
-        await cb.message.answer(
-            T(lang, "welcome", name=user["first_name"] or "User"),
-            reply_markup=main_menu(uid),
-            parse_mode="HTML"
-        )
-        return
-
-    answers = [
-        (q["correct_answer"], True),
-        (q["wrong1"], False),
-        (q["wrong2"], False),
-    ]
-    random.shuffle(answers)
-    b = InlineKeyboardBuilder()
-    for ans, is_correct in answers:
-        b.button(text=ans, callback_data=f"ans_{q['id']}_{'1' if is_correct else '0'}")
-    b.adjust(1)
-
-    await state.update_data(q_id=q["id"], ref_id=user["referrer_id"])
-    await state.set_state(US.answer)
-    await cb.message.answer(
-        T(lang, "bot_check", q=q["question"]),
-        reply_markup=b.as_markup(),
-        parse_mode="HTML"
-    )
-
-# ═══════════════════════════════════════════════════════════
-# SAVOL JAVOBI
-# ═══════════════════════════════════════════════════════════
-@dp.callback_query(F.data.startswith("ans_"))
-async def check_ans(cb: types.CallbackQuery, state: FSMContext):
-    parts = cb.data.split("_")
-    if len(parts) != 3:
-        return
-    q_id = int(parts[1])
-    is_correct = parts[2] == "1"
-
-    uid = cb.from_user.id
-    lang = get_user_lang(uid)
-    data = await state.get_data()
-    ref_id = data.get("ref_id", 0)
-
-    if not is_correct:
-        await cb.answer(T(lang, "wrong_answer"), show_alert=True)
-        await state.clear()
-        try:
-            await cb.message.delete()
-        except Exception:
-            pass
-        await cb.message.answer(T(lang, "wrong_ans_retry"), parse_mode="HTML")
-        return
-
-    update_user(uid, is_verified=1)
-
-    if ref_id and ref_id != uid:
-        ref = get_user(ref_id)
-        if ref and not ref["is_banned"]:
-            reward = int(get_setting("stars_per_referral", "2"))
-            update_user(ref_id, stars=ref["stars"] + reward)
-            ref_lang = get_user_lang(ref_id)
-            try:
-                await bot.send_message(
-                    ref_id,
-                    T(ref_lang, "referral_reward", n=reward) + f"\n💰 {T(ref_lang, 'total')}: <b>{ref['stars'] + reward} ⭐</b>",
-                    parse_mode="HTML"
-                )
-            except Exception:
-                pass
-
-    await state.clear()
-    await cb.answer(T(lang, "correct"))
-    try:
-        await cb.message.delete()
-    except Exception:
-        pass
-    await cb.message.answer(
-        T(lang, "welcome", name=cb.from_user.first_name or "User"),
-        reply_markup=main_menu(uid),
-        parse_mode="HTML"
-    )
-
-# ═══════════════════════════════════════════════════════════
-# OBUNA
-# ═══════════════════════════════════════════════════════════
-@dp.callback_query(F.data == "check_sub")
-async def check_sub_cb(cb: types.CallbackQuery, state: FSMContext):
-    uid = cb.from_user.id
-    lang = get_user_lang(uid)
-
-    if not await check_subs(uid):
-        await cb.answer(T(lang, "not_enough"), show_alert=True)
-        return
-
-    await cb.answer(T(lang, "correct"))
-    try:
-        await cb.message.delete()
-    except Exception:
-        pass
-
-    user = get_user(uid)
-    if user and user["is_verified"]:
-        await cb.message.answer(
-            T(lang, "welcome", name=user["first_name"] or "User"),
-            reply_markup=main_menu(uid),
-            parse_mode="HTML"
-        )
-        return
-
-    q = get_random_question()
-    if not q:
-        update_user(uid, is_verified=1)
-        await cb.message.answer(T(lang, "welcome", name=user["first_name"] or "User"),
-                                reply_markup=main_menu(uid), parse_mode="HTML")
-        return
-
-    answers = [
-        (q["correct_answer"], True),
-        (q["wrong1"], False),
-        (q["wrong2"], False),
-    ]
-    random.shuffle(answers)
-    b = InlineKeyboardBuilder()
-    for ans, is_correct in answers:
-        b.button(text=ans, callback_data=f"ans_{q['id']}_{'1' if is_correct else '0'}")
-    b.adjust(1)
-
-    await state.update_data(q_id=q["id"], ref_id=user["referrer_id"] if user else 0)
-    await state.set_state(US.answer)
-    await cb.message.answer(
-        T(lang, "bot_check", q=q["question"]),
-        reply_markup=b.as_markup(),
-        parse_mode="HTML"
-    )
 
 # ═══════════════════════════════════════════════════════════
 # SUPPORT
@@ -1196,6 +1546,7 @@ async def cb_support(cb: types.CallbackQuery, state: FSMContext):
         await cb.message.answer(T(lang, "support_title"), reply_markup=b.as_markup(), parse_mode="HTML")
     await state.set_state(US.support_msg)
     await cb.answer()
+
 
 @dp.message(US.support_msg)
 async def support_send(message: types.Message, state: FSMContext):
@@ -1260,6 +1611,7 @@ async def support_send(message: types.Message, state: FSMContext):
 
     await message.answer(T(lang, "support_sent"), parse_mode="HTML")
 
+
 @dp.callback_query(F.data.startswith("reply_"))
 async def reply_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
@@ -1283,6 +1635,7 @@ async def reply_start(cb: types.CallbackQuery, state: FSMContext):
     )
     await state.set_state(AS.reply_to_user)
     await cb.answer()
+
 
 @dp.message(AS.reply_to_user)
 async def reply_send(message: types.Message, state: FSMContext):
@@ -1336,6 +1689,7 @@ async def reply_send(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("✅ <b>Javob yuborildi!</b>", parse_mode="HTML")
 
+
 @dp.callback_query(F.data.startswith("chat_close_admin_"))
 async def chat_close_admin(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -1363,6 +1717,7 @@ async def chat_close_admin(cb: types.CallbackQuery):
         pass
 
     await cb.answer("✅")
+
 
 # ═══════════════════════════════════════════════════════════
 # STARS SOVG'A QILISH
@@ -1396,6 +1751,7 @@ async def cb_gift_stars(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(US.gift_username)
     await cb.answer()
 
+
 @dp.callback_query(F.data == "gift_cancel")
 async def gift_cancel(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -1411,10 +1767,14 @@ async def gift_cancel(cb: types.CallbackQuery, state: FSMContext):
         pass
     await cb.answer("OK")
 
+
 @dp.message(US.gift_username)
 async def gift_username_input(message: types.Message, state: FSMContext):
     uid = message.from_user.id
     lang = get_user_lang(uid)
+    if not message.text:
+        await message.answer(T(lang, "gift_stars_not_found"))
+        return
     text = message.text.strip()
 
     target = None
@@ -1438,12 +1798,13 @@ async def gift_username_input(message: types.Message, state: FSMContext):
     )
     await state.set_state(US.gift_amount)
 
+
 @dp.message(US.gift_amount)
 async def gift_amount_input(message: types.Message, state: FSMContext):
     uid = message.from_user.id
     lang = get_user_lang(uid)
     try:
-        amount = int(message.text.strip())
+        amount = int((message.text or "").strip())
     except ValueError:
         await message.answer(T(lang, "enter_number"))
         return
@@ -1479,6 +1840,7 @@ async def gift_amount_input(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
+
 @dp.callback_query(F.data == "gift_confirm")
 async def gift_confirm(cb: types.CallbackQuery, state: FSMContext):
     uid = cb.from_user.id
@@ -1486,6 +1848,9 @@ async def gift_confirm(cb: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     target_id = data.get("gift_target")
     amount = data.get("gift_amount")
+
+    # Ikki marta bosilsa, ikkinchisi "Xato" beradi
+    await state.clear()
 
     if not target_id or not amount:
         await cb.answer("Xato", show_alert=True)
@@ -1497,12 +1862,16 @@ async def gift_confirm(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer("Xato", show_alert=True)
         return
 
-    if amount > user["stars"]:
+    if spend_stars(uid, amount) is None:
         await cb.answer(T(lang, "not_enough"), show_alert=True)
         return
 
-    update_user(uid, stars=user["stars"] - amount)
-    update_user(target_id, stars=target["stars"] + amount)
+    new_target = add_stars(target_id, amount)
+    if new_target is None:
+        add_stars(uid, amount)   # qaytarish
+        await cb.answer("Xato", show_alert=True)
+        return
+    old_target = new_target - amount
 
     await cb.message.edit_text(
         T(lang, "gift_stars_sent", n=amount, name=target["first_name"] or "User"),
@@ -1516,14 +1885,15 @@ async def gift_confirm(cb: types.CallbackQuery, state: FSMContext):
             T(target_lang, "gift_stars_received",
               name=user["first_name"] or "User",
               n=amount,
-              total=target["stars"] + amount),
+              total=new_target),
             parse_mode="HTML"
         )
     except Exception:
         pass
 
-    await state.clear()
+    await check_level_up(target_id, old_target, new_target)
     await cb.answer("✅")
+
 
 # ═══════════════════════════════════════════════════════════
 # SHARH QOLDIRISH
@@ -1557,6 +1927,7 @@ async def cb_review(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(US.review_text)
     await cb.answer()
 
+
 @dp.callback_query(F.data == "review_cancel")
 async def review_cancel(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -1572,21 +1943,21 @@ async def review_cancel(cb: types.CallbackQuery, state: FSMContext):
         pass
     await cb.answer("OK")
 
+
 @dp.message(US.review_text)
 async def review_text_input(message: types.Message, state: FSMContext):
     uid = message.from_user.id
     lang = get_user_lang(uid)
-    text = message.text.strip()
+    text = (message.text or "").strip()
     if len(text) < 5:
         await message.answer("❌ Sharh juda qisqa. Kamida 5 ta belgi.")
         return
 
-    db_exec(
-        "INSERT INTO reviews (user_id, text, status, created_at) VALUES (%s, %s, 'pending', %s)",
-        (uid, text, datetime.now().isoformat())
+    row = db_exec(
+        "INSERT INTO reviews (user_id, text, status, created_at) VALUES (%s, %s, 'pending', %s) RETURNING id",
+        (uid, text, datetime.now().isoformat()), fetch=True
     )
-    last = db_exec("SELECT MAX(id) AS id FROM reviews", fetch=True)
-    r_id = last["id"] if last else 0
+    r_id = row["id"] if row else 0
 
     await state.clear()
     await message.answer(T(lang, "review_sent"), parse_mode="HTML")
@@ -1610,12 +1981,13 @@ async def review_text_input(message: types.Message, state: FSMContext):
                 f"⭐ <b>Yangi sharh!</b>\n\n"
                 f"👤 {user['first_name'] if user else 'User'} ({uname})\n"
                 f"🆔 <code>{uid}</code>\n\n"
-                f"💬 <i>{text}</i>",
+                f"💬 <i>{esc(text)}</i>",
                 reply_markup=kb.as_markup(),
                 parse_mode="HTML"
             )
         except Exception:
             pass
+
 
 # ═══════════════════════════════════════════════════════════
 # YECHIB OLISH
@@ -1649,6 +2021,7 @@ async def cb_withdraw(cb: types.CallbackQuery, state: FSMContext):
         await cb.message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data == "w_cancel")
 async def w_cancel(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -1664,11 +2037,15 @@ async def w_cancel(cb: types.CallbackQuery, state: FSMContext):
         pass
     await cb.answer("OK")
 
+
 @dp.callback_query(F.data == "w_stars")
 async def w_stars(cb: types.CallbackQuery, state: FSMContext):
     uid = cb.from_user.id
     lang = get_user_lang(uid)
     user = get_user(uid)
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
     min_w = int(get_setting("min_withdraw", "50"))
     max_w = int(get_setting("max_withdraw", "1000000"))
 
@@ -1693,11 +2070,12 @@ async def w_stars(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(US.withdraw_stars)
     await cb.answer()
 
+
 @dp.message(US.withdraw_stars)
 async def w_stars_process(message: types.Message, state: FSMContext):
     uid = message.from_user.id
     lang = get_user_lang(uid)
-    text = message.text.strip().replace(" ", "").replace(",", "")
+    text = (message.text or "").strip().replace(" ", "").replace(",", "")
     try:
         amount = int(text)
     except ValueError:
@@ -1715,21 +2093,22 @@ async def w_stars_process(message: types.Message, state: FSMContext):
         return
 
     user = get_user(uid)
-    if amount > user["stars"]:
+    free_balance = user["stars"] - pending_total(uid)
+    if amount > free_balance:
         await message.answer(
             f"{T(lang, 'not_enough')}\n\n"
-            f"💰 {T(lang, 'balance')}: <b>{user['stars']} ⭐</b>\n"
+            f"💰 {T(lang, 'balance')}: <b>{max(free_balance, 0)} ⭐</b>\n"
             f"📊 {T(lang, 'need')}: <b>{amount} ⭐</b>",
             parse_mode="HTML"
         )
         return
 
-    db_exec(
-        "INSERT INTO withdrawals (user_id, stars, reward_type, status, created_at) VALUES (%s, %s, %s, %s, %s)",
-        (uid, amount, "stars", "pending", datetime.now().isoformat())
+    row = db_exec(
+        "INSERT INTO withdrawals (user_id, stars, reward_type, status, created_at) "
+        "VALUES (%s, %s, %s, %s, %s) RETURNING id",
+        (uid, amount, "stars", "pending", datetime.now().isoformat()), fetch=True
     )
-    last = db_exec("SELECT MAX(id) AS id FROM withdrawals", fetch=True)
-    w_id = last["id"] if last else 0
+    w_id = row["id"]
 
     await state.clear()
     await message.answer(T(lang, "sent_to_admin", n=amount), parse_mode="HTML")
@@ -1757,12 +2136,16 @@ async def w_stars_process(message: types.Message, state: FSMContext):
         except Exception as e:
             logger.warning(f"Adminga xabar: {e}")
 
+
 @dp.callback_query(F.data == "w_gift")
 async def w_gift(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
     uid = cb.from_user.id
     lang = get_user_lang(uid)
     user = get_user(uid)
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
 
     gifts = get_all_gifts()
     if not gifts:
@@ -1776,7 +2159,7 @@ async def w_gift(cb: types.CallbackQuery, state: FSMContext):
     )
     b = InlineKeyboardBuilder()
     for g in gifts:
-        text += f"{g['emoji']} <b>{g['name']}</b> — {g['stars']} ⭐\n"
+        text += f"{esc(g['emoji'])} <b>{esc(g['name'])}</b> — {g['stars']} ⭐\n"
         b.button(
             text=f"{g['emoji']} {g['name']} — {g['stars']}⭐",
             callback_data=f"gift_{g['key']}"
@@ -1791,12 +2174,16 @@ async def w_gift(cb: types.CallbackQuery, state: FSMContext):
         await cb.message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data == "w_back")
 async def w_back(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
     uid = cb.from_user.id
     lang = get_user_lang(uid)
     user = get_user(uid)
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
 
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "stars_withdraw"), callback_data="w_stars")
@@ -1817,6 +2204,7 @@ async def w_back(cb: types.CallbackQuery, state: FSMContext):
         pass
     await cb.answer()
 
+
 @dp.callback_query(F.data.startswith("gift_"))
 async def gift_select(cb: types.CallbackQuery, state: FSMContext):
     key = cb.data.replace("gift_", "")
@@ -1829,30 +2217,36 @@ async def gift_select(cb: types.CallbackQuery, state: FSMContext):
         return
 
     user = get_user(uid)
-    if gift["stars"] > user["stars"]:
+    if not user:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
+
+    free_balance = user["stars"] - pending_total(uid)
+    if gift["stars"] > free_balance:
         await cb.answer(
             f"{T(lang, 'not_enough')}\n{T(lang, 'need')}: {gift['stars']} ⭐",
             show_alert=True
         )
         return
 
-    db_exec(
-        "INSERT INTO withdrawals (user_id, stars, reward_type, gift_key, status, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
-        (uid, gift["stars"], "gift", key, "pending", datetime.now().isoformat())
+    row = db_exec(
+        "INSERT INTO withdrawals (user_id, stars, reward_type, gift_key, status, created_at) "
+        "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+        (uid, gift["stars"], "gift", key, "pending", datetime.now().isoformat()), fetch=True
     )
-    last = db_exec("SELECT MAX(id) AS id FROM withdrawals", fetch=True)
-    w_id = last["id"] if last else 0
+    w_id = row["id"]
 
     await state.clear()
+    gift_label = f"{esc(gift['emoji'])} {esc(gift['name'])}"
     try:
         await cb.message.edit_text(
-            T(lang, "gift_sent", gift=f"{gift['emoji']} {gift['name']}", n=gift["stars"]),
+            T(lang, "gift_sent", gift=gift_label, n=gift["stars"]),
             reply_markup=back_to_menu_kb(uid),
             parse_mode="HTML"
         )
     except Exception:
         await cb.message.answer(
-            T(lang, "gift_sent", gift=f"{gift['emoji']} {gift['name']}", n=gift["stars"]),
+            T(lang, "gift_sent", gift=gift_label, n=gift["stars"]),
             reply_markup=back_to_menu_kb(uid),
             parse_mode="HTML"
         )
@@ -1865,7 +2259,7 @@ async def gift_select(cb: types.CallbackQuery, state: FSMContext):
         f"👤 <b>User:</b> {user['first_name']}\n"
         f"🔗 <b>Username:</b> {uname}\n"
         f"🆔 <b>ID:</b> <code>{uid}</code>\n"
-        f"🎁 <b>Gift:</b> {gift['emoji']} <b>{gift['name']}</b>\n"
+        f"🎁 <b>Gift:</b> {esc(gift['emoji'])} <b>{esc(gift['name'])}</b>\n"
         f"⭐ <b>Narx:</b> <b>{gift['stars']} stars</b>\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
@@ -1881,9 +2275,17 @@ async def gift_select(cb: types.CallbackQuery, state: FSMContext):
         except Exception as e:
             logger.warning(f"Adminga xabar: {e}")
 
+
 # ═══════════════════════════════════════════════════════════
 # ADMIN PANEL
 # ═══════════════════════════════════════════════════════════
+ADMIN_TITLE = (
+    "╭━━━〔 🛠 <b>ADMIN PANEL</b> 〕━━━╮\n\n"
+    "Kerakli bo'limni tanlang:\n\n"
+    "╰━━━━━━━━━━━━━━━━━╯"
+)
+
+
 @dp.message(Command("admin"))
 async def admin_panel_cmd(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
@@ -1891,12 +2293,11 @@ async def admin_panel_cmd(message: types.Message, state: FSMContext):
         return
     await state.clear()
     await message.answer(
-        "╭━━━〔 🛠 <b>ADMIN PANEL</b> 〕━━━╮\n\n"
-        "Kerakli bo'limni tanlang:\n\n"
-        "╰━━━━━━━━━━━━━━━━━╯",
+        ADMIN_TITLE,
         reply_markup=admin_menu(message.from_user.id),
         parse_mode="HTML"
     )
+
 
 @dp.callback_query(F.data == "m_admin")
 async def cb_admin(cb: types.CallbackQuery, state: FSMContext):
@@ -1906,21 +2307,18 @@ async def cb_admin(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
     try:
         await cb.message.edit_text(
-            "╭━━━〔 🛠 <b>ADMIN PANEL</b> 〕━━━╮\n\n"
-            "Kerakli bo'limni tanlang:\n\n"
-            "╰━━━━━━━━━━━━━━━━━╯",
+            ADMIN_TITLE,
             reply_markup=admin_menu(cb.from_user.id),
             parse_mode="HTML"
         )
     except Exception:
         await cb.message.answer(
-            "╭━━━〔 🛠 <b>ADMIN PANEL</b> 〕━━━╮\n\n"
-            "Kerakli bo'limni tanlang:\n\n"
-            "╰━━━━━━━━━━━━━━━━━╯",
+            ADMIN_TITLE,
             reply_markup=admin_menu(cb.from_user.id),
             parse_mode="HTML"
         )
     await cb.answer()
+
 
 @dp.callback_query(F.data == "a_back")
 async def a_back(cb: types.CallbackQuery, state: FSMContext):
@@ -1929,15 +2327,14 @@ async def a_back(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
     try:
         await cb.message.edit_text(
-            "╭━━━〔 🛠 <b>ADMIN PANEL</b> 〕━━━╮\n\n"
-            "Kerakli bo'limni tanlang:\n\n"
-            "╰━━━━━━━━━━━━━━━━━╯",
+            ADMIN_TITLE,
             reply_markup=admin_menu(cb.from_user.id),
             parse_mode="HTML"
         )
     except Exception:
         pass
     await cb.answer()
+
 
 # ---------- Kanallar ----------
 @dp.callback_query(F.data == "a_channels")
@@ -1948,7 +2345,7 @@ async def a_channels(cb: types.CallbackQuery):
     text = "╭━━━〔 📢 <b>KANALLAR</b> 〕━━━╮\n\n"
     if channels:
         for ch in channels:
-            text += f"• {ch}\n"
+            text += f"• {esc(ch)}\n"
     else:
         text += "— Kanallar yo'q\n"
     text += "\n╰━━━━━━━━━━━━━━━━━╯"
@@ -1959,6 +2356,7 @@ async def a_channels(cb: types.CallbackQuery):
     b.adjust(2, 1)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
+
 
 @dp.callback_query(F.data == "add_ch")
 async def add_ch_start(cb: types.CallbackQuery, state: FSMContext):
@@ -1971,17 +2369,19 @@ async def add_ch_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.channel)
     await cb.answer()
 
+
 @dp.message(AS.channel)
 async def add_ch_process(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     ch = message.text.strip()
     if not ch.startswith("@"):
         ch = "@" + ch
     add_channel(ch)
     await state.clear()
-    await message.answer(f"✅ <b>{ch}</b> qo'shildi!", parse_mode="HTML")
+    await message.answer(f"✅ <b>{esc(ch)}</b> qo'shildi!", parse_mode="HTML")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
 
 @dp.callback_query(F.data == "del_ch_list")
 async def del_ch_list(cb: types.CallbackQuery):
@@ -1999,6 +2399,7 @@ async def del_ch_list(cb: types.CallbackQuery):
     await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data.startswith("delch_"))
 async def del_ch_do(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2007,6 +2408,7 @@ async def del_ch_do(cb: types.CallbackQuery):
     remove_channel(ch)
     await cb.answer("✅")
     await a_channels(cb)
+
 
 # ---------- Savollar ----------
 @dp.callback_query(F.data == "a_questions")
@@ -2017,10 +2419,13 @@ async def a_questions(cb: types.CallbackQuery):
     text = "╭━━━〔 ❓ <b>SAVOLLAR</b> 〕━━━╮\n\n"
     if qs:
         for q in qs:
-            text += f"📝 {q['question']}\n  ✅ {q['correct_answer']}\n  ❌ {q['wrong1']} | {q['wrong2']}\n\n"
+            text += (f"📝 {esc(q['question'])}\n  ✅ {esc(q['correct_answer'])}\n"
+                     f"  ❌ {esc(q['wrong1'])} | {esc(q['wrong2'])}\n\n")
     else:
         text += "— Savollar yo'q\n"
     text += "╰━━━━━━━━━━━━━━━━━╯"
+    if len(text) > 4000:
+        text = text[:3990] + "…"
     b = InlineKeyboardBuilder()
     b.button(text="➕ Qo'shish", callback_data="add_q")
     b.button(text="➖ O'chirish", callback_data="del_q_list")
@@ -2028,6 +2433,7 @@ async def a_questions(cb: types.CallbackQuery):
     b.adjust(2, 1)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
+
 
 @dp.callback_query(F.data == "add_q")
 async def add_q_start(cb: types.CallbackQuery, state: FSMContext):
@@ -2037,39 +2443,44 @@ async def add_q_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.q_text)
     await cb.answer()
 
+
 @dp.message(AS.q_text)
 async def add_q_text(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     await state.update_data(q_text=message.text.strip())
     await message.answer("✅ <b>To'g'ri javob:</b>", parse_mode="HTML")
     await state.set_state(AS.q_correct)
 
+
 @dp.message(AS.q_correct)
 async def add_q_correct(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     await state.update_data(q_correct=message.text.strip())
     await message.answer("❌ <b>1-xato javob:</b>", parse_mode="HTML")
     await state.set_state(AS.q_wrong1)
 
+
 @dp.message(AS.q_wrong1)
 async def add_q_wrong1(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     await state.update_data(q_wrong1=message.text.strip())
     await message.answer("❌ <b>2-xato javob:</b>", parse_mode="HTML")
     await state.set_state(AS.q_wrong2)
 
+
 @dp.message(AS.q_wrong2)
 async def add_q_wrong2(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     data = await state.get_data()
     add_question(data["q_text"], data["q_correct"], data["q_wrong1"], message.text.strip())
     await state.clear()
     await message.answer("✅ <b>Savol qo'shildi!</b>", parse_mode="HTML")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
 
 @dp.callback_query(F.data == "del_q_list")
 async def del_q_list(cb: types.CallbackQuery):
@@ -2087,6 +2498,7 @@ async def del_q_list(cb: types.CallbackQuery):
     await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data.startswith("delq_"))
 async def del_q_do(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2096,6 +2508,7 @@ async def del_q_do(cb: types.CallbackQuery):
     await cb.answer("✅")
     await a_questions(cb)
 
+
 # ---------- Giftlar ----------
 @dp.callback_query(F.data == "a_gifts")
 async def a_gifts(cb: types.CallbackQuery):
@@ -2104,7 +2517,7 @@ async def a_gifts(cb: types.CallbackQuery):
     gifts = get_all_gifts()
     text = "╭━━━〔 🎁 <b>GIFTLAR</b> 〕━━━╮\n\n"
     for g in gifts:
-        text += f"{g['emoji']} <b>{g['name']}</b> — {g['stars']} ⭐\n"
+        text += f"{esc(g['emoji'])} <b>{esc(g['name'])}</b> — {g['stars']} ⭐\n"
     if not gifts:
         text += "— Giftlar yo'q\n"
     text += "\n╰━━━━━━━━━━━━━━━━━╯"
@@ -2117,6 +2530,7 @@ async def a_gifts(cb: types.CallbackQuery):
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data == "add_gift")
 async def add_gift_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
@@ -2125,9 +2539,10 @@ async def add_gift_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.gift_key)
     await cb.answer()
 
+
 @dp.message(AS.gift_key)
 async def gift_key_process(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     key = message.text.strip().lower().replace(" ", "_")
     if not key or not key.replace("_", "").isalnum():
@@ -2140,9 +2555,10 @@ async def gift_key_process(message: types.Message, state: FSMContext):
     await message.answer("😀 <b>Emoji:</b>", parse_mode="HTML")
     await state.set_state(AS.gift_emoji)
 
+
 @dp.message(AS.gift_emoji)
 async def gift_emoji_process(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     data = await state.get_data()
     if data.get("edit_gift_key"):
@@ -2156,9 +2572,10 @@ async def gift_emoji_process(message: types.Message, state: FSMContext):
         await message.answer("📝 <b>Nom:</b>", parse_mode="HTML")
         await state.set_state(AS.gift_name)
 
+
 @dp.message(AS.gift_name)
 async def gift_name_process(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     data = await state.get_data()
     if data.get("edit_gift_key"):
@@ -2172,9 +2589,10 @@ async def gift_name_process(message: types.Message, state: FSMContext):
         await message.answer("⭐ <b>Narx:</b>", parse_mode="HTML")
         await state.set_state(AS.gift_stars)
 
+
 @dp.message(AS.gift_stars)
 async def gift_stars_process(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     data = await state.get_data()
     if data.get("edit_gift_key"):
@@ -2203,6 +2621,7 @@ async def gift_stars_process(message: types.Message, state: FSMContext):
         await message.answer("✅ <b>Gift qo'shildi!</b>", parse_mode="HTML")
         await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
+
 @dp.callback_query(F.data == "del_gift_list")
 async def del_gift_list(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2219,6 +2638,7 @@ async def del_gift_list(cb: types.CallbackQuery):
     await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data.startswith("delgift_"))
 async def del_gift_do(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2227,6 +2647,7 @@ async def del_gift_do(cb: types.CallbackQuery):
     remove_gift(key)
     await cb.answer("✅")
     await a_gifts(cb)
+
 
 @dp.callback_query(F.data == "edit_gift_list")
 async def edit_gift_list(cb: types.CallbackQuery):
@@ -2244,6 +2665,7 @@ async def edit_gift_list(cb: types.CallbackQuery):
     await cb.message.edit_text("✏️ <b>Tahrirlash:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data.startswith("editgift_"))
 async def edit_gift_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
@@ -2255,19 +2677,20 @@ async def edit_gift_start(cb: types.CallbackQuery, state: FSMContext):
         return
     await state.update_data(edit_gift_key=key)
     await cb.message.edit_text(
-        f"✏️ <b>{gift['emoji']} {gift['name']}</b> ({gift['stars']}⭐)\n\n"
+        f"✏️ <b>{esc(gift['emoji'])} {esc(gift['name'])}</b> ({gift['stars']}⭐)\n\n"
         f"Yangi emoji (yoki /skip):",
         parse_mode="HTML"
     )
     await state.set_state(AS.gift_emoji)
     await cb.answer()
 
+
 # ---------- Sozlamalar ----------
 @dp.callback_query(F.data == "a_settings")
 async def a_settings(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
-    review_ch_display = get_setting("review_channel") or "yo'q"
+    review_ch_display = esc(get_setting("review_channel") or "yo'q")
     text = (
         f"╭━━━〔 ⚙️ <b>SOZLAMALAR</b> 〕━━━╮\n\n"
         f"🎯 1 referal = <b>{get_setting('stars_per_referral')} ⭐</b>\n"
@@ -2286,6 +2709,7 @@ async def a_settings(cb: types.CallbackQuery):
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data.in_({"set_ref", "set_minw", "set_maxw"}))
 async def set_val_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
@@ -2301,6 +2725,7 @@ async def set_val_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.setting_val)
     await cb.answer()
 
+
 @dp.callback_query(F.data == "set_rev_ch")
 async def set_rev_ch_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
@@ -2314,24 +2739,26 @@ async def set_rev_ch_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.review_channel)
     await cb.answer()
 
+
 @dp.message(AS.review_channel)
 async def set_rev_ch_process(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     ch = message.text.strip()
     if not ch.startswith("@"):
         ch = "@" + ch
     set_setting("review_channel", ch)
     await state.clear()
-    await message.answer(f"✅ Sharh kanali: <b>{ch}</b>", parse_mode="HTML")
+    await message.answer(f"✅ Sharh kanali: <b>{esc(ch)}</b>", parse_mode="HTML")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
 
 @dp.message(AS.setting_val)
 async def set_val_do(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     try:
-        val = int(message.text.strip())
+        val = int((message.text or "").strip())
     except ValueError:
         await message.answer("❌ Raqam.")
         return
@@ -2341,7 +2768,8 @@ async def set_val_do(message: types.Message, state: FSMContext):
     await message.answer(f"✅ <b>{data['setting_key']} = {val}</b>", parse_mode="HTML")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
-# ---------- Statistika ----------
+
+# ---------- Statistika (admin) ----------
 @dp.callback_query(F.data == "a_stats")
 async def a_stats(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2369,6 +2797,7 @@ async def a_stats(cb: types.CallbackQuery):
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 # ---------- Broadcast ----------
 @dp.callback_query(F.data == "a_broadcast")
 async def a_broadcast(cb: types.CallbackQuery, state: FSMContext):
@@ -2380,6 +2809,7 @@ async def a_broadcast(cb: types.CallbackQuery, state: FSMContext):
     )
     await state.set_state(AS.broadcast)
     await cb.answer()
+
 
 @dp.message(AS.broadcast)
 async def broadcast_do(message: types.Message, state: FSMContext):
@@ -2398,7 +2828,8 @@ async def broadcast_do(message: types.Message, state: FSMContext):
     ok = 0
     fail = 0
     blocked = 0
-    is_forward = message.forward_date is not None
+    is_forward = (getattr(message, "forward_origin", None) is not None
+                  or getattr(message, "forward_date", None) is not None)
 
     for i, u in enumerate(users, 1):
         try:
@@ -2438,6 +2869,7 @@ async def broadcast_do(message: types.Message, state: FSMContext):
         await message.answer(result, parse_mode="HTML")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
+
 # ---------- Yechib olish (admin) ----------
 @dp.callback_query(F.data == "a_withdrawals")
 async def a_withdrawals(cb: types.CallbackQuery):
@@ -2445,7 +2877,7 @@ async def a_withdrawals(cb: types.CallbackQuery):
         return
     rows = db_exec(
         "SELECT w.*, u.first_name, u.username FROM withdrawals w "
-        "JOIN users u ON w.user_id=u.user_id WHERE w.status='pending' ORDER BY w.id DESC",
+        "JOIN users u ON w.user_id=u.user_id WHERE w.status='pending' ORDER BY w.id DESC LIMIT 10",
         fetchall=True
     ) or []
     if not rows:
@@ -2456,11 +2888,11 @@ async def a_withdrawals(cb: types.CallbackQuery):
     for r in rows:
         if r["reward_type"] == "gift":
             g = get_gift(r["gift_key"]) or {}
-            info = f"{g.get('emoji', '🎁')} {g.get('name', 'Gift')}"
+            info = f"{esc(g.get('emoji', '🎁'))} {esc(g.get('name', 'Gift'))}"
         else:
             info = f"{r['stars']} ⭐"
-        uname = f"@{r['username']}" if r["username"] else "—"
-        text += f"• #{r['id']} {r['first_name']} ({uname}) — {info}\n"
+        uname = f"@{esc(r['username'])}" if r["username"] else "—"
+        text += f"• #{r['id']} {esc(r['first_name'] or 'User')} ({uname}) — {info}\n"
         b.button(text=f"✅ #{r['id']}", callback_data=f"appr_{r['id']}")
         b.button(text=f"❌ #{r['id']}", callback_data=f"rej_{r['id']}")
     text += "\n╰━━━━━━━━━━━━━━━━━╯"
@@ -2468,6 +2900,7 @@ async def a_withdrawals(cb: types.CallbackQuery):
     b.adjust(2, 2, 2, 2, 2, 1)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
+
 
 @dp.callback_query(F.data.startswith("appr_"))
 async def approve_w(cb: types.CallbackQuery):
@@ -2482,12 +2915,20 @@ async def approve_w(cb: types.CallbackQuery):
     if not user:
         await cb.answer("—", show_alert=True)
         return
-    if user["stars"] < w["stars"]:
-        await cb.answer(f"❌ Kerak: {w['stars']}, bor: {user['stars']}", show_alert=True)
+
+    # Ikki admin bir vaqtda bossa, faqat bittasi o'tadi
+    claimed = db_exec(
+        "UPDATE withdrawals SET status='approved' WHERE id=%s AND status='pending' RETURNING id",
+        (w_id,), fetch=True
+    )
+    if not claimed:
+        await cb.answer("—", show_alert=True)
         return
 
-    update_user(w["user_id"], stars=user["stars"] - w["stars"])
-    db_exec("UPDATE withdrawals SET status='approved' WHERE id=%s", (w_id,))
+    if spend_stars(w["user_id"], w["stars"]) is None:
+        db_exec("UPDATE withdrawals SET status='pending' WHERE id=%s", (w_id,))
+        await cb.answer(f"❌ Kerak: {w['stars']}, bor: {user['stars']}", show_alert=True)
+        return
 
     try:
         await cb.message.edit_text(
@@ -2498,13 +2939,12 @@ async def approve_w(cb: types.CallbackQuery):
         pass
 
     u_lang = get_user_lang(w["user_id"])
+    uname = f"@{user['username']}" if user["username"] else "—"
 
     review_ch = get_setting("review_channel", "")
     if review_ch:
         try:
-            uname = f"@{user['username']}" if user["username"] else "—"
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
-
             if w["reward_type"] == "stars":
                 post = (
                     f"🎉 <b>Yangi yechib olish!</b>\n\n"
@@ -2521,7 +2961,7 @@ async def approve_w(cb: types.CallbackQuery):
                     f"👤 <b>User:</b> {user['first_name'] or 'User'}\n"
                     f"🔗 <b>Username:</b> {uname}\n"
                     f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
-                    f"🎁 <b>Gift:</b> {g.get('emoji', '🎁')} <b>{g.get('name', 'Gift')}</b>\n"
+                    f"🎁 <b>Gift:</b> {esc(g.get('emoji', '🎁'))} <b>{esc(g.get('name', 'Gift'))}</b>\n"
                     f"⭐ <b>Narx:</b> {w['stars']} ⭐\n"
                     f"📅 <b>Vaqt:</b> {now}"
                 )
@@ -2529,55 +2969,58 @@ async def approve_w(cb: types.CallbackQuery):
         except Exception as e:
             logger.warning(f"Otziv kanalga post: {e}")
 
-    if w["reward_type"] == "stars":
-        try:
+    # Foydalanuvchiga xabar (bloklagan bo'lsa ham tasdiq bekor bo'lmaydi)
+    try:
+        if w["reward_type"] == "stars":
             await bot.send_message(
                 w["user_id"],
                 T(u_lang, "stars_will_send", n=w["stars"]),
                 parse_mode="HTML"
             )
-            await cb.answer("✅")
+        else:
+            g = get_gift(w["gift_key"]) or {}
+            await bot.send_message(
+                w["user_id"],
+                T(u_lang, "approved")
+                + f"\n\n{esc(g.get('emoji', '🎁'))} <b>{esc(g.get('name', 'Gift'))}</b>\n\n"
+                f"<i>Admin tez orada giftni yuboradi!</i>",
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        logger.warning(f"Userga xabar ({w['user_id']}): {e}")
 
-            uname = f"@{user['username']}" if user["username"] else "—"
-            for a in list_admins():
-                try:
-                    await bot.send_message(
-                        a["user_id"],
-                        f"⚠️ <b>Stars yuborish kerak!</b>\n\n"
-                        f"👤 User: {user['first_name']}\n"
-                        f"🔗 Username: {uname}\n"
-                        f"🆔 ID: <code>{user['user_id']}</code>\n"
-                        f"⭐ Miqdor: <b>{w['stars']} ⭐</b>\n\n"
-                        f"<b>Fragment.com</b> orqali qo'lda yuboring!",
-                        parse_mode="HTML"
-                    )
-                except Exception:
-                    pass
-        except Exception as e:
-            update_user(w["user_id"], stars=user["stars"])
-            db_exec("UPDATE withdrawals SET status='pending' WHERE id=%s", (w_id,))
-            await cb.answer(f"❌ {e}", show_alert=True)
-            return
-    else:
-        g = get_gift(w["gift_key"]) or {}
-        await bot.send_message(
-            w["user_id"],
-            T(u_lang, "approved") + f"\n\n{g.get('emoji', '🎁')} <b>{g.get('name', 'Gift')}</b>\n\n"
-            f"<i>Admin tez orada giftni yuboradi!</i>",
-            parse_mode="HTML"
-        )
-        await cb.answer("✅")
+    # Stars bo'lsa adminlarga eslatma
+    if w["reward_type"] == "stars":
+        for a in list_admins():
+            try:
+                await bot.send_message(
+                    a["user_id"],
+                    f"⚠️ <b>Stars yuborish kerak!</b>\n\n"
+                    f"👤 User: {user['first_name']}\n"
+                    f"🔗 Username: {uname}\n"
+                    f"🆔 ID: <code>{user['user_id']}</code>\n"
+                    f"⭐ Miqdor: <b>{w['stars']} ⭐</b>\n\n"
+                    f"<b>Fragment.com</b> orqali qo'lda yuboring!",
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+
+    await cb.answer("✅")
+
 
 @dp.callback_query(F.data.startswith("rej_"))
 async def reject_w(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
     w_id = int(cb.data.replace("rej_", ""))
-    w = db_exec("SELECT * FROM withdrawals WHERE id=%s", (w_id,), fetch=True)
-    if not w or w["status"] != "pending":
+    w = db_exec(
+        "UPDATE withdrawals SET status='rejected' WHERE id=%s AND status='pending' RETURNING *",
+        (w_id,), fetch=True
+    )
+    if not w:
         await cb.answer("—", show_alert=True)
         return
-    db_exec("UPDATE withdrawals SET status='rejected' WHERE id=%s", (w_id,))
     try:
         await cb.message.edit_text(
             cb.message.html_text + "\n\n❌ <b>RAD ETILGAN</b>",
@@ -2592,6 +3035,7 @@ async def reject_w(cb: types.CallbackQuery):
     except Exception:
         pass
 
+
 # ---------- Suhbatlar ----------
 @dp.callback_query(F.data == "a_chats")
 async def a_chats(cb: types.CallbackQuery):
@@ -2604,16 +3048,17 @@ async def a_chats(cb: types.CallbackQuery):
     text = "╭━━━〔 💬 <b>SUHBATLAR</b> 〕━━━╮\n\n"
     b = InlineKeyboardBuilder()
     for c in chats[:20]:
-        uname = f"@{c['username']}" if c["username"] else "—"
+        uname = f"@{esc(c['username'])}" if c["username"] else "—"
         status_icon = "🟢" if c["status"] == "open" else "🔴"
-        text += f"{status_icon} {c['first_name'] or 'User'} ({uname})\n  <code>{c['user_id']}</code>\n\n"
+        text += f"{status_icon} {esc(c['first_name'] or 'User')} ({uname})\n  <code>{c['user_id']}</code>\n\n"
         b.button(text=f"💬 {c['first_name'] or 'User'}", callback_data=f"chat_open_{c['user_id']}")
-        b.button(text=f"🗑", callback_data=f"chat_del_{c['user_id']}")
+        b.button(text="🗑", callback_data=f"chat_del_{c['user_id']}")
     text += "╰━━━━━━━━━━━━━━━━━╯"
     b.button(text="⬅️ Orqaga", callback_data="a_back")
-    b.adjust(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1)
+    b.adjust(*([2] * min(len(chats[:20]), 10)), 1)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
+
 
 @dp.callback_query(F.data.startswith("chat_open_"))
 async def chat_open(cb: types.CallbackQuery):
@@ -2640,7 +3085,7 @@ async def chat_open(cb: types.CallbackQuery):
             c = f"[{r['message_type']}]"
         elif len(c) > 80:
             c = c[:80] + "..."
-        history += f"{who} {c}\n"
+        history += f"{who} {esc(c)}\n"
     history += "\n╰━━━━━━━━━━━━━━━━━╯"
 
     b = InlineKeyboardBuilder()
@@ -2656,6 +3101,7 @@ async def chat_open(cb: types.CallbackQuery):
         await cb.message.answer(history, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data.startswith("chat_del_"))
 async def chat_del(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2665,6 +3111,7 @@ async def chat_del(cb: types.CallbackQuery):
     await cb.answer("✅")
     await a_chats(cb)
 
+
 # ---------- Sharhlar ----------
 @dp.callback_query(F.data == "a_reviews")
 async def a_reviews(cb: types.CallbackQuery):
@@ -2673,7 +3120,7 @@ async def a_reviews(cb: types.CallbackQuery):
     rows = db_exec(
         "SELECT r.*, u.first_name, u.username FROM reviews r "
         "LEFT JOIN users u ON r.user_id=u.user_id "
-        "WHERE r.status='pending' ORDER BY r.id DESC LIMIT 20",
+        "WHERE r.status='pending' ORDER BY r.id DESC LIMIT 10",
         fetchall=True
     ) or []
     if not rows:
@@ -2682,8 +3129,8 @@ async def a_reviews(cb: types.CallbackQuery):
     text = "╭━━━〔 ⭐ <b>PENDING SHARHLAR</b> 〕━━━╮\n\n"
     b = InlineKeyboardBuilder()
     for r in rows:
-        uname = f"@{r['username']}" if r["username"] else "—"
-        text += f"👤 {r['first_name'] or 'User'} ({uname})\n💬 <i>{r['text'][:150]}</i>\n\n"
+        uname = f"@{esc(r['username'])}" if r["username"] else "—"
+        text += f"👤 {esc(r['first_name'] or 'User')} ({uname})\n💬 <i>{esc(r['text'][:150])}</i>\n\n"
         b.button(text=f"✅ #{r['id']}", callback_data=f"revappr_{r['id']}")
         b.button(text=f"❌ #{r['id']}", callback_data=f"revrej_{r['id']}")
     text += "╰━━━━━━━━━━━━━━━━━╯"
@@ -2692,17 +3139,20 @@ async def a_reviews(cb: types.CallbackQuery):
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data.startswith("revappr_"))
 async def review_approve(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
     r_id = int(cb.data.replace("revappr_", ""))
-    r = db_exec("SELECT * FROM reviews WHERE id=%s", (r_id,), fetch=True)
-    if not r or r["status"] != "pending":
+    r = db_exec(
+        "UPDATE reviews SET status='approved' WHERE id=%s AND status='pending' RETURNING *",
+        (r_id,), fetch=True
+    )
+    if not r:
         await cb.answer("—", show_alert=True)
         return
 
-    db_exec("UPDATE reviews SET status='approved' WHERE id=%s", (r_id,))
     user = get_user(r["user_id"])
 
     review_ch = get_setting("review_channel", "")
@@ -2716,7 +3166,7 @@ async def review_approve(cb: types.CallbackQuery):
                 f"🔗 <b>Username:</b> {uname}\n"
                 f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
                 f"📅 <b>Vaqt:</b> {now}\n\n"
-                f"💬 <i>{r['text']}</i>"
+                f"💬 <i>{esc(r['text'])}</i>"
             )
             await bot.send_message(review_ch, post, parse_mode="HTML")
         except Exception as e:
@@ -2737,17 +3187,20 @@ async def review_approve(cb: types.CallbackQuery):
         pass
     await cb.answer("✅")
 
+
 @dp.callback_query(F.data.startswith("revrej_"))
 async def review_reject(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
     r_id = int(cb.data.replace("revrej_", ""))
-    r = db_exec("SELECT * FROM reviews WHERE id=%s", (r_id,), fetch=True)
-    if not r or r["status"] != "pending":
+    r = db_exec(
+        "UPDATE reviews SET status='rejected' WHERE id=%s AND status='pending' RETURNING *",
+        (r_id,), fetch=True
+    )
+    if not r:
         await cb.answer("—", show_alert=True)
         return
 
-    db_exec("UPDATE reviews SET status='rejected' WHERE id=%s", (r_id,))
     try:
         u_lang = get_user_lang(r["user_id"])
         await bot.send_message(r["user_id"], T(u_lang, "review_rejected"), parse_mode="HTML")
@@ -2763,6 +3216,7 @@ async def review_reject(cb: types.CallbackQuery):
         pass
     await cb.answer("❌")
 
+
 # ---------- Darajalar ----------
 @dp.callback_query(F.data == "a_levels")
 async def a_levels(cb: types.CallbackQuery):
@@ -2771,7 +3225,8 @@ async def a_levels(cb: types.CallbackQuery):
     lvls = get_levels()
     text = "╭━━━〔 🏅 <b>DARAJALAR</b> 〕━━━╮\n\n"
     for lvl in lvls:
-        text += f"{lvl.get('emoji', '')} <b>{lvl.get('name', '')}</b>: {lvl.get('min_stars', 0)}-{lvl.get('max_stars', 0)} ⭐\n"
+        text += (f"{esc(lvl.get('emoji', ''))} <b>{esc(lvl.get('name', ''))}</b>: "
+                 f"{lvl.get('min_stars', 0)}-{lvl.get('max_stars', 0)} ⭐\n")
     text += "\n╰━━━━━━━━━━━━━━━━━╯"
 
     b = InlineKeyboardBuilder()
@@ -2782,6 +3237,7 @@ async def a_levels(cb: types.CallbackQuery):
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data == "add_level")
 async def add_level_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
@@ -2790,28 +3246,31 @@ async def add_level_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.level_name)
     await cb.answer()
 
+
 @dp.message(AS.level_name)
 async def level_name_input(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     await state.update_data(level_name=message.text.strip())
     await message.answer("😀 <b>Emoji:</b>", parse_mode="HTML")
     await state.set_state(AS.level_emoji)
 
+
 @dp.message(AS.level_emoji)
 async def level_emoji_input(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
     await state.update_data(level_emoji=message.text.strip())
     await message.answer("📉 <b>Min stars:</b>", parse_mode="HTML")
     await state.set_state(AS.level_min)
+
 
 @dp.message(AS.level_min)
 async def level_min_input(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     try:
-        val = int(message.text.strip())
+        val = int((message.text or "").strip())
     except ValueError:
         await message.answer("❌ Raqam.")
         return
@@ -2819,12 +3278,13 @@ async def level_min_input(message: types.Message, state: FSMContext):
     await message.answer("📈 <b>Max stars:</b>", parse_mode="HTML")
     await state.set_state(AS.level_max)
 
+
 @dp.message(AS.level_max)
 async def level_max_input(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     try:
-        val = int(message.text.strip())
+        val = int((message.text or "").strip())
     except ValueError:
         await message.answer("❌ Raqam.")
         return
@@ -2835,6 +3295,7 @@ async def level_max_input(message: types.Message, state: FSMContext):
     await message.answer("✅ <b>Daraja qo'shildi!</b>", parse_mode="HTML")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
+
 @dp.callback_query(F.data == "del_level_list")
 async def del_level_list(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2842,11 +3303,14 @@ async def del_level_list(cb: types.CallbackQuery):
     lvls = get_levels()
     b = InlineKeyboardBuilder()
     for lvl in lvls:
+        if "id" not in lvl:
+            continue
         b.button(text=f"❌ {lvl.get('emoji', '')} {lvl.get('name', '')}", callback_data=f"dellvl_{lvl['id']}")
     b.button(text="⬅️ Orqaga", callback_data="a_levels")
     b.adjust(1)
     await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
+
 
 @dp.callback_query(F.data.startswith("dellvl_"))
 async def del_level_do(cb: types.CallbackQuery):
@@ -2857,6 +3321,7 @@ async def del_level_do(cb: types.CallbackQuery):
     await cb.answer("✅")
     await a_levels(cb)
 
+
 # ---------- User boshqarish ----------
 @dp.callback_query(F.data == "a_users")
 async def a_users(cb: types.CallbackQuery, state: FSMContext):
@@ -2866,12 +3331,13 @@ async def a_users(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.user_id)
     await cb.answer()
 
+
 @dp.message(AS.user_id)
 async def user_info(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     try:
-        uid = int(message.text.strip())
+        uid = int((message.text or "").strip())
     except ValueError:
         await message.answer("❌")
         return
@@ -2890,7 +3356,7 @@ async def user_info(message: types.Message, state: FSMContext):
     b.adjust(2, 2, 1, 1)
     uname = f"@{user['username']}" if user["username"] else "—"
     lvl = get_user_level(user["stars"])
-    lvl_text = f"{lvl.get('emoji', '')} {lvl.get('name', '')}"
+    lvl_text = f"{esc(lvl.get('emoji', ''))} {esc(lvl.get('name', ''))}"
     ban_text = "Ha" if user["is_banned"] else "Yo'q"
     ver_text = "Ha" if user["is_verified"] else "Yo'q"
     text = (
@@ -2907,6 +3373,7 @@ async def user_info(message: types.Message, state: FSMContext):
     )
     await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
 
+
 @dp.callback_query(F.data.startswith("tog_"))
 async def toggle_ban(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2915,8 +3382,24 @@ async def toggle_ban(cb: types.CallbackQuery):
     user = get_user(uid)
     if not user:
         return
-    update_user(uid, is_banned=0 if user["is_banned"] else 1)
+    new_val = 0 if user["is_banned"] else 1
+    update_user(uid, is_banned=new_val)
+
+    # Tugma matnini yangilash
+    try:
+        kb = InlineKeyboardBuilder()
+        kb.button(text="🚫 Ban" if not new_val else "✅ Unban", callback_data=f"tog_{uid}")
+        kb.button(text="➕ Stars", callback_data=f"adp_{uid}")
+        kb.button(text="➖ Stars", callback_data=f"rem_{uid}")
+        kb.button(text="✉️ Xabar", callback_data=f"msg_{uid}")
+        kb.button(text="💬 Suhbat", callback_data=f"chat_open_{uid}")
+        kb.button(text="⬅️", callback_data="a_back")
+        kb.adjust(2, 2, 1, 1)
+        await cb.message.edit_reply_markup(reply_markup=kb.as_markup())
+    except Exception:
+        pass
     await cb.answer("✅")
+
 
 @dp.callback_query(F.data.startswith("adp_"))
 async def add_stars_start(cb: types.CallbackQuery, state: FSMContext):
@@ -2928,6 +3411,7 @@ async def add_stars_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.stars_amount)
     await cb.answer()
 
+
 @dp.callback_query(F.data.startswith("rem_"))
 async def remove_stars_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
@@ -2938,29 +3422,29 @@ async def remove_stars_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.stars_amount)
     await cb.answer()
 
+
 @dp.message(AS.stars_amount)
 async def stars_amount_input(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
     try:
-        amount = int(message.text.strip())
+        amount = int((message.text or "").strip())
     except ValueError:
         await message.answer("❌")
         return
     if amount <= 0:
         await message.answer("❌ >0")
         return
-    data = await state.get_data()
-    action = data.get("action", "add")
     await state.update_data(stars_amount=amount)
     await message.answer("📝 <b>Sabab:</b>", parse_mode="HTML")
     await state.set_state(AS.stars_reason)
 
+
 @dp.message(AS.stars_reason)
 async def stars_reason_input(message: types.Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
+    if not is_admin(message.from_user.id) or not message.text:
         return
-    reason = message.text.strip()
+    reason = html.escape(message.text.strip())
     if not reason:
         await message.answer("❌")
         return
@@ -2977,14 +3461,14 @@ async def stars_reason_input(message: types.Message, state: FSMContext):
         return
 
     if action == "add":
-        new_stars = user["stars"] + amount
+        new_stars = add_stars(uid, amount)
     else:
-        if amount > user["stars"]:
+        new_stars = spend_stars(uid, amount)
+        if new_stars is None:
             await message.answer(f"❌ Faqat {user['stars']} ⭐")
             return
-        new_stars = user["stars"] - amount
+    old_stars = new_stars - amount if action == "add" else new_stars + amount
 
-    update_user(uid, stars=new_stars)
     await state.clear()
 
     u_lang = get_user_lang(uid)
@@ -2997,12 +3481,16 @@ async def stars_reason_input(message: types.Message, state: FSMContext):
     except Exception:
         pass
 
+    if action == "add":
+        await check_level_up(uid, old_stars, new_stars)
+
     sign = "➕" if action == "add" else "➖"
     await message.answer(
         f"✅ {sign} <b>{amount} ⭐</b>\n📝 {reason}\n💰 <b>{new_stars} ⭐</b>",
         parse_mode="HTML"
     )
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
 
 @dp.callback_query(F.data.startswith("msg_"))
 async def user_msg_start(cb: types.CallbackQuery, state: FSMContext):
@@ -3014,6 +3502,7 @@ async def user_msg_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.user_msg)
     await cb.answer()
 
+
 @dp.message(AS.user_msg)
 async def user_msg_send(message: types.Message, state: FSMContext):
     if not is_admin(message.from_user.id):
@@ -3024,9 +3513,10 @@ async def user_msg_send(message: types.Message, state: FSMContext):
         await message.copy_to(chat_id=uid)
         await message.answer("✅")
     except Exception as e:
-        await message.answer(f"❌ {e}")
+        await message.answer(f"❌ {esc(e)}", parse_mode="HTML")
     await state.clear()
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
 
 # ---------- Adminlar ----------
 @dp.callback_query(F.data == "a_admins")
@@ -3050,6 +3540,7 @@ async def a_admins(cb: types.CallbackQuery):
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
+
 @dp.callback_query(F.data == "add_admin")
 async def add_admin_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_super_admin(cb.from_user.id):
@@ -3058,12 +3549,13 @@ async def add_admin_start(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(AS.add_admin_id)
     await cb.answer()
 
+
 @dp.message(AS.add_admin_id)
 async def add_admin_do(message: types.Message, state: FSMContext):
     if not is_super_admin(message.from_user.id):
         return
     try:
-        uid = int(message.text.strip())
+        uid = int((message.text or "").strip())
     except ValueError:
         await message.answer("❌")
         return
@@ -3083,6 +3575,7 @@ async def add_admin_do(message: types.Message, state: FSMContext):
         pass
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
+
 @dp.callback_query(F.data == "del_admin_list")
 async def del_admin_list(cb: types.CallbackQuery):
     if not is_super_admin(cb.from_user.id):
@@ -3094,11 +3587,12 @@ async def del_admin_list(cb: types.CallbackQuery):
             continue
         u = get_user(a["user_id"])
         name = u["first_name"] if u else "N/A"
-        b.button(text=f"❌ {name}", callback_data=f"deladmin_{a['user_id']}")
+        b.button(text=f"❌ {html.unescape(name)}", callback_data=f"deladmin_{a['user_id']}")
     b.button(text="⬅️", callback_data="a_admins")
     b.adjust(1)
     await cb.message.edit_text("🗑", reply_markup=b.as_markup())
     await cb.answer()
+
 
 @dp.callback_query(F.data.startswith("deladmin_"))
 async def del_admin_do(cb: types.CallbackQuery):
@@ -3112,28 +3606,113 @@ async def del_admin_do(cb: types.CallbackQuery):
     await cb.answer("✅")
     await a_admins(cb)
 
+
 # ═══════════════════════════════════════════════════════════
-# HEALTH + POLLING
+# MINI APP API (Telegram initData HMAC tekshiruvi bilan)
 # ═══════════════════════════════════════════════════════════
+def validate_init_data(init_data, max_age=86400):
+    """Telegram WebApp initData ni tekshiradi. To'g'ri bo'lsa user dict, aks holda None."""
+    try:
+        pairs = dict(parse_qsl(init_data, keep_blank_values=True))
+        recv_hash = pairs.pop("hash", None)
+        if not recv_hash:
+            return None
+        check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
+        secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+        calc = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(calc, recv_hash):
+            return None
+        if time.time() - int(pairs.get("auth_date", "0")) > max_age:
+            return None
+        return json.loads(pairs["user"])
+    except Exception:
+        return None
+
+
+def build_profile(uid):
+    u = db_exec("SELECT * FROM users WHERE user_id=%s", (uid,), fetch=True)
+    if not u:
+        return {"error": "Foydalanuvchi topilmadi. Botda /start bosing."}
+    refs = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1",
+        (uid,), fetch=True)
+    rank = db_exec(
+        "SELECT COUNT(*) + 1 AS rank FROM users WHERE stars > %s AND is_verified=1 AND is_banned=0",
+        (u["stars"],), fetch=True)
+    lvl = get_user_level(u["stars"])
+    return {
+        "user_id": u["user_id"],
+        "first_name": u["first_name"] or "User",
+        "username": u["username"],
+        "stars": u["stars"],
+        "level_name": lvl.get("name", "Bronza"),
+        "level_emoji": lvl.get("emoji", "🥉"),
+        "level_min": lvl.get("min_stars", 0),
+        "level_max": lvl.get("max_stars", 10),
+        "referrals": refs["c"] if refs else 0,
+        "rank": rank["rank"] if rank else 0,
+    }
+
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Init-Data",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+}
+
+
+@web.middleware
+async def cors_middleware(request, handler):
+    if request.method == "OPTIONS":
+        return web.Response(headers=CORS_HEADERS)
+    resp = await handler(request)
+    resp.headers.update(CORS_HEADERS)
+    return resp
+
+
+async def api_profile(request):
+    tg_user = validate_init_data(request.headers.get("X-Telegram-Init-Data", ""))
+    if not tg_user:
+        return web.json_response({"error": "Ruxsat yo'q"}, status=401)
+    data = await asyncio.to_thread(build_profile, int(tg_user["id"]))
+    return web.json_response(data)
+
+
 async def health(request):
     return web.Response(text="OK")
 
-async def start_web():
-    app = web.Application()
-    app.router.add_get("/", health)
-    app.router.add_get("/health", health)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", PORT)
-    await site.start()
-    logger.info(f"Health portda: {PORT}")
 
+async def index(request):
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+    if os.path.exists(p):
+        return web.FileResponse(p)
+    return web.Response(text=BOT_NAME)
+
+
+# ═══════════════════════════════════════════════════════════
+# ISHGA TUSHIRISH
+# ═══════════════════════════════════════════════════════════
 async def main():
     init_db()
+
+    try:
+        await bot.set_my_name(BOT_NAME)
+    except Exception as e:
+        logger.warning(f"set_my_name: {e}")
+
+    app = web.Application(middlewares=[cors_middleware])
+    app.router.add_get("/", index)
+    app.router.add_get("/health", health)
+    app.router.add_get("/api/profile", api_profile)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, "0.0.0.0", PORT).start()
+    logger.info(f"Web server {PORT} portda ishga tushdi")
+
     await bot.delete_webhook(drop_pending_updates=True)
-    logger.info("Polling...")
-    asyncio.create_task(start_web())
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    logger.info(f"{BOT_NAME} (@{BOT_USERNAME}) ishga tushdi")
+    await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
