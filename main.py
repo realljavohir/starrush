@@ -432,7 +432,6 @@ def add_gift(key, emoji, name, stars):
 def remove_gift(key):
     db_exec("DELETE FROM gifts WHERE key=?", (key,))
 
-# SUPPORT CHAT
 def get_chat_status(user_id):
     row = db_exec("SELECT status FROM support_chats WHERE user_id=?", (user_id,), fetch=True)
     return row["status"] if row else None
@@ -1214,7 +1213,7 @@ async def chat_close_admin(cb: types.CallbackQuery):
     await cb.answer("✅ Suhbat tugatildi")
 
 # ═══════════════════════════════════════════════════════════
-# YECHIB OLISH — Min/Max faqat STARS da!
+# YECHIB OLISH
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_withdraw")
 async def cb_withdraw(cb: types.CallbackQuery, state: FSMContext):
@@ -1226,7 +1225,6 @@ async def cb_withdraw(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer(T(lang, "start_first"), show_alert=True)
         return
 
-    # 0 stars bo'lsa ham ko'rsatiladi — Min/Max YO'Q!
     stars_count = user["stars"]
 
     b = InlineKeyboardBuilder()
@@ -1986,14 +1984,6 @@ async def broadcast_do(message: types.Message, state: FSMContext):
     blocked = 0
 
     is_forward = message.forward_date is not None
-    has_media = bool(
-        message.photo or message.video or message.document or
-        message.audio or message.voice or message.sticker or
-        message.animation or message.video_note
-    )
-    is_poll = bool(message.poll)
-    is_location = bool(message.location or message.venue)
-    is_contact = bool(message.contact)
 
     for i, u in enumerate(users, 1):
         try:
@@ -2081,7 +2071,8 @@ async def approve_w(cb: types.CallbackQuery):
     w = db_exec("SELECT * FROM withdrawals WHERE id=?", (w_id,), fetch=True)
     if not w or w["status"] != "pending":
         await cb.answer("—", show_alert=True)
-        return    user = get_user(w["user_id"])
+        return
+    user = get_user(w["user_id"])
     if not user:
         await cb.answer("—", show_alert=True)
         return
@@ -2201,7 +2192,6 @@ async def chat_open(cb: types.CallbackQuery):
 
     if not is_chat_open(uid):
         open_chat(uid)
-        u_lang = get_user_lang(uid)
         try:
             await bot.send_message(
                 uid,
@@ -2247,10 +2237,10 @@ async def chat_del(cb: types.CallbackQuery):
     uid = int(cb.data.replace("chat_del_", ""))
     delete_chat(uid)
     await cb.answer("✅ Suhbat o'chirildi!")
+    b = InlineKeyboardBuilder()
+    b.button(text="⬅️ Orqaga", callback_data="a_chats")
+    b.adjust(1)
     try:
-        b = InlineKeyboardBuilder()
-        b.button(text="⬅️ Orqaga", callback_data="a_chats")
-        b.adjust(1)
         await cb.message.edit_text(
             "✅ <b>Suhbat butunlay o'chirildi!</b>\n\nFoydalanuvchi qaytadan yozishi mumkin.",
             reply_markup=b.as_markup(),
