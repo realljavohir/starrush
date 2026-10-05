@@ -42,16 +42,15 @@ DEFAULT_LEVELS = [
 ]
 
 def get_levels():
-    """DB dan darajalarni olish"""
     rows = db_exec("SELECT * FROM levels ORDER BY min_stars ASC", fetchall=True)
     return [dict(r) for r in rows] if rows else DEFAULT_LEVELS
 
 def get_user_level(stars):
-    """Starsga qarab daraja"""
     for lvl in get_levels():
         if lvl["min_stars"] <= stars <= lvl["max_stars"]:
             return lvl
-    return get_levels()[-1] if get_levels() else DEFAULT_LEVELS[-1]
+    levels = get_levels()
+    return levels[-1] if levels else DEFAULT_LEVELS[-1]
 
 # ═══════════════════════════════════════════════════════════
 # TILLAR
@@ -112,7 +111,6 @@ LANGS = {
         "no_active_chat": "ℹ️ Sizda faol suhbat yo'q.",
         "admin_reply": "📬 <b>Admindan javob:</b>",
         "user_msg": "📩 <b>Foydalanuvchidan xabar:</b>",
-        # YANGI
         "gift_stars_title": "🎁 <b>Stars sovg'a qilish</b>\n\n💰 Sizda: <b>{bal} ⭐</b>\n\nFoydalanuvchi <b>username</b> yoki <b>ID</b> sini kiriting:",
         "gift_stars_amount": "👤 Qabul qiluvchi: <b>{name}</b>\n\nNechta stars sovg'a qilasiz?",
         "gift_stars_confirm": "🎁 <b>Tasdiqlang</b>\n\n👤 Kimga: <b>{name}</b>\n⭐ Miqdor: <b>{n} ⭐</b>\n\nTasdiqlaysizmi?",
@@ -355,7 +353,6 @@ def init_db():
         admin_id INTEGER DEFAULT 0,
         updated_at TEXT
     )""")
-    # YANGI: Sharhlar
     c.execute("""CREATE TABLE IF NOT EXISTS reviews (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -363,7 +360,6 @@ def init_db():
         status TEXT DEFAULT 'pending',
         created_at TEXT
     )""")
-    # YANGI: Darajalar
     c.execute("""CREATE TABLE IF NOT EXISTS levels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
@@ -385,7 +381,6 @@ def init_db():
         c.execute("INSERT OR IGNORE INTO admins (user_id, added_by, added_at) VALUES (?, ?, ?)",
                   (a, a, datetime.now().isoformat()))
 
-    # Darajalarni to'ldirish
     c.execute("SELECT COUNT(*) FROM levels")
     if c.fetchone()[0] == 0:
         for lvl in DEFAULT_LEVELS:
@@ -1280,7 +1275,7 @@ async def chat_close_admin(cb: types.CallbackQuery):
     await cb.answer("✅")
 
 # ═══════════════════════════════════════════════════════════
-# STARS SOVG'A QILISH (YANGI)
+# STARS SOVG'A QILISH
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_gift")
 async def cb_gift_stars(cb: types.CallbackQuery, state: FSMContext):
@@ -1416,17 +1411,14 @@ async def gift_confirm(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer(T(lang, "not_enough"), show_alert=True)
         return
 
-    # Pul o'tkazish
     update_user(uid, stars=user["stars"] - amount)
     update_user(target_id, stars=target["stars"] + amount)
 
-    # Yuboruvchiga
     await cb.message.edit_text(
         T(lang, "gift_stars_sent", n=amount, name=target["first_name"] or "User"),
         parse_mode="HTML"
     )
 
-    # Qabul qiluvchiga
     target_lang = get_user_lang(target_id)
     try:
         await bot.send_message(
@@ -1444,7 +1436,7 @@ async def gift_confirm(cb: types.CallbackQuery, state: FSMContext):
     await cb.answer("✅")
 
 # ═══════════════════════════════════════════════════════════
-# SHARH QOLDIRISH (YANGI)
+# SHARH QOLDIRISH
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_review")
 async def cb_review(cb: types.CallbackQuery, state: FSMContext):
@@ -1514,7 +1506,6 @@ async def review_text_input(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
-    # Adminlarga xabar
     user = get_user(uid)
     uname = f"@{user['username']}" if user and user["username"] else "—"
     kb = InlineKeyboardBuilder()
@@ -2186,12 +2177,13 @@ async def edit_gift_start(cb: types.CallbackQuery, state: FSMContext):
 async def a_settings(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
+    review_ch_display = get_setting("review_channel") or "yo'q"
     text = (
         f"╭━━━〔 ⚙️ <b>SOZLAMALAR</b> 〕━━━╮\n\n"
         f"🎯 1 referal = <b>{get_setting('stars_per_referral')} ⭐</b>\n"
         f"💰 Min yechish = <b>{get_setting('min_withdraw')} ⭐</b>\n"
         f"💎 Max yechish = <b>{get_setting('max_withdraw')} ⭐</b>\n"
-        f"📢 Sharh kanali: <b>{get_setting('review_channel') or 'yo\\'q'}</b>\n\n"
+        f"📢 Sharh kanali: <b>{review_ch_display}</b>\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
     b = InlineKeyboardBuilder()
@@ -2417,7 +2409,6 @@ async def approve_w(cb: types.CallbackQuery):
 
     u_lang = get_user_lang(w["user_id"])
 
-    # OTZIV KANALGA POST
     review_ch = get_setting("review_channel", "")
     if review_ch:
         try:
@@ -2598,7 +2589,6 @@ async def review_approve(cb: types.CallbackQuery):
     db_exec("UPDATE reviews SET status='approved' WHERE id=?", (r_id,))
     user = get_user(r["user_id"])
 
-    # Otziv kanalga post
     review_ch = get_setting("review_channel", "")
     if review_ch and user:
         try:
@@ -2613,7 +2603,6 @@ async def review_approve(cb: types.CallbackQuery):
         except Exception as e:
             logger.warning(f"Otziv kanal: {e}")
 
-    # Foydalanuvchiga
     try:
         u_lang = get_user_lang(r["user_id"])
         await bot.send_message(r["user_id"], T(u_lang, "review_approved"), parse_mode="HTML")
@@ -2783,6 +2772,8 @@ async def user_info(message: types.Message, state: FSMContext):
     uname = f"@{user['username']}" if user["username"] else "—"
     lvl = get_user_level(user["stars"])
     lvl_text = f"{lvl.get('emoji', '')} {lvl.get('name', '')}"
+    ban_text = "Ha" if user["is_banned"] else "Yo'q"
+    ver_text = "Ha" if user["is_verified"] else "Yo'q"
     text = (
         f"╭━━━〔 👤 <b>USER INFO</b> 〕━━━╮\n\n"
         f"🆔 <code>{user['user_id']}</code>\n"
@@ -2790,8 +2781,8 @@ async def user_info(message: types.Message, state: FSMContext):
         f"🔗 {uname}\n"
         f"⭐ {user['stars']}\n"
         f"🏅 {lvl_text}\n"
-        f"🚫 Ban: {'Ha' if user['is_banned'] else 'Yoq'}\n"
-        f"✅ Ver: {'Ha' if user['is_verified'] else 'Yoq'}\n"
+        f"🚫 Ban: {ban_text}\n"
+        f"✅ Ver: {ver_text}\n"
         f"🌐 {user.get('language', 'uz')}\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
@@ -2843,8 +2834,7 @@ async def stars_amount_input(message: types.Message, state: FSMContext):
     data = await state.get_data()
     action = data.get("action", "add")
     await state.update_data(stars_amount=amount)
-    prompt = "📝 <b>Sabab:</b>"
-    await message.answer(prompt, parse_mode="HTML")
+    await message.answer("📝 <b>Sabab:</b>", parse_mode="HTML")
     await state.set_state(AS.stars_reason)
 
 @dp.message(AS.stars_reason)
