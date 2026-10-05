@@ -12,5 +12,16 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: WEBAPP_URL
+        sync: false
       - key: PORT
         value: 8080
+
+  - type: web
+    name: starrush-webapp
+    env: static
+    staticPublishPath: ./webapp
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
