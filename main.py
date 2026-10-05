@@ -1,7 +1,6 @@
 import os
 import asyncio
 import sqlite3
-import random
 import logging
 from datetime import datetime
 
@@ -11,7 +10,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import LabeledPrice
 from aiohttp import web
 
 # ==================== SOZLAMALAR ====================
@@ -88,7 +86,7 @@ def init_db():
     c.execute("""CREATE TABLE IF NOT EXISTS withdrawals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
-        amount INTEGER,
+        stars INTEGER,
         reward_type TEXT,
         gift_key TEXT,
         status TEXT DEFAULT 'pending',
@@ -105,15 +103,13 @@ def init_db():
     )""")
     defaults = {
         "points_per_referral": "5",
-        "min_withdraw": "50",
+        "min_withdraw_points": "50",
         "daily_bonus": "1",
-        "star_per_point": "1",  # 1 ball = 1 star
-        "reward_mode": "both",  # stars | gift | both
+        "star_per_point": "1",   # 1 ball = N stars
     }
     for k, v in defaults.items():
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
 
-    # Super adminlarni admins jadvaliga qo'shish
     for a in SUPER_ADMIN_IDS:
         c.execute("INSERT OR IGNORE INTO admins (user_id, added_by, added_at) VALUES (?, ?, ?)",
                   (a, a, datetime.now().isoformat()))
@@ -209,7 +205,6 @@ dp = Dispatcher()
 class US(StatesGroup):
     answer = State()
     withdraw_stars = State()
-    withdraw_gift = State()
 
 class AS(StatesGroup):
     channel = State()
@@ -222,8 +217,6 @@ class AS(StatesGroup):
     user_msg = State()
     add_admin_id = State()
     set_stars_per_point = State()
-    set_min_stars = State()
-    set_max_stars = State()
 
 # ==================== KLAVIATURALAR ====================
 def main_menu(uid):
@@ -429,14 +422,13 @@ async def profile(message: types.Message):
     ver = "Ha" if user["is_verified"] else "Yo'q"
     joined = user["joined_at"][:10] if user["joined_at"] else "N/A"
     ratio = int(get_setting("star_per_point", "1"))
-    stars = user["points"] * ratio
     text = (
         f"👤 <b>Profilingiz</b>\n\n"
         f"🆔 ID: <code>{user['user_id']}</code>\n"
         f"👤 Ism: {user['first_name'] or 'N/A'}\n"
         f"🔗 Username: {uname}\n"
         f"🎯 Ball: {user['points']}\n"
-        f"⭐ Stars: {stars} (1 ball = {ratio} ⭐)\n"
+        f"⭐ Stars ekv: {user['points'] * ratio}\n"
         f"👥 Referallar: {ref_count}\n"
         f"✅ Tasdiqlangan: {ver}\n"
         f"📅 Qo'shilgan: {joined}"
@@ -497,28 +489,36 @@ async def daily_bonus(message: types.Message):
 # ==================== YECHIB OLISH ====================
 @dp.message(F.text == "💰 Yechib olish")
 async def withdraw_start(message: types.Message, state: FSMContext):
+    await state.clear()
     user = get_user(message.from_user.id)
     if not user:
         await message.answer("Iltimos, /start buyrug'ini bosing.")
         return
-    min_w = int(get_setting("min_withdraw", "50"))
-    if user["points"] < min_w:
-        await message.answer(f"❌ Minimal: {min_w} ball. Sizda: {user['points']}")
+
+    min_pts = int(get_setting("min_withdraw_points", "50"))
+    if user["points"] < min_pts:
+        await message.answer(
+            f"❌ Yechib olish uchun kamida {min_pts} ball kerak.\n"
+            f"Sizda: {user['points']} ball"
+        )
         return
 
-    reward_mode = get_setting("reward_mode", "both")
+    ratio = int(get_setting("star_per_point", "1"))
+    stars_equiv = user["points"] * ratio
+
     b = InlineKeyboardBuilder()
-    if reward_mode in ("stars", "both"):
-        b.button(text="⭐ Stars olish", callback_data="w_stars")
-    if reward_mode in ("gift", "both"):
-        b.button(text="🎁 Gift olish", callback_data="w_gift")
+    b.button(text="⭐ To'liq Stars olish", callback_data="w_stars")
+    b.button(text="🎁 Telegram Gift olish", callback_data="w_gift")
     b.button(text="❌ Bekor qilish", callback_data="w_cancel")
     b.adjust(1)
-    ratio = int(get_setting("star_per_point", "1"))
+
     await message.answer(
-        f"💰 Sizda {user['points']} ball bor (≈ {user['points'] * ratio} ⭐).\n\n"
+        f"💰 <b>Yechib olish</b>\n\n"
+        f"Ball: {user['points']}\n"
+        f"Stars ekv: {stars_equiv} ⭐\n\n"
         f"Mukofot turini tanlang:",
-        reply_markup=b.as_markup()
+        reply_markup=b.as_markup(),
+        parse_mode="HTML"
     )
 
 @dp.callback_query(F.data == "w_cancel")
@@ -530,25 +530,29 @@ async def w_cancel(cb: types.CallbackQuery, state: FSMContext):
         pass
     await cb.answer("Bekor qilindi")
 
-# ----- STARS -----
+# ========== STARS ==========
 @dp.callback_query(F.data == "w_stars")
 async def w_stars(cb: types.CallbackQuery, state: FSMContext):
     user = get_user(cb.from_user.id)
     ratio = int(get_setting("star_per_point", "1"))
     stars_available = user["points"] * ratio
     await cb.message.edit_text(
-        f"⭐ Sizda {stars_available} ⭐ mavjud.\n\n"
+        f"⭐ <b>Stars yechib olish</b>\n\n"
+        f"Sizda: <b>{stars_available} ⭐</b>\n"
+        f"Min: {MIN_STARS} ⭐\n"
+        f"Max: {MAX_STARS:,} ⭐\n\n"
         f"Nechta stars yechib olmoqchisiz?\n"
-        f"(min: {MIN_STARS}, max: {MAX_STARS})\n\n"
-        f"Raqamni kiriting:"
+        f"Raqamni kiriting:",
+        parse_mode="HTML"
     )
     await state.set_state(US.withdraw_stars)
     await cb.answer()
 
 @dp.message(US.withdraw_stars)
 async def w_stars_process(message: types.Message, state: FSMContext):
+    text = message.text.strip().replace(" ", "").replace(",", "")
     try:
-        amount = int(message.text.strip())
+        amount = int(text)
     except ValueError:
         await message.answer("❌ Faqat raqam kiriting.")
         return
@@ -557,30 +561,39 @@ async def w_stars_process(message: types.Message, state: FSMContext):
         await message.answer(f"❌ Minimal: {MIN_STARS} ⭐")
         return
     if amount > MAX_STARS:
-        await message.answer(f"❌ Maksimal: {MAX_STARS} ⭐")
+        await message.answer(f"❌ Maksimal: {MAX_STARS:,} ⭐")
         return
 
     user = get_user(message.from_user.id)
     ratio = int(get_setting("star_per_point", "1"))
     stars_available = user["points"] * ratio
+
     if amount > stars_available:
-        await message.answer(f"❌ Yetarli emas. Sizda: {stars_available} ⭐")
+        await message.answer(
+            f"❌ Yetarli emas!\n"
+            f"Sizda: {stars_available} ⭐\n"
+            f"Kerak: {amount} ⭐"
+        )
         return
 
-    # Ballarga aylantirish
     points_needed = (amount + ratio - 1) // ratio
     if points_needed > user["points"]:
-        await message.answer("❌ Ball yetarli emas.")
+        await message.answer(
+            f"❌ Ball yetarli emas.\n"
+            f"Kerak: {points_needed} ball\n"
+            f"Sizda: {user['points']} ball"
+        )
         return
 
     db_exec(
-        "INSERT INTO withdrawals (user_id, amount, reward_type, status, created_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO withdrawals (user_id, stars, reward_type, status, created_at) VALUES (?, ?, ?, ?, ?)",
         (user["user_id"], amount, "stars", "pending", datetime.now().isoformat())
     )
     await state.clear()
     await message.answer(
-        f"✅ {amount} ⭐ yechib olish so'rovi yuborildi.\n"
-        f"Admin tasdiqlashini kuting."
+        f"✅ <b>{amount} ⭐</b> yechib olish so'rovi yuborildi.\n"
+        f"Admin tasdiqlashini kuting.",
+        parse_mode="HTML"
     )
 
     # Adminga xabar
@@ -588,45 +601,61 @@ async def w_stars_process(message: types.Message, state: FSMContext):
         try:
             await bot.send_message(
                 a["user_id"],
-                f"💸 Yangi STARS so'rovi!\n"
-                f"User: {user['first_name']} (<code>{user['user_id']}</code>)\n"
-                f"Miqdor: {amount} ⭐",
+                f"💸 <b>Yangi STARS so'rovi!</b>\n\n"
+                f"👤 User: {user['first_name']} (<code>{user['user_id']}</code>)\n"
+                f"⭐ Miqdor: <b>{amount} stars</b>",
                 parse_mode="HTML"
             )
         except Exception:
             pass
 
-# ----- GIFT -----
+# ========== GIFT ==========
 @dp.callback_query(F.data == "w_gift")
 async def w_gift(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user = get_user(cb.from_user.id)
+    ratio = int(get_setting("star_per_point", "1"))
+    stars_available = user["points"] * ratio
+
+    text = (
+        f"🎁 <b>Telegram Gift olish</b>\n\n"
+        f"Sizda: <b>{stars_available} ⭐</b>\n\n"
+        f"Giftni tanlang:\n\n"
+    )
+
     b = InlineKeyboardBuilder()
     for key, g in GIFTS.items():
-        b.button(text=f"{g['emoji']} {g['name']} — {g['stars']}⭐", callback_data=f"gift_{key}")
+        text += f"{g['emoji']} {g['name']} — {g['stars']} ⭐\n"
+        b.button(
+            text=f"{g['emoji']} {g['name']} — {g['stars']}⭐",
+            callback_data=f"gift_{key}"
+        )
     b.button(text="⬅️ Orqaga", callback_data="w_back")
     b.adjust(1)
-    await cb.message.edit_text(
-        "🎁 Qaysi giftni olmoqchisiz?\n"
-        "(Stars narxi ko'rsatilgan)",
-        reply_markup=b.as_markup()
-    )
+
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
 @dp.callback_query(F.data == "w_back")
 async def w_back(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
     user = get_user(cb.from_user.id)
-    reward_mode = get_setting("reward_mode", "both")
+    ratio = int(get_setting("star_per_point", "1"))
+    stars_equiv = user["points"] * ratio
+
     b = InlineKeyboardBuilder()
-    if reward_mode in ("stars", "both"):
-        b.button(text="⭐ Stars olish", callback_data="w_stars")
-    if reward_mode in ("gift", "both"):
-        b.button(text="🎁 Gift olish", callback_data="w_gift")
+    b.button(text="⭐ To'liq Stars olish", callback_data="w_stars")
+    b.button(text="🎁 Telegram Gift olish", callback_data="w_gift")
     b.button(text="❌ Bekor qilish", callback_data="w_cancel")
     b.adjust(1)
-    ratio = int(get_setting("star_per_point", "1"))
+
     await cb.message.edit_text(
-        f"💰 Sizda {user['points']} ball (≈ {user['points'] * ratio} ⭐)\n\nMukofot turini tanlang:",
-        reply_markup=b.as_markup()
+        f"💰 <b>Yechib olish</b>\n\n"
+        f"Ball: {user['points']}\n"
+        f"Stars ekv: {stars_equiv} ⭐\n\n"
+        f"Mukofot turini tanlang:",
+        reply_markup=b.as_markup(),
+        parse_mode="HTML"
     )
     await cb.answer()
 
@@ -641,6 +670,7 @@ async def gift_select(cb: types.CallbackQuery, state: FSMContext):
     user = get_user(cb.from_user.id)
     ratio = int(get_setting("star_per_point", "1"))
     points_needed = (gift["stars"] + ratio - 1) // ratio
+
     if points_needed > user["points"]:
         await cb.answer(
             f"❌ Yetarli emas!\nKerak: {points_needed} ball\nSizda: {user['points']} ball",
@@ -649,23 +679,27 @@ async def gift_select(cb: types.CallbackQuery, state: FSMContext):
         return
 
     db_exec(
-        "INSERT INTO withdrawals (user_id, amount, reward_type, gift_key, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO withdrawals (user_id, stars, reward_type, gift_key, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         (user["user_id"], gift["stars"], "gift", key, "pending", datetime.now().isoformat())
     )
     await state.clear()
-    await cb.message.edit_text(
-        f"✅ {gift['emoji']} {gift['name']} ({gift['stars']}⭐) so'rovingiz yuborildi.\n"
-        f"Admin tasdiqlashini kuting."
-    )
-    await cb.answer()
 
+    await cb.message.edit_text(
+        f"✅ <b>{gift['emoji']} {gift['name']}</b> ({gift['stars']}⭐) so'rovingiz yuborildi.\n"
+        f"Admin tasdiqlashini kuting.",
+        parse_mode="HTML"
+    )
+    await cb.answer("✅ So'rov yuborildi!")
+
+    # Adminga xabar
     for a in list_admins():
         try:
             await bot.send_message(
                 a["user_id"],
-                f"🎁 Yangi GIFT so'rovi!\n"
-                f"User: {user['first_name']} (<code>{user['user_id']}</code>)\n"
-                f"Gift: {gift['emoji']} {gift['name']} — {gift['stars']}⭐",
+                f"🎁 <b>Yangi GIFT so'rovi!</b>\n\n"
+                f"👤 User: {user['first_name']} (<code>{user['user_id']}</code>)\n"
+                f"🎁 Gift: {gift['emoji']} <b>{gift['name']}</b>\n"
+                f"⭐ Narx: <b>{gift['stars']} stars</b>",
                 parse_mode="HTML"
             )
         except Exception:
@@ -679,7 +713,11 @@ async def admin_panel(message: types.Message, state: FSMContext):
         await message.answer("❌ Siz admin emassiz!")
         return
     await state.clear()
-    await message.answer("🛠 <b>Admin Panel</b>", reply_markup=admin_menu(message.from_user.id), parse_mode="HTML")
+    await message.answer(
+        "🛠 <b>Admin Panel</b>",
+        reply_markup=admin_menu(message.from_user.id),
+        parse_mode="HTML"
+    )
 
 @dp.callback_query(F.data == "a_back")
 async def a_back(cb: types.CallbackQuery, state: FSMContext):
@@ -831,17 +869,15 @@ async def a_settings(cb: types.CallbackQuery):
     text = (
         f"⚙️ <b>Sozlamalar</b>\n\n"
         f"🎯 Referal ball: {get_setting('points_per_referral')}\n"
-        f"💰 Minimal yechish: {get_setting('min_withdraw')} ball\n"
+        f"💰 Min yechish: {get_setting('min_withdraw_points')} ball\n"
         f"🎁 Kunlik bonus: {get_setting('daily_bonus')} ball\n"
-        f"⭐ 1 ball = {get_setting('star_per_point')} stars\n"
-        f"💎 Mukofot rejimi: {get_setting('reward_mode')}"
+        f"⭐ 1 ball = {get_setting('star_per_point')} stars"
     )
     b = InlineKeyboardBuilder()
     b.button(text="🎯 Referal ball", callback_data="set_points")
     b.button(text="💰 Min yechish", callback_data="set_minw")
     b.button(text="🎁 Kunlik bonus", callback_data="set_daily")
     b.button(text="⭐ Star/ball", callback_data="set_star_ratio")
-    b.button(text="💎 Rejim", callback_data="set_reward_mode")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
@@ -853,7 +889,7 @@ async def set_val_start(cb: types.CallbackQuery, state: FSMContext):
         return
     mapping = {
         "set_points": ("points_per_referral", "🎯 Referal ball miqdorini kiriting:"),
-        "set_minw": ("min_withdraw", "💰 Minimal yechish (ball) kiriting:"),
+        "set_minw": ("min_withdraw_points", "💰 Minimal yechish (ball) kiriting:"),
         "set_daily": ("daily_bonus", "🎁 Kunlik bonus (ball) kiriting:"),
     }
     key, prompt = mapping[cb.data]
@@ -877,15 +913,18 @@ async def set_val_do(message: types.Message, state: FSMContext):
     await message.answer(f"✅ Yangilandi: {data['setting_key']} = {val}")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
-# ----- Star/ball nisbati -----
 @dp.callback_query(F.data == "set_star_ratio")
 async def set_star_ratio(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
         return
     await cb.message.edit_text(
-        "⭐ 1 ball nechta starsga teng?\n\n"
-        "Misol: 1 (1 ball = 1⭐), 2 (1 ball = 2⭐), 10 (1 ball = 10⭐)\n\n"
-        "Raqamni kiriting:"
+        "⭐ <b>1 ball nechta starsga teng?</b>\n\n"
+        "Misol:\n"
+        "• 1 → 1 ball = 1 ⭐\n"
+        "• 2 → 1 ball = 2 ⭐\n"
+        "• 10 → 1 ball = 10 ⭐\n\n"
+        "Raqamni kiriting:",
+        parse_mode="HTML"
     )
     await state.set_state(AS.set_stars_per_point)
     await cb.answer()
@@ -907,29 +946,6 @@ async def set_star_ratio_do(message: types.Message, state: FSMContext):
     await message.answer(f"✅ 1 ball = {val} ⭐ qilib o'rnatildi!")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
-# ----- Mukofot rejimi -----
-@dp.callback_query(F.data == "set_reward_mode")
-async def set_reward_mode(cb: types.CallbackQuery):
-    if not is_admin(cb.from_user.id):
-        return
-    b = InlineKeyboardBuilder()
-    b.button(text="⭐ Faqat Stars", callback_data="rm_stars")
-    b.button(text="🎁 Faqat Gift", callback_data="rm_gift")
-    b.button(text="💎 Ikkisi ham", callback_data="rm_both")
-    b.button(text="⬅️ Orqaga", callback_data="a_settings")
-    b.adjust(1)
-    await cb.message.edit_text("💎 Mukofot rejimini tanlang:", reply_markup=b.as_markup())
-    await cb.answer()
-
-@dp.callback_query(F.data.startswith("rm_"))
-async def set_reward_mode_do(cb: types.CallbackQuery):
-    if not is_admin(cb.from_user.id):
-        return
-    mode = cb.data.replace("rm_", "")
-    set_setting("reward_mode", mode)
-    await cb.answer(f"✅ {mode}")
-    await a_settings(cb)
-
 # ---------- Giftlar ----------
 @dp.callback_query(F.data == "a_gifts")
 async def a_gifts(cb: types.CallbackQuery):
@@ -938,7 +954,7 @@ async def a_gifts(cb: types.CallbackQuery):
     text = "🎁 <b>Mavjud giftlar va narxlari:</b>\n\n"
     for key, g in GIFTS.items():
         text += f"{g['emoji']} <b>{g['name']}</b> — {g['stars']} ⭐\n"
-    text += f"\n<i>Eslatma: Giftlar Telegram tomonidan yuboriladi. Narxlar rasmiy.</i>"
+    text += "\n<i>Narxlar Telegram tomonidan belgilangan.</i>"
     b = InlineKeyboardBuilder()
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
@@ -995,7 +1011,6 @@ async def add_admin_do(message: types.Message, state: FSMContext):
     add_admin(uid, message.from_user.id)
     await state.clear()
     await message.answer(f"✅ {user['first_name']} (<code>{uid}</code>) admin qilindi!", parse_mode="HTML")
-    # Yangi adminga xabar
     try:
         await bot.send_message(uid, "🎉 Siz admin etib tayinlandingiz!\n\n/admin buyrug'ini yuboring.")
     except Exception:
@@ -1099,9 +1114,9 @@ async def a_withdrawals(cb: types.CallbackQuery):
     for r in rows:
         if r["reward_type"] == "gift":
             g = GIFTS.get(r["gift_key"], {})
-            info = f"{g.get('emoji', '🎁')} {g.get('name', 'Gift')} ({r['amount']}⭐)"
+            info = f"{g.get('emoji', '🎁')} {g.get('name', 'Gift')} ({r['stars']}⭐)"
         else:
-            info = f"{r['amount']} ⭐"
+            info = f"{r['stars']} ⭐"
         text += f"• #{r['id']} {r['first_name']} ({r['user_id']}) — {info}\n"
         b.button(text=f"✅ #{r['id']}", callback_data=f"appr_{r['id']}")
         b.button(text=f"❌ #{r['id']}", callback_data=f"rej_{r['id']}")
@@ -1125,50 +1140,55 @@ async def approve_w(cb: types.CallbackQuery):
         return
 
     ratio = int(get_setting("star_per_point", "1"))
-    points_needed = (w["amount"] + ratio - 1) // ratio
+    points_needed = (w["stars"] + ratio - 1) // ratio
 
     if user["points"] < points_needed:
-        await cb.answer(f"❌ User'da yetarli ball yo'q! Kerak: {points_needed}, bor: {user['points']}", show_alert=True)
+        await cb.answer(
+            f"❌ User'da yetarli ball yo'q!\nKerak: {points_needed}, bor: {user['points']}",
+            show_alert=True
+        )
         return
 
     # Ballarni ayirish
     update_user(w["user_id"], points=user["points"] - points_needed)
+    db_exec("UPDATE withdrawals SET status='approved' WHERE id=?", (w_id,))
 
-    # Stars avtomatik yuborish
     if w["reward_type"] == "stars":
+        # Stars yuborish — Telegram Stars invoice orqali
         try:
-            # Stars yuborish uchun invoice (Telegram Stars)
             await bot.send_invoice(
                 chat_id=w["user_id"],
-                title=f"{w['amount']} Stars",
-                description=f"Siz {w['amount']} ⭐ yechib oldingiz!",
-                payload=f"stars_{w['id']}",
-                provider_token="",  # Stars uchun bo'sh
+                title=f"{w['stars']} Stars",
+                description=f"Siz {w['stars']} ⭐ yechib oldingiz!",
+                payload=f"stars_{w_id}",
+                provider_token="",
                 currency="XTR",
-                prices=[LabeledPrice(label="Stars", amount=w["amount"])],
+                prices=[types.LabeledPrice(label="Stars", amount=w["stars"])],
             )
             await bot.send_message(
                 w["user_id"],
-                f"✅ {w['amount']} ⭐ yechib olish tasdiqlandi!\n"
-                f"To'lovni qabul qilish uchun yuqoridagi xabarni bosing."
+                f"✅ <b>{w['stars']} ⭐</b> yechib olish tasdiqlandi!\n\n"
+                f"To'lovni qabul qilish uchun yuqoridagi xabarni bosing.",
+                parse_mode="HTML"
             )
+            await cb.answer("✅ Tasdiqlandi va Stars yuborildi!")
         except Exception as e:
             logger.error(f"Stars yuborishda xato: {e}")
-            await cb.answer(f"❌ Stars yuborishda xato: {e}", show_alert=True)
             # Ballarni qaytarish
             update_user(w["user_id"], points=user["points"])
+            db_exec("UPDATE withdrawals SET status='pending' WHERE id=?", (w_id,))
+            await cb.answer(f"❌ Xato: {e}", show_alert=True)
             return
     else:
         # Gift — qo'lda yuborish
         g = GIFTS.get(w["gift_key"], {})
         await bot.send_message(
             w["user_id"],
-            f"✅ {g.get('emoji', '🎁')} {g.get('name', 'Gift')} so'rovingiz tasdiqlandi!\n"
-            f"Admin tez orada giftni yuboradi."
+            f"✅ <b>{g.get('emoji', '🎁')} {g.get('name', 'Gift')}</b> so'rovingiz tasdiqlandi!\n\n"
+            f"Admin tez orada giftni yuboradi.",
+            parse_mode="HTML"
         )
-
-    db_exec("UPDATE withdrawals SET status='approved' WHERE id=?", (w_id,))
-    await cb.answer("✅ Tasdiqlandi!")
+        await cb.answer("✅ Tasdiqlandi! Gift qo'lda yuboriladi.")
 
 @dp.callback_query(F.data.startswith("rej_"))
 async def reject_w(cb: types.CallbackQuery):
@@ -1180,9 +1200,14 @@ async def reject_w(cb: types.CallbackQuery):
     await cb.answer("❌ Rad etildi!")
     if w:
         try:
+            if w["reward_type"] == "gift":
+                g = GIFTS.get(w["gift_key"], {})
+                info = f"{g.get('emoji', '🎁')} {g.get('name', 'Gift')}"
+            else:
+                info = f"{w['stars']} ⭐"
             await bot.send_message(
                 w["user_id"],
-                f"❌ {w['amount']} ⭐ yechib olish so'rovingiz rad etildi."
+                f"❌ {info} yechib olish so'rovingiz rad etildi."
             )
         except Exception:
             pass
