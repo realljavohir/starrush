@@ -4,6 +4,7 @@ import sqlite3
 import random
 import logging
 from datetime import datetime
+
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -12,22 +13,20 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.exceptions import TelegramBadRequest
 from aiohttp import web
 
-# ----------------- SOZLAMALAR -----------------
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8811849720:AAFK1yAFlJk3hKi9brRi1AFM5ZrzuSV3oKc")
-ADMIN_IDS = [int(x.strip()) for x in os.environ.get("ADMIN_IDS", "6713905538").split(",") if x.strip().isdigit()]
+# ==================== SOZLAMALAR ====================
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+ADMIN_IDS = [int(x.strip()) for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
 PORT = int(os.environ.get("PORT", 8080))
-USE_WEBHOOK = os.environ.get("USE_WEBHOOK", "false").lower() == "true"
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
 
 if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN muhit o'zgaruvchisi o'rnatilmagan!")
+    raise ValueError("BOT_TOKEN o'rnatilmagan!")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# ----------------- MA'LUMOTLAR BAZASI -----------------
 DB_PATH = "bot_data.db"
 
+# ==================== MA'LUMOTLAR BAZASI ====================
 def db_exec(query, params=(), fetch=False, fetchall=False):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -45,12 +44,11 @@ def db_exec(query, params=(), fetch=False, fetchall=False):
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
+    c.execute("""CREATE TABLE IF NOT EXISTS users (
         user_id INTEGER PRIMARY KEY,
         username TEXT,
         first_name TEXT,
         last_name TEXT,
-        language TEXT DEFAULT 'uz',
         points INTEGER DEFAULT 0,
         referrer_id INTEGER DEFAULT 0,
         is_verified INTEGER DEFAULT 0,
@@ -58,48 +56,50 @@ def init_db():
         is_suspicious INTEGER DEFAULT 0,
         joined_at TEXT,
         last_bonus TEXT
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS channels (
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS channels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         channel_username TEXT UNIQUE
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS questions (
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS questions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         question TEXT,
         answer TEXT
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS withdrawals (
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS withdrawals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         amount INTEGER,
         status TEXT DEFAULT 'pending',
         created_at TEXT
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS settings (
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT
-    )''')
+    )""")
     defaults = {
-        'points_per_referral': '5',
-        'min_withdraw': '50',
-        'reward_type': 'stars',
-        'daily_bonus': '1',
+        "points_per_referral": "5",
+        "min_withdraw": "50",
+        "reward_type": "stars",
+        "daily_bonus": "1",
     }
     for k, v in defaults.items():
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
     c.execute("SELECT COUNT(*) FROM questions")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO questions (question, answer) VALUES (?, ?)",
-                  ("2 + 2 nechaga teng? (raqamda yozing)", "4"))
+                  ("2 + 2 nechaga teng? (raqamda)", "4"))
         c.execute("INSERT INTO questions (question, answer) VALUES (?, ?)",
-                  ("O'zbekiston poytaxti? (kichik harfda)", "toshkent"))
+                  ("O'zbekiston poytaxti? (lotin, kichik harf)", "toshkent"))
+        c.execute("INSERT INTO questions (question, answer) VALUES (?, ?)",
+                  ("10 - 3 nechaga teng? (raqamda)", "7"))
     conn.commit()
     conn.close()
-    logger.info("Ma'lumotlar bazasi tayyor.")
+    logger.info("DB tayyor")
 
 def get_setting(key, default=None):
     row = db_exec("SELECT value FROM settings WHERE key=?", (key,), fetch=True)
-    return row['value'] if row else default
+    return row["value"] if row else default
 
 def set_setting(key, value):
     db_exec("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
@@ -121,26 +121,26 @@ def create_user(user_id, username, first_name, last_name, referrer_id=0):
         VALUES (?, ?, ?, ?, ?, ?)""",
         (user_id, username, first_name, last_name, referrer_id, datetime.now().isoformat()))
 
-def get_all_channels():
+def get_channels():
     rows = db_exec("SELECT channel_username FROM channels", fetchall=True)
-    return [r['channel_username'] for r in rows] if rows else []
+    return [r["channel_username"] for r in rows] if rows else []
 
-def add_channel(channel):
-    db_exec("INSERT OR IGNORE INTO channels (channel_username) VALUES (?)", (channel,))
+def add_channel(ch):
+    db_exec("INSERT OR IGNORE INTO channels (channel_username) VALUES (?)", (ch,))
 
-def remove_channel(channel):
-    db_exec("DELETE FROM channels WHERE channel_username=?", (channel,))
+def remove_channel(ch):
+    db_exec("DELETE FROM channels WHERE channel_username=?", (ch,))
 
 def get_random_question():
     row = db_exec("SELECT * FROM questions ORDER BY RANDOM() LIMIT 1", fetch=True)
     return dict(row) if row else None
 
-def get_question_by_id(q_id):
+def get_question(q_id):
     row = db_exec("SELECT * FROM questions WHERE id=?", (q_id,), fetch=True)
     return dict(row) if row else None
 
-def add_question(question, answer):
-    db_exec("INSERT INTO questions (question, answer) VALUES (?, ?)", (question, answer))
+def add_question(q, a):
+    db_exec("INSERT INTO questions (question, answer) VALUES (?, ?)", (q, a))
 
 def remove_question(q_id):
     db_exec("DELETE FROM questions WHERE id=?", (q_id,))
@@ -149,70 +149,69 @@ def get_questions():
     rows = db_exec("SELECT * FROM questions", fetchall=True)
     return [dict(r) for r in rows] if rows else []
 
-# ----------------- BOT VA DISPATCHER -----------------
+# ==================== BOT ====================
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# ----------------- HOLATLAR -----------------
-class UserStates(StatesGroup):
-    waiting_answer = State()
-    waiting_withdraw = State()
+class US(StatesGroup):
+    answer = State()
+    withdraw = State()
 
-class AdminStates(StatesGroup):
-    waiting_channel = State()
-    waiting_question = State()
-    waiting_question_answer = State()
-    waiting_broadcast = State()
-    waiting_setting_value = State()
-    waiting_user_id = State()
-    waiting_points_amount = State()
-    waiting_user_message = State()
+class AS(StatesGroup):
+    channel = State()
+    q_text = State()
+    q_ans = State()
+    broadcast = State()
+    setting_val = State()
+    user_id = State()
+    points_val = State()
+    user_msg = State()
 
-# ----------------- KLAVIATURALAR -----------------
-def main_menu(user_id):
+# ==================== KLAVIATURALAR ====================
+def main_menu(uid):
     b = ReplyKeyboardBuilder()
     b.button(text="👤 Profilim")
     b.button(text="🔗 Referal linkim")
     b.button(text="🏆 Reyting")
     b.button(text="🎁 Kunlik bonus")
     b.button(text="💰 Yechib olish")
-    if user_id in ADMIN_IDS:
+    if uid in ADMIN_IDS:
         b.button(text="🛠 Admin Panel")
     b.adjust(2)
     return b.as_markup(resize_keyboard=True)
 
 def admin_menu():
     b = InlineKeyboardBuilder()
-    b.button(text="📢 Kanallar", callback_data="admin_channels")
-    b.button(text="❓ Savollar", callback_data="admin_questions")
-    b.button(text="⚙️ Sozlamalar", callback_data="admin_settings")
-    b.button(text="📊 Statistika", callback_data="admin_stats")
-    b.button(text="📨 Broadcast", callback_data="admin_broadcast")
-    b.button(text="💸 Yechib olish", callback_data="admin_withdrawals")
-    b.button(text="👤 User boshqarish", callback_data="admin_users")
+    b.button(text="📢 Kanallar", callback_data="a_channels")
+    b.button(text="❓ Savollar", callback_data="a_questions")
+    b.button(text="⚙️ Sozlamalar", callback_data="a_settings")
+    b.button(text="📊 Statistika", callback_data="a_stats")
+    b.button(text="📨 Broadcast", callback_data="a_broadcast")
+    b.button(text="💸 Yechib olish", callback_data="a_withdrawals")
+    b.button(text="👤 User boshqarish", callback_data="a_users")
     b.adjust(2)
     return b.as_markup()
 
-# ----------------- OBUNA TEKSHIRUVI -----------------
-async def check_subscriptions(user_id):
-    channels = get_all_channels()
+# ==================== OBUNA TEKSHIRISH ====================
+async def check_subs(uid):
+    channels = get_channels()
     if not channels:
         return True
-    for channel in channels:
+    for ch in channels:
         try:
-            member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
-            if member.status in ['left', 'kicked']:
+            member = await bot.get_chat_member(chat_id=ch, user_id=uid)
+            if member.status in ("left", "kicked"):
                 return False
         except TelegramBadRequest as e:
-            logger.warning(f"Kanal tekshirishda xato ({channel}): {e}")
+            logger.warning(f"Kanal {ch}: {e}")
             continue
         except Exception as e:
-            logger.warning(f"Kanal tekshirishda kutilmagan xato ({channel}): {e}")
+            logger.warning(f"Kanal {ch} xato: {e}")
             continue
     return True
 
-async def subscription_keyboard():
-    channels = get_all_channels()
+async def subs_kb():
+    channels = get_channels()
     b = InlineKeyboardBuilder()
     for ch in channels:
         try:
@@ -225,97 +224,95 @@ async def subscription_keyboard():
     b.adjust(1)
     return b.as_markup()
 
-# ----------------- /start -----------------
+# ==================== /start ====================
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
-    user_id = message.from_user.id
-    username = message.from_user.username
-    first_name = message.from_user.first_name or "Foydalanuvchi"
-    last_name = message.from_user.last_name
+    uid = message.from_user.id
+    uname = message.from_user.username
+    fname = message.from_user.first_name or "Foydalanuvchi"
+    lname = message.from_user.last_name
 
     args = message.text.split(maxsplit=1)
-    referrer_id = 0
+    ref_id = 0
     if len(args) > 1 and args[1].startswith("ref_"):
         try:
-            ref_id = int(args[1].replace("ref_", ""))
-            if ref_id != user_id:
-                referrer_id = ref_id
+            r = int(args[1].replace("ref_", ""))
+            if r != uid:
+                ref_id = r
         except ValueError:
             pass
 
-    user = get_user(user_id)
+    user = get_user(uid)
     if user is None:
-        is_suspicious = 0 if username else 1
-        create_user(user_id, username, first_name, last_name, referrer_id)
-        if is_suspicious:
-            update_user(user_id, is_suspicious=1)
-        user = get_user(user_id)
+        susp = 0 if uname else 1
+        create_user(uid, uname, fname, lname, ref_id)
+        if susp:
+            update_user(uid, is_suspicious=1)
+        user = get_user(uid)
 
-    if user['is_banned']:
+    if user["is_banned"]:
         await message.answer("❌ Siz banlangansiz.")
         return
 
-    if not await check_subscriptions(user_id):
-        kb = await subscription_keyboard()
+    if not await check_subs(uid):
+        kb = await subs_kb()
         await message.answer(
             "⚠️ Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling:",
             reply_markup=kb
         )
         return
 
-    if user['is_verified']:
+    if user["is_verified"]:
         await message.answer(
-            f"Salom, {first_name}! 👋\n\nAsosiy menyu:",
-            reply_markup=main_menu(user_id)
+            f"Salom, {fname}! 👋\n\nAsosiy menyu:",
+            reply_markup=main_menu(uid)
         )
         return
 
     q = get_random_question()
     if not q:
-        update_user(user_id, is_verified=1)
+        update_user(uid, is_verified=1)
         await message.answer(
-            f"✅ Tasdiqlandi! Salom, {first_name}!",
-            reply_markup=main_menu(user_id)
+            f"✅ Tasdiqlandi! Salom, {fname}!",
+            reply_markup=main_menu(uid)
         )
         return
 
-    await state.update_data(question_id=q['id'], referrer_id=referrer_id)
-    await state.set_state(UserStates.waiting_answer)
-    await message.answer(
-        f"🤖 Iltimos, bot emasligingizni tasdiqlang:\n\n❓ {q['question']}"
-    )
+    await state.update_data(q_id=q["id"], ref_id=ref_id)
+    await state.set_state(US.answer)
+    await message.answer(f"🤖 Iltimos, bot emasligingizni tasdiqlang:\n\n❓ {q['question']}")
 
-# ----------------- JAVOBNI TEKSHIRISH -----------------
-@dp.message(UserStates.waiting_answer)
-async def check_answer(message: types.Message, state: FSMContext):
+# ==================== JAVOB TEKSHIRISH ====================
+@dp.message(US.answer)
+async def check_ans(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    q_id = data.get('question_id')
-    referrer_id = data.get('referrer_id', 0)
+    q_id = data.get("q_id")
+    ref_id = data.get("ref_id", 0)
 
-    q = get_question_by_id(q_id) if q_id else None
+    q = get_question(q_id) if q_id else None
     if not q:
         await state.clear()
         await message.answer("Xatolik. /start ni qaytadan bosing.")
         return
 
-    if message.text.strip().lower() != q['answer'].strip().lower():
+    if message.text.strip().lower() != q["answer"].strip().lower():
         await message.answer("❌ Noto'g'ri javob. Qaytadan: /start")
         await state.clear()
         return
 
-    user_id = message.from_user.id
-    update_user(user_id, is_verified=1)
+    uid = message.from_user.id
+    update_user(uid, is_verified=1)
 
-    if referrer_id and referrer_id != user_id:
-        referrer = get_user(referrer_id)
-        if referrer and not referrer['is_banned']:
-            points = int(get_setting('points_per_referral', '5'))
-            update_user(referrer_id, points=referrer['points'] + points)
+    if ref_id and ref_id != uid:
+        ref = get_user(ref_id)
+        if ref and not ref["is_banned"]:
+            pts = int(get_setting("points_per_referral", "5"))
+            update_user(ref_id, points=ref["points"] + pts)
             try:
                 await bot.send_message(
-                    referrer_id,
-                    f"🎉 Yangi referal! +{points} ball.\nJami: {referrer['points'] + points} ball"
+                    ref_id,
+                    f"🎉 Yangi referal! +{pts} ball.\nJami: {ref['points'] + pts} ball"
                 )
             except Exception:
                 pass
@@ -323,86 +320,92 @@ async def check_answer(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(
         "✅ Tasdiqlandi! Endi botdan foydalanishingiz mumkin.",
-        reply_markup=main_menu(user_id)
+        reply_markup=main_menu(uid)
     )
 
-# ----------------- OBUNA TEKSHIRISH CALLBACK -----------------
+# ==================== OBUNA CALLBACK ====================
 @dp.callback_query(F.data == "check_sub")
-async def check_sub_cb(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    if not await check_subscriptions(user_id):
-        await callback.answer("❌ Hali barcha kanallarga obuna emassiz!", show_alert=True)
+async def check_sub_cb(cb: types.CallbackQuery, state: FSMContext):
+    uid = cb.from_user.id
+    if not await check_subs(uid):
+        await cb.answer("❌ Hali obuna emassiz!", show_alert=True)
         return
 
-    await callback.answer("✅ Obuna tasdiqlandi!")
+    await cb.answer("✅ Tasdiqlandi!")
     try:
-        await callback.message.delete()
+        await cb.message.delete()
     except Exception:
         pass
 
-    user = get_user(user_id)
-    if user and user['is_verified']:
-        await callback.message.answer("Asosiy menyu:", reply_markup=main_menu(user_id))
+    user = get_user(uid)
+    if user and user["is_verified"]:
+        await cb.message.answer("Asosiy menyu:", reply_markup=main_menu(uid))
         return
 
     q = get_random_question()
     if not q:
-        update_user(user_id, is_verified=1)
-        await callback.message.answer("✅ Tasdiqlandi!", reply_markup=main_menu(user_id))
+        update_user(uid, is_verified=1)
+        await cb.message.answer("✅ Tasdiqlandi!", reply_markup=main_menu(uid))
         return
 
-    await state.update_data(question_id=q['id'], referrer_id=user['referrer_id'] if user else 0)
-    await state.set_state(UserStates.waiting_answer)
-    await callback.message.answer(f"🤖 Bot emasligingizni tasdiqlang:\n\n❓ {q['question']}")
+    await state.update_data(q_id=q["id"], ref_id=user["referrer_id"] if user else 0)
+    await state.set_state(US.answer)
+    await cb.message.answer(f"🤖 Bot emasligingizni tasdiqlang:\n\n❓ {q['question']}")
 
-# ----------------- MENYU HANDLERLARI -----------------
+# ==================== MENYU ====================
 @dp.message(F.text == "👤 Profilim")
 async def profile(message: types.Message):
     user = get_user(message.from_user.id)
     if not user:
         await message.answer("Iltimos, /start buyrug'ini bosing.")
         return
-    refs = db_exec("SELECT COUNT(*) AS c FROM users WHERE referrer_id=? AND is_verified=1",
-                   (user['user_id'],), fetch=True)
-    ref_count = refs['c'] if refs else 0
-    username_display = f"@{user['username']}" if user['username'] else "yo'q"
-    verified_display = "Ha" if user['is_verified'] else "Yo'q"
+    refs = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=? AND is_verified=1",
+        (user["user_id"],), fetch=True
+    )
+    ref_count = refs["c"] if refs else 0
+    uname = f"@{user['username']}" if user["username"] else "yo'q"
+    ver = "Ha" if user["is_verified"] else "Yo'q"
+    joined = user["joined_at"][:10] if user["joined_at"] else "N/A"
     text = (
         f"👤 <b>Profilingiz</b>\n\n"
         f"🆔 ID: <code>{user['user_id']}</code>\n"
         f"👤 Ism: {user['first_name'] or 'N/A'}\n"
-        f"🔗 Username: {username_display}\n"
+        f"🔗 Username: {uname}\n"
         f"🎯 Ball: {user['points']}\n"
         f"👥 Referallar: {ref_count}\n"
-        f"✅ Tasdiqlangan: {verified_display}\n"
-        f"📅 Qo'shilgan: {user['joined_at'][:10] if user['joined_at'] else 'N/A'}"
+        f"✅ Tasdiqlangan: {ver}\n"
+        f"📅 Qo'shilgan: {joined}"
     )
     await message.answer(text, parse_mode="HTML")
 
 @dp.message(F.text == "🔗 Referal linkim")
 async def ref_link(message: types.Message):
-    user_id = message.from_user.id
+    uid = message.from_user.id
     me = await bot.get_me()
-    link = f"https://t.me/{me.username}?start=ref_{user_id}"
-    refs = db_exec("SELECT COUNT(*) AS c FROM users WHERE referrer_id=? AND is_verified=1",
-                   (user_id,), fetch=True)
-    ref_count = refs['c'] if refs else 0
-    points = int(get_setting('points_per_referral', '5'))
-    user = get_user(user_id)
+    link = f"https://t.me/{me.username}?start=ref_{uid}"
+    refs = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=? AND is_verified=1",
+        (uid,), fetch=True
+    )
+    ref_count = refs["c"] if refs else 0
+    pts = int(get_setting("points_per_referral", "5"))
+    user = get_user(uid)
     text = (
         f"🔗 <b>Sizning referal linkingiz:</b>\n\n"
         f"<code>{link}</code>\n\n"
         f"👥 Taklif qilganlar: {ref_count}\n"
         f"🎯 Ball: {user['points'] if user else 0}\n\n"
-        f"Har bir tasdiqlangan referal uchun <b>{points} ball</b> olasiz!"
+        f"Har bir tasdiqlangan referal uchun <b>{pts} ball</b> olasiz!"
     )
     await message.answer(text, parse_mode="HTML")
 
 @dp.message(F.text == "🏆 Reyting")
 async def leaderboard(message: types.Message):
-    rows = db_exec("""SELECT first_name, points FROM users 
-                      WHERE is_verified=1 AND is_banned=0 
-                      ORDER BY points DESC LIMIT 10""", fetchall=True)
+    rows = db_exec(
+        "SELECT first_name, points FROM users WHERE is_verified=1 AND is_banned=0 ORDER BY points DESC LIMIT 10",
+        fetchall=True
+    )
     text = "🏆 <b>Top 10 Referalchilar</b>\n\n"
     if rows:
         for i, r in enumerate(rows, 1):
@@ -414,17 +417,17 @@ async def leaderboard(message: types.Message):
 
 @dp.message(F.text == "🎁 Kunlik bonus")
 async def daily_bonus(message: types.Message):
-    user_id = message.from_user.id
-    user = get_user(user_id)
+    uid = message.from_user.id
+    user = get_user(uid)
     if not user:
         await message.answer("Iltimos, /start buyrug'ini bosing.")
         return
     today = datetime.now().date().isoformat()
-    if user.get('last_bonus') == today:
+    if user.get("last_bonus") == today:
         await message.answer("❌ Siz bugun allaqachon bonus oldingiz!")
         return
-    bonus = int(get_setting('daily_bonus', '1'))
-    update_user(user_id, points=user['points'] + bonus, last_bonus=today)
+    bonus = int(get_setting("daily_bonus", "1"))
+    update_user(uid, points=user["points"] + bonus, last_bonus=today)
     await message.answer(f"🎁 Siz {bonus} ball oldingiz!\nJami: {user['points'] + bonus} ball")
 
 @dp.message(F.text == "💰 Yechib olish")
@@ -433,14 +436,14 @@ async def withdraw_start(message: types.Message, state: FSMContext):
     if not user:
         await message.answer("Iltimos, /start buyrug'ini bosing.")
         return
-    min_w = int(get_setting('min_withdraw', '50'))
-    if user['points'] < min_w:
+    min_w = int(get_setting("min_withdraw", "50"))
+    if user["points"] < min_w:
         await message.answer(f"❌ Minimal: {min_w} ball. Sizda: {user['points']}")
         return
     await message.answer(f"💰 Yechib olmoqchi bo'lgan ball miqdorini kiriting (min: {min_w}):")
-    await state.set_state(UserStates.waiting_withdraw)
+    await state.set_state(US.withdraw)
 
-@dp.message(UserStates.waiting_withdraw)
+@dp.message(US.withdraw)
 async def withdraw_process(message: types.Message, state: FSMContext):
     try:
         amount = int(message.text.strip())
@@ -448,25 +451,29 @@ async def withdraw_process(message: types.Message, state: FSMContext):
         await message.answer("❌ Faqat raqam kiriting.")
         return
     user = get_user(message.from_user.id)
-    min_w = int(get_setting('min_withdraw', '50'))
+    min_w = int(get_setting("min_withdraw", "50"))
     if amount < min_w:
         await message.answer(f"❌ Minimal: {min_w}")
         return
-    if amount > user['points']:
+    if amount > user["points"]:
         await message.answer(f"❌ Yetarli emas. Sizda: {user['points']}")
         return
-    db_exec("INSERT INTO withdrawals (user_id, amount, created_at) VALUES (?, ?, ?)",
-            (user['user_id'], amount, datetime.now().isoformat()))
+    db_exec(
+        "INSERT INTO withdrawals (user_id, amount, created_at) VALUES (?, ?, ?)",
+        (user["user_id"], amount, datetime.now().isoformat())
+    )
     await state.clear()
     await message.answer(f"✅ {amount} ball yechib olish so'rovi yuborildi. Admin tasdiqlashini kuting.")
     for admin_id in ADMIN_IDS:
         try:
-            await bot.send_message(admin_id,
-                f"💸 Yangi so'rov!\nUser: {user['first_name']} ({user['user_id']})\nMiqdor: {amount} ball")
+            await bot.send_message(
+                admin_id,
+                f"💸 Yangi so'rov!\nUser: {user['first_name']} ({user['user_id']})\nMiqdor: {amount} ball"
+            )
         except Exception:
             pass
 
-# ----------------- ADMIN PANEL -----------------
+# ==================== ADMIN PANEL ====================
 @dp.message(Command("admin"))
 @dp.message(F.text == "🛠 Admin Panel")
 async def admin_panel(message: types.Message, state: FSMContext):
@@ -476,38 +483,39 @@ async def admin_panel(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("🛠 <b>Admin Panel</b>", reply_markup=admin_menu(), parse_mode="HTML")
 
-@dp.callback_query(F.data == "admin_back")
-async def admin_back(cb: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(F.data == "a_back")
+async def a_back(cb: types.CallbackQuery, state: FSMContext):
     if cb.from_user.id not in ADMIN_IDS:
         return
     await state.clear()
     await cb.message.edit_text("🛠 <b>Admin Panel</b>", reply_markup=admin_menu(), parse_mode="HTML")
     await cb.answer()
 
-@dp.callback_query(F.data == "admin_channels")
-async def admin_channels(cb: types.CallbackQuery):
+# ---------- Kanallar ----------
+@dp.callback_query(F.data == "a_channels")
+async def a_channels(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
-    channels = get_all_channels()
+    channels = get_channels()
     text = "📢 <b>Majburiy kanallar:</b>\n\n"
     text += "\n".join([f"• {ch}" for ch in channels]) if channels else "Hozircha kanal yo'q."
     b = InlineKeyboardBuilder()
-    b.button(text="➕ Qo'shish", callback_data="add_channel")
-    b.button(text="➖ O'chirish", callback_data="del_channel_list")
-    b.button(text="⬅️ Orqaga", callback_data="admin_back")
+    b.button(text="➕ Qo'shish", callback_data="add_ch")
+    b.button(text="➖ O'chirish", callback_data="del_ch_list")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
-@dp.callback_query(F.data == "add_channel")
-async def add_channel_start(cb: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(F.data == "add_ch")
+async def add_ch_start(cb: types.CallbackQuery, state: FSMContext):
     if cb.from_user.id not in ADMIN_IDS:
         return
     await cb.message.edit_text("📢 Kanal username kiriting (masalan: @mychannel):")
-    await state.set_state(AdminStates.waiting_channel)
+    await state.set_state(AS.channel)
     await cb.answer()
 
-@dp.message(AdminStates.waiting_channel)
-async def add_channel_process(message: types.Message, state: FSMContext):
+@dp.message(AS.channel)
+async def add_ch_process(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
         return
     ch = message.text.strip()
@@ -518,40 +526,41 @@ async def add_channel_process(message: types.Message, state: FSMContext):
     await message.answer(f"✅ {ch} qo'shildi!")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
 
-@dp.callback_query(F.data == "del_channel_list")
-async def del_channel_list(cb: types.CallbackQuery):
+@dp.callback_query(F.data == "del_ch_list")
+async def del_ch_list(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
-    channels = get_all_channels()
+    channels = get_channels()
     if not channels:
         await cb.answer("Kanallar yo'q!", show_alert=True)
         return
     b = InlineKeyboardBuilder()
     for ch in channels:
         b.button(text=f"❌ {ch}", callback_data=f"delch_{ch}")
-    b.button(text="⬅️ Orqaga", callback_data="admin_channels")
+    b.button(text="⬅️ Orqaga", callback_data="a_channels")
     b.adjust(1)
     await cb.message.edit_text("O'chirmoqchi bo'lgan kanalni tanlang:", reply_markup=b.as_markup())
     await cb.answer()
 
 @dp.callback_query(F.data.startswith("delch_"))
-async def del_channel_do(cb: types.CallbackQuery):
+async def del_ch_do(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
     ch = cb.data.replace("delch_", "")
     remove_channel(ch)
     await cb.answer(f"✅ {ch} o'chirildi!")
-    channels = get_all_channels()
+    channels = get_channels()
     text = "📢 <b>Majburiy kanallar:</b>\n\n"
     text += "\n".join([f"• {c}" for c in channels]) if channels else "Hozircha kanal yo'q."
     b = InlineKeyboardBuilder()
-    b.button(text="➕ Qo'shish", callback_data="add_channel")
-    b.button(text="➖ O'chirish", callback_data="del_channel_list")
-    b.button(text="⬅️ Orqaga", callback_data="admin_back")
+    b.button(text="➕ Qo'shish", callback_data="add_ch")
+    b.button(text="➖ O'chirish", callback_data="del_ch_list")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
 
-@dp.callback_query(F.data == "admin_questions")
-async def admin_questions(cb: types.CallbackQuery):
+# ---------- Savollar ----------
+@dp.callback_query(F.data == "a_questions")
+async def a_questions(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
     qs = get_questions()
@@ -562,40 +571,40 @@ async def admin_questions(cb: types.CallbackQuery):
     else:
         text += "Hozircha savol yo'q."
     b = InlineKeyboardBuilder()
-    b.button(text="➕ Qo'shish", callback_data="add_question")
-    b.button(text="➖ O'chirish", callback_data="del_question_list")
-    b.button(text="⬅️ Orqaga", callback_data="admin_back")
+    b.button(text="➕ Qo'shish", callback_data="add_q")
+    b.button(text="➖ O'chirish", callback_data="del_q_list")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
-@dp.callback_query(F.data == "add_question")
-async def add_question_start(cb: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(F.data == "add_q")
+async def add_q_start(cb: types.CallbackQuery, state: FSMContext):
     if cb.from_user.id not in ADMIN_IDS:
         return
     await cb.message.edit_text("❓ Savolni kiriting:")
-    await state.set_state(AdminStates.waiting_question)
+    await state.set_state(AS.q_text)
     await cb.answer()
 
-@dp.message(AdminStates.waiting_question)
-async def add_question_process(message: types.Message, state: FSMContext):
+@dp.message(AS.q_text)
+async def add_q_text(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
         return
     await state.update_data(q_text=message.text.strip())
     await message.answer("Endi to'g'ri javobni kiriting:")
-    await state.set_state(AdminStates.waiting_question_answer)
+    await state.set_state(AS.q_ans)
 
-@dp.message(AdminStates.waiting_question_answer)
-async def add_question_answer(message: types.Message, state: FSMContext):
+@dp.message(AS.q_ans)
+async def add_q_ans(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
         return
     data = await state.get_data()
-    add_question(data.get('q_text'), message.text.strip())
+    add_question(data.get("q_text"), message.text.strip())
     await state.clear()
     await message.answer("✅ Savol qo'shildi!")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
 
-@dp.callback_query(F.data == "del_question_list")
-async def del_question_list(cb: types.CallbackQuery):
+@dp.callback_query(F.data == "del_q_list")
+async def del_q_list(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
     qs = get_questions()
@@ -605,22 +614,23 @@ async def del_question_list(cb: types.CallbackQuery):
     b = InlineKeyboardBuilder()
     for q in qs:
         b.button(text=f"❌ {q['question'][:40]}", callback_data=f"delq_{q['id']}")
-    b.button(text="⬅️ Orqaga", callback_data="admin_questions")
+    b.button(text="⬅️ Orqaga", callback_data="a_questions")
     b.adjust(1)
     await cb.message.edit_text("O'chirmoqchi bo'lgan savolni tanlang:", reply_markup=b.as_markup())
     await cb.answer()
 
 @dp.callback_query(F.data.startswith("delq_"))
-async def del_question_do(cb: types.CallbackQuery):
+async def del_q_do(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
     q_id = int(cb.data.replace("delq_", ""))
     remove_question(q_id)
     await cb.answer("✅ O'chirildi!")
-    await admin_questions(cb)
+    await a_questions(cb)
 
-@dp.callback_query(F.data == "admin_settings")
-async def admin_settings(cb: types.CallbackQuery):
+# ---------- Sozlamalar ----------
+@dp.callback_query(F.data == "a_settings")
+async def a_settings(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
     text = (
@@ -635,13 +645,13 @@ async def admin_settings(cb: types.CallbackQuery):
     b.button(text="💰 Min yechish", callback_data="set_minw")
     b.button(text="🎁 Mukofot turi", callback_data="set_reward")
     b.button(text="🎁 Kunlik bonus", callback_data="set_daily")
-    b.button(text="⬅️ Orqaga", callback_data="admin_back")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
 @dp.callback_query(F.data.in_({"set_points", "set_minw", "set_daily"}))
-async def set_setting_start(cb: types.CallbackQuery, state: FSMContext):
+async def set_val_start(cb: types.CallbackQuery, state: FSMContext):
     if cb.from_user.id not in ADMIN_IDS:
         return
     mapping = {
@@ -652,11 +662,11 @@ async def set_setting_start(cb: types.CallbackQuery, state: FSMContext):
     key, prompt = mapping[cb.data]
     await state.update_data(setting_key=key)
     await cb.message.edit_text(prompt)
-    await state.set_state(AdminStates.waiting_setting_value)
+    await state.set_state(AS.setting_val)
     await cb.answer()
 
-@dp.message(AdminStates.waiting_setting_value)
-async def set_setting_value(message: types.Message, state: FSMContext):
+@dp.message(AS.setting_val)
+async def set_val_do(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
         return
     try:
@@ -665,7 +675,7 @@ async def set_setting_value(message: types.Message, state: FSMContext):
         await message.answer("❌ Raqam kiriting.")
         return
     data = await state.get_data()
-    set_setting(data['setting_key'], val)
+    set_setting(data["setting_key"], val)
     await state.clear()
     await message.answer(f"✅ Yangilandi: {data['setting_key']} = {val}")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
@@ -677,7 +687,7 @@ async def set_reward(cb: types.CallbackQuery):
     b = InlineKeyboardBuilder()
     for t in ["stars", "gift", "premium", "sum"]:
         b.button(text=t.capitalize(), callback_data=f"rt_{t}")
-    b.button(text="⬅️ Orqaga", callback_data="admin_settings")
+    b.button(text="⬅️ Orqaga", callback_data="a_settings")
     b.adjust(2)
     await cb.message.edit_text("🎁 Mukofot turini tanlang:", reply_markup=b.as_markup())
     await cb.answer()
@@ -687,68 +697,70 @@ async def set_reward_do(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
     t = cb.data.replace("rt_", "")
-    set_setting('reward_type', t)
+    set_setting("reward_type", t)
     await cb.answer(f"✅ {t}")
-    await admin_settings(cb)
+    await a_settings(cb)
 
-@dp.callback_query(F.data == "admin_stats")
-async def admin_stats(cb: types.CallbackQuery):
+# ---------- Statistika ----------
+@dp.callback_query(F.data == "a_stats")
+async def a_stats(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
-    total = db_exec("SELECT COUNT(*) AS c FROM users", fetch=True)['c']
-    verified = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_verified=1", fetch=True)['c']
-    banned = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_banned=1", fetch=True)['c']
-    susp = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_suspicious=1", fetch=True)['c']
-    pending = db_exec("SELECT COUNT(*) AS c FROM withdrawals WHERE status='pending'", fetch=True)['c']
+    total = db_exec("SELECT COUNT(*) AS c FROM users", fetch=True)["c"]
+    ver = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_verified=1", fetch=True)["c"]
+    ban = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_banned=1", fetch=True)["c"]
+    susp = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_suspicious=1", fetch=True)["c"]
+    pend = db_exec("SELECT COUNT(*) AS c FROM withdrawals WHERE status='pending'", fetch=True)["c"]
     text = (
         f"📊 <b>Statistika</b>\n\n"
         f"👥 Jami: {total}\n"
-        f"✅ Tasdiqlangan: {verified}\n"
-        f"🚫 Ban: {banned}\n"
+        f"✅ Tasdiqlangan: {ver}\n"
+        f"🚫 Ban: {ban}\n"
         f"⚠️ Shubhali: {susp}\n"
-        f"💸 Kutilayotgan so'rovlar: {pending}"
+        f"💸 Kutilayotgan so'rovlar: {pend}"
     )
     b = InlineKeyboardBuilder()
-    b.button(text="⬅️ Orqaga", callback_data="admin_back")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
-@dp.callback_query(F.data == "admin_broadcast")
-async def broadcast_start(cb: types.CallbackQuery, state: FSMContext):
+# ---------- Broadcast ----------
+@dp.callback_query(F.data == "a_broadcast")
+async def a_broadcast(cb: types.CallbackQuery, state: FSMContext):
     if cb.from_user.id not in ADMIN_IDS:
         return
-    await cb.message.edit_text(
-        "📨 Yubormoqchi bo'lgan xabaringizni yuboring.\n"
-        "(Forward ham, oddiy matn ham bo'ladi)"
-    )
-    await state.set_state(AdminStates.waiting_broadcast)
+    await cb.message.edit_text("📨 Yubormoqchi bo'lgan xabaringizni yuboring (forward yoki matn):")
+    await state.set_state(AS.broadcast)
     await cb.answer()
 
-@dp.message(AdminStates.waiting_broadcast)
-async def broadcast_send(message: types.Message, state: FSMContext):
+@dp.message(AS.broadcast)
+async def broadcast_do(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
         return
     await state.clear()
     users = db_exec("SELECT user_id FROM users WHERE is_banned=0", fetchall=True) or []
-    success = 0
-    failed = 0
+    ok = 0
+    fail = 0
     for u in users:
         try:
-            await message.copy_to(chat_id=u['user_id'])
-            success += 1
+            await message.copy_to(chat_id=u["user_id"])
+            ok += 1
         except Exception:
-            failed += 1
+            fail += 1
         await asyncio.sleep(0.05)
-    await message.answer(f"📨 Yuborildi!\n✅ {success}\n❌ {failed}")
+    await message.answer(f"📨 Yuborildi!\n✅ {ok}\n❌ {fail}")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
 
-@dp.callback_query(F.data == "admin_withdrawals")
-async def admin_withdrawals(cb: types.CallbackQuery):
+# ---------- Yechib olish ----------
+@dp.callback_query(F.data == "a_withdrawals")
+async def a_withdrawals(cb: types.CallbackQuery):
     if cb.from_user.id not in ADMIN_IDS:
         return
-    rows = db_exec("""SELECT w.id, w.user_id, w.amount, u.first_name 
-                      FROM withdrawals w JOIN users u ON w.user_id=u.user_id 
-                      WHERE w.status='pending'""", fetchall=True) or []
+    rows = db_exec(
+        "SELECT w.id, w.user_id, w.amount, u.first_name FROM withdrawals w "
+        "JOIN users u ON w.user_id=u.user_id WHERE w.status='pending'",
+        fetchall=True
+    ) or []
     if not rows:
         await cb.answer("Kutilayotgan so'rovlar yo'q!", show_alert=True)
         return
@@ -756,195 +768,8 @@ async def admin_withdrawals(cb: types.CallbackQuery):
     b = InlineKeyboardBuilder()
     for r in rows:
         text += f"• {r['first_name']} ({r['user_id']}) — {r['amount']} ball\n"
-        b.button(text=f"✅ {r['id']} tasdiq", callback_data=f"appr_{r['id']}")
-        b.button(text=f"❌ {r['id']} rad", callback_data=f"rej_{r['id']}")
-    b.button(text="⬅️ Orqaga", callback_data="admin_back")
+        b.button(text=f"✅ {r['id']}", callback_data=f"appr_{r['id']}")
+        b.button(text=f"❌ {r['id']}", callback_data=f"rej_{r['id']}")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2)
-    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
-    await cb.answer()
-
-@dp.callback_query(F.data.startswith("appr_"))
-async def approve_w(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
-        return
-    w_id = int(cb.data.replace("appr_", ""))
-    w = db_exec("SELECT * FROM withdrawals WHERE id=?", (w_id,), fetch=True)
-    if not w:
-        await cb.answer("Topilmadi!", show_alert=True)
-        return
-    user = get_user(w['user_id'])
-    if not user or user['points'] < w['amount']:
-        await cb.answer("❌ Foydalanuvchida yetarli ball yo'q!", show_alert=True)
-        return
-    update_user(w['user_id'], points=user['points'] - w['amount'])
-    db_exec("UPDATE withdrawals SET status='approved' WHERE id=?", (w_id,))
-    await cb.answer("✅ Tasdiqlandi!")
-    try:
-        await bot.send_message(w['user_id'], f"✅ {w['amount']} ball yechib olish tasdiqlandi!")
-    except Exception:
-        pass
-
-@dp.callback_query(F.data.startswith("rej_"))
-async def reject_w(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
-        return
-    w_id = int(cb.data.replace("rej_", ""))
-    db_exec("UPDATE withdrawals SET status='rejected' WHERE id=?", (w_id,))
-    await cb.answer("❌ Rad etildi!")
-
-@dp.callback_query(F.data == "admin_users")
-async def admin_users(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
-        return
-    await cb.message.edit_text("👤 Foydalanuvchi ID sini kiriting:")
-    await state.set_state(AdminStates.waiting_user_id)
-    await cb.answer()
-
-@dp.message(AdminStates.waiting_user_id)
-async def admin_user_info(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
-        return
-    try:
-        uid = int(message.text.strip())
-    except ValueError:
-        await message.answer("❌ Raqam kiriting.")
-        return
-    user = get_user(uid)
-    if not user:
-        await message.answer("❌ Topilmadi.")
-        return
-    await state.clear()
-    b = InlineKeyboardBuilder()
-    b.button(text="🚫 Ban" if not user['is_banned'] else "✅ Unban",
-             callback_data=f"tog_{uid}")
-    b.button(text="➕ Ball qo'shish", callback_data=f"adp_{uid}")
-    b.button(text="✉️ Xabar yuborish", callback_data=f"msg_{uid}")
-    b.button(text="⬅️ Orqaga", callback_data="admin_back")
-    b.adjust(2)
-    username_display = f"@{user['username']}" if user['username'] else "yo'q"
-    ban_display = "Ha" if user['is_banned'] else "Yo'q"
-    verified_display = "Ha" if user['is_verified'] else "Yo'q"
-    text = (
-        f"👤 <b>Foydalanuvchi:</b>\n\n"
-        f"ID: <code>{user['user_id']}</code>\n"
-        f"Ism: {user['first_name']}\n"
-        f"Username: {username_display}\n"
-        f"Ball: {user['points']}\n"
-        f"Ban: {ban_display}\n"
-        f"Tasdiqlangan: {verified_display}"
-    )
-    await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
-
-@dp.callback_query(F.data.startswith("tog_"))
-async def toggle_ban(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
-        return
-    uid = int(cb.data.replace("tog_", ""))
-    user = get_user(uid)
-    if not user:
-        return
-    update_user(uid, is_banned=0 if user['is_banned'] else 1)
-    await cb.answer("✅ O'zgartirildi!")
-
-@dp.callback_query(F.data.startswith("adp_"))
-async def add_points_start(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
-        return
-    uid = int(cb.data.replace("adp_", ""))
-    await state.update_data(target_uid=uid)
-    await cb.message.edit_text("➕ Qancha ball qo'shilsin? (manfiy ham mumkin)")
-    await state.set_state(AdminStates.waiting_points_amount)
-    await cb.answer()
-
-@dp.message(AdminStates.waiting_points_amount)
-async def add_points_do(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
-        return
-    try:
-        amount = int(message.text.strip())
-    except ValueError:
-        await message.answer("❌ Raqam kiriting.")
-        return
-    data = await state.get_data()
-    uid = data['target_uid']
-    user = get_user(uid)
-    if not user:
-        await message.answer("❌ Topilmadi.")
-        return
-    new_points = max(0, user['points'] + amount)
-    update_user(uid, points=new_points)
-    await state.clear()
-    await message.answer(f"✅ Yangi ball: {new_points}")
-    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
-
-@dp.callback_query(F.data.startswith("msg_"))
-async def user_msg_start(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
-        return
-    uid = int(cb.data.replace("msg_", ""))
-    await state.update_data(target_uid=uid)
-    await cb.message.edit_text("✉️ Yubormoqchi bo'lgan xabaringizni yozing:")
-    await state.set_state(AdminStates.waiting_user_message)
-    await cb.answer()
-
-@dp.message(AdminStates.waiting_user_message)
-async def user_msg_send(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
-        return
-    data = await state.get_data()
-    uid = data['target_uid']
-    try:
-        await message.copy_to(chat_id=uid)
-        await message.answer("✅ Yuborildi!")
-    except Exception as e:
-        await message.answer(f"❌ Xato: {e}")
-    await state.clear()
-    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
-
-# ----------------- HEALTH CHECK + POLLING -----------------
-async def health(request):
-    return web.Response(text="OK")
-
-async def start_web():
-    app = web.Application()
-    app.router.add_get("/", health)
-    app.router.add_get("/health", health)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", PORT)
-    await site.start()
-    logger.info(f"Health server portda: {PORT}")
-
-async def main():
-    init_db()
-    await bot.delete_webhook(drop_pending_updates=True)
-
-    if USE_WEBHOOK and WEBHOOK_URL:
-        app = web.Application()
-
-        async def webhook_handler(request):
-            try:
-                data = await request.json()
-                update = types.Update.model_validate(data, context={"bot": bot})
-                await dp.feed_update(bot, update)
-            except Exception as e:
-                logger.exception(f"Webhook xato: {e}")
-            return web.Response(text="OK")
-
-        app.router.add_post("/webhook", webhook_handler)
-        app.router.add_get("/", health)
-        app.router.add_get("/health", health)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", PORT)
-        await site.start()
-        await bot.set_webhook(WEBHOOK_URL)
-        logger.info(f"Webhook o'rnatildi: {WEBHOOK_URL}")
-        await asyncio.Event().wait()
-    else:
-        logger.info("Polling rejimida ishga tushmoqda...")
-        asyncio.create_task(start_web())
-        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    await cb.message.edit_text(text, reply_markup=b
