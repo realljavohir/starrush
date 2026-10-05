@@ -123,6 +123,7 @@ LANGS = {
         "review_approved": "✅ <b>Sharhingiz tasdiqlandi va kanalga chiqdi!</b>\n\nRahmat! 🎉",
         "review_rejected": "❌ <b>Sharhingiz rad etildi.</b>",
         "level": "Daraja",
+        "stars_will_send": "✅ <b>So'rovingiz tasdiqlandi!</b>\n\n⭐ Miqdor: <b>{n} ⭐</b>\n\n<i>Admin tez orada sizga Stars yuboradi!</i>",
     },
     "ru": {
         "flag": "🇷🇺", "name": "Русский",
@@ -191,6 +192,7 @@ LANGS = {
         "review_approved": "✅ <b>Ваш отзыв одобрен и опубликован!</b>",
         "review_rejected": "❌ <b>Ваш отзыв отклонён.</b>",
         "level": "Уровень",
+        "stars_will_send": "✅ <b>Ваш запрос подтверждён!</b>\n\n⭐ Сумма: <b>{n} ⭐</b>\n\n<i>Админ скоро отправит вам Stars!</i>",
     },
     "en": {
         "flag": "🇬🇧", "name": "English",
@@ -259,6 +261,7 @@ LANGS = {
         "review_approved": "✅ <b>Your review approved and published!</b>",
         "review_rejected": "❌ <b>Your review rejected.</b>",
         "level": "Level",
+        "stars_will_send": "✅ <b>Your request approved!</b>\n\n⭐ Amount: <b>{n} ⭐</b>\n\n<i>Admin will send you Stars soon!</i>",
     },
 }
 
@@ -2409,35 +2412,63 @@ async def approve_w(cb: types.CallbackQuery):
 
     u_lang = get_user_lang(w["user_id"])
 
+    # OTZIV KANALGA POST (BATAFSIL)
     review_ch = get_setting("review_channel", "")
     if review_ch:
         try:
+            uname = f"@{user['username']}" if user["username"] else "—"
+            now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
             if w["reward_type"] == "stars":
-                text = f"🎉 <b>{user['first_name']}</b> {w['stars']} ⭐ yechib oldi!"
+                post = (
+                    f"🎉 <b>Yangi yechib olish!</b>\n\n"
+                    f"👤 <b>User:</b> {user['first_name'] or 'User'}\n"
+                    f"🔗 <b>Username:</b> {uname}\n"
+                    f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
+                    f"⭐ <b>Miqdor:</b> {w['stars']} ⭐\n"
+                    f"📅 <b>Vaqt:</b> {now}"
+                )
             else:
                 g = get_gift(w["gift_key"]) or {}
-                text = f"🎉 <b>{user['first_name']}</b> {g.get('emoji', '🎁')} <b>{g.get('name', 'Gift')}</b> oldi!"
-            await bot.send_message(review_ch, text, parse_mode="HTML")
+                post = (
+                    f"🎉 <b>Yangi gift olish!</b>\n\n"
+                    f"👤 <b>User:</b> {user['first_name'] or 'User'}\n"
+                    f"🔗 <b>Username:</b> {uname}\n"
+                    f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
+                    f"🎁 <b>Gift:</b> {g.get('emoji', '🎁')} <b>{g.get('name', 'Gift')}</b>\n"
+                    f"⭐ <b>Narx:</b> {w['stars']} ⭐\n"
+                    f"📅 <b>Vaqt:</b> {now}"
+                )
+            await bot.send_message(review_ch, post, parse_mode="HTML")
         except Exception as e:
             logger.warning(f"Otziv kanalga post: {e}")
 
+    # FOYDALANUVCHIGA XABAR (send_invoice YO'Q!)
     if w["reward_type"] == "stars":
         try:
-            await bot.send_invoice(
-                chat_id=w["user_id"],
-                title=f"{w['stars']} Stars",
-                description=f"Siz {w['stars']} ⭐ yechib oldingiz!",
-                payload=f"stars_{w_id}",
-                provider_token="",
-                currency="XTR",
-                prices=[types.LabeledPrice(label="Stars", amount=w["stars"])],
-            )
             await bot.send_message(
                 w["user_id"],
-                T(u_lang, "approved") + f"\n\n⭐ <b>{w['stars']} ⭐</b>",
+                T(u_lang, "stars_will_send", n=w["stars"]),
                 parse_mode="HTML"
             )
             await cb.answer("✅")
+
+            # Adminga eslatma — Fragment orqali qo'lda yuborish uchun
+            uname = f"@{user['username']}" if user["username"] else "—"
+            for a in list_admins():
+                try:
+                    await bot.send_message(
+                        a["user_id"],
+                        f"⚠️ <b>Stars yuborish kerak!</b>\n\n"
+                        f"👤 User: {user['first_name']}\n"
+                        f"🔗 Username: {uname}\n"
+                        f"🆔 ID: <code>{user['user_id']}</code>\n"
+                        f"⭐ Miqdor: <b>{w['stars']} ⭐</b>\n\n"
+                        f"<b>Fragment.com</b> orqali qo'lda yuboring!",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
         except Exception as e:
             update_user(w["user_id"], stars=user["stars"])
             db_exec("UPDATE withdrawals SET status='pending' WHERE id=?", (w_id,))
@@ -2447,7 +2478,8 @@ async def approve_w(cb: types.CallbackQuery):
         g = get_gift(w["gift_key"]) or {}
         await bot.send_message(
             w["user_id"],
-            T(u_lang, "approved") + f"\n\n{g.get('emoji', '🎁')} <b>{g.get('name', 'Gift')}</b>",
+            T(u_lang, "approved") + f"\n\n{g.get('emoji', '🎁')} <b>{g.get('name', 'Gift')}</b>\n\n"
+            f"<i>Admin tez orada giftni yuboradi!</i>",
             parse_mode="HTML"
         )
         await cb.answer("✅")
@@ -2593,13 +2625,16 @@ async def review_approve(cb: types.CallbackQuery):
     if review_ch and user:
         try:
             uname = f"@{user['username']}" if user["username"] else "—"
-            await bot.send_message(
-                review_ch,
+            now = datetime.now().strftime("%Y-%m-%d %H:%M")
+            post = (
                 f"⭐ <b>Yangi sharh!</b>\n\n"
-                f"👤 {user['first_name']} ({uname})\n\n"
-                f"💬 <i>{r['text']}</i>",
-                parse_mode="HTML"
+                f"👤 <b>User:</b> {user['first_name'] or 'User'}\n"
+                f"🔗 <b>Username:</b> {uname}\n"
+                f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
+                f"📅 <b>Vaqt:</b> {now}\n\n"
+                f"💬 <i>{r['text']}</i>"
             )
+            await bot.send_message(review_ch, post, parse_mode="HTML")
         except Exception as e:
             logger.warning(f"Otziv kanal: {e}")
 
