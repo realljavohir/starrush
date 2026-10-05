@@ -8,7 +8,6 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.exceptions import TelegramBadRequest
 from aiohttp import web
@@ -80,7 +79,6 @@ def init_db():
         key TEXT PRIMARY KEY,
         value TEXT
     )''')
-    # Standart sozlamalar
     defaults = {
         'points_per_referral': '5',
         'min_withdraw': '50',
@@ -89,7 +87,6 @@ def init_db():
     }
     for k, v in defaults.items():
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
-    # Standart savol
     c.execute("SELECT COUNT(*) FROM questions")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO questions (question, answer) VALUES (?, ?)",
@@ -237,7 +234,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
     first_name = message.from_user.first_name or "Foydalanuvchi"
     last_name = message.from_user.last_name
 
-    # Referal ID
     args = message.text.split(maxsplit=1)
     referrer_id = 0
     if len(args) > 1 and args[1].startswith("ref_"):
@@ -260,7 +256,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
         await message.answer("❌ Siz banlangansiz.")
         return
 
-    # Obuna tekshirish
     if not await check_subscriptions(user_id):
         kb = await subscription_keyboard()
         await message.answer(
@@ -269,7 +264,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
         )
         return
 
-    # Verifikatsiya tekshiruvi
     if user['is_verified']:
         await message.answer(
             f"Salom, {first_name}! 👋\n\nAsosiy menyu:",
@@ -277,7 +271,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
         )
         return
 
-    # Savol berish
     q = get_random_question()
     if not q:
         update_user(user_id, is_verified=1)
@@ -314,15 +307,9 @@ async def check_answer(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     update_user(user_id, is_verified=1)
 
-    # Referal hisoblash
     if referrer_id and referrer_id != user_id:
         referrer = get_user(referrer_id)
         if referrer and not referrer['is_banned']:
-            # Anti-fraud: faqat bir marta hisoblash
-            already = db_exec(
-                "SELECT 1 FROM users WHERE user_id=? AND referrer_id=?",
-                (user_id, referrer_id), fetch=True
-            )
             points = int(get_setting('points_per_referral', '5'))
             update_user(referrer_id, points=referrer['points'] + points)
             try:
@@ -375,18 +362,19 @@ async def profile(message: types.Message):
     if not user:
         await message.answer("Iltimos, /start buyrug'ini bosing.")
         return
-    # Referal soni
     refs = db_exec("SELECT COUNT(*) AS c FROM users WHERE referrer_id=? AND is_verified=1",
                    (user['user_id'],), fetch=True)
     ref_count = refs['c'] if refs else 0
+    username_display = f"@{user['username']}" if user['username'] else "yo'q"
+    verified_display = "Ha" if user['is_verified'] else "Yo'q"
     text = (
         f"👤 <b>Profilingiz</b>\n\n"
         f"🆔 ID: <code>{user['user_id']}</code>\n"
         f"👤 Ism: {user['first_name'] or 'N/A'}\n"
-        f"🔗 Username: @{user['username'] if user['username'] else 'yo\'q'}\n"
+        f"🔗 Username: {username_display}\n"
         f"🎯 Ball: {user['points']}\n"
         f"👥 Referallar: {ref_count}\n"
-        f"✅ Tasdiqlangan: {'Ha' if user['is_verified'] else 'Yo\'q'}\n"
+        f"✅ Tasdiqlangan: {verified_display}\n"
         f"📅 Qo'shilgan: {user['joined_at'][:10] if user['joined_at'] else 'N/A'}"
     )
     await message.answer(text, parse_mode="HTML")
@@ -471,7 +459,6 @@ async def withdraw_process(message: types.Message, state: FSMContext):
             (user['user_id'], amount, datetime.now().isoformat()))
     await state.clear()
     await message.answer(f"✅ {amount} ball yechib olish so'rovi yuborildi. Admin tasdiqlashini kuting.")
-    # Adminga xabar
     for admin_id in ADMIN_IDS:
         try:
             await bot.send_message(admin_id,
@@ -834,14 +821,17 @@ async def admin_user_info(message: types.Message, state: FSMContext):
     b.button(text="✉️ Xabar yuborish", callback_data=f"msg_{uid}")
     b.button(text="⬅️ Orqaga", callback_data="admin_back")
     b.adjust(2)
+    username_display = f"@{user['username']}" if user['username'] else "yo'q"
+    ban_display = "Ha" if user['is_banned'] else "Yo'q"
+    verified_display = "Ha" if user['is_verified'] else "Yo'q"
     text = (
         f"👤 <b>Foydalanuvchi:</b>\n\n"
         f"ID: <code>{user['user_id']}</code>\n"
         f"Ism: {user['first_name']}\n"
-        f"Username: @{user['username'] or 'yoq'}\n"
+        f"Username: {username_display}\n"
         f"Ball: {user['points']}\n"
-        f"Ban: {'Ha' if user['is_banned'] else 'Yo\\'q'}\n"
-        f"Tasdiqlangan: {'Ha' if user['is_verified'] else 'Yo\\'q'}"
+        f"Ban: {ban_display}\n"
+        f"Tasdiqlangan: {verified_display}"
     )
     await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
 
@@ -855,7 +845,6 @@ async def toggle_ban(cb: types.CallbackQuery):
         return
     update_user(uid, is_banned=0 if user['is_banned'] else 1)
     await cb.answer("✅ O'zgartirildi!")
-    await admin_users(cb, None)
 
 @dp.callback_query(F.data.startswith("adp_"))
 async def add_points_start(cb: types.CallbackQuery, state: FSMContext):
@@ -912,7 +901,7 @@ async def user_msg_send(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
 
-# ----------------- HEALTH CHECK + POLLING/WEBHOOK -----------------
+# ----------------- HEALTH CHECK + POLLING -----------------
 async def health(request):
     return web.Response(text="OK")
 
@@ -928,12 +917,10 @@ async def start_web():
 
 async def main():
     init_db()
-    await bot.delete_webhook(drop_pending_updates=True)  # Konfliktni oldini oladi
+    await bot.delete_webhook(drop_pending_updates=True)
 
     if USE_WEBHOOK and WEBHOOK_URL:
-        # Webhook rejimi (ixtiyoriy)
-        from aiohttp import web as aio_web
-        app = aio_web.Application()
+        app = web.Application()
 
         async def webhook_handler(request):
             try:
@@ -942,22 +929,21 @@ async def main():
                 await dp.feed_update(bot, update)
             except Exception as e:
                 logger.exception(f"Webhook xato: {e}")
-            return aio_web.Response(text="OK")
+            return web.Response(text="OK")
 
         app.router.add_post("/webhook", webhook_handler)
         app.router.add_get("/", health)
         app.router.add_get("/health", health)
-        runner = aio_web.AppRunner(app)
+        runner = web.AppRunner(app)
         await runner.setup()
-        site = aio_web.TCPSite(runner, "0.0.0.0", PORT)
+        site = web.TCPSite(runner, "0.0.0.0", PORT)
         await site.start()
         await bot.set_webhook(WEBHOOK_URL)
         logger.info(f"Webhook o'rnatildi: {WEBHOOK_URL}")
         await asyncio.Event().wait()
     else:
-        # Polling rejimi (tavsiya etiladi)
         logger.info("Polling rejimida ishga tushmoqda...")
-        asyncio.create_task(start_web())  # Render health check uchun
+        asyncio.create_task(start_web())
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 if __name__ == "__main__":
