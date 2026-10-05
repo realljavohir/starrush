@@ -1,9 +1,11 @@
 import os
 import asyncio
-import sqlite3
 import logging
 import random
 from datetime import datetime
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -18,15 +20,17 @@ from aiohttp import web
 # ═══════════════════════════════════════════════════════════
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 SUPER_ADMIN_IDS = [int(x.strip()) for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 PORT = int(os.environ.get("PORT", 8080))
 
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN o'rnatilmagan!")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL o'rnatilmagan!")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-DB_PATH = "bot_data.db"
 MIN_STARS = 50
 MAX_STARS = 1_000_000
 
@@ -274,97 +278,113 @@ def T(lang, key, **kwargs):
         return text
 
 # ═══════════════════════════════════════════════════════════
-# DB
+# DB — PostgreSQL
 # ═══════════════════════════════════════════════════════════
 def db_exec(query, params=(), fetch=False, fetchall=False):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    c.execute(query, params)
-    result = None
-    if fetch:
-        result = c.fetchone()
-    elif fetchall:
-        result = c.fetchall()
-    conn.commit()
-    conn.close()
-    return result
+    """Universal DB funksiyasi (PostgreSQL)"""
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = True
+    c = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        query = query.replace("?", "%s")
+        c.execute(query, params)
+        result = None
+        if fetch:
+            result = c.fetchone()
+        elif fetchall:
+            result = c.fetchall()
+        return result
+    finally:
+        c.close()
+        conn.close()
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = True
     c = conn.cursor()
+
     c.execute("""CREATE TABLE IF NOT EXISTS users (
-        user_id INTEGER PRIMARY KEY,
+        user_id BIGINT PRIMARY KEY,
         username TEXT,
         first_name TEXT,
         last_name TEXT,
         language TEXT DEFAULT 'uz',
         stars INTEGER DEFAULT 0,
-        referrer_id INTEGER DEFAULT 0,
+        referrer_id BIGINT DEFAULT 0,
         is_verified INTEGER DEFAULT 0,
         is_banned INTEGER DEFAULT 0,
         is_suspicious INTEGER DEFAULT 0,
         joined_at TEXT
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS channels (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         channel_username TEXT UNIQUE
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS questions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         question TEXT,
         correct_answer TEXT,
         wrong1 TEXT,
         wrong2 TEXT
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS gifts (
         key TEXT PRIMARY KEY,
         emoji TEXT,
         name TEXT,
         stars INTEGER
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS withdrawals (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
         stars INTEGER,
         reward_type TEXT,
         gift_key TEXT,
         status TEXT DEFAULT 'pending',
         created_at TEXT
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS admins (
-        user_id INTEGER PRIMARY KEY,
-        added_by INTEGER,
+        user_id BIGINT PRIMARY KEY,
+        added_by BIGINT,
         added_at TEXT
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS support_tickets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        admin_id INTEGER,
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        admin_id BIGINT,
         message_type TEXT,
         content TEXT,
         is_from_admin INTEGER DEFAULT 0,
         created_at TEXT
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS support_chats (
-        user_id INTEGER PRIMARY KEY,
+        user_id BIGINT PRIMARY KEY,
         status TEXT DEFAULT 'open',
-        admin_id INTEGER DEFAULT 0,
+        admin_id BIGINT DEFAULT 0,
         updated_at TEXT
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS reviews (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
         text TEXT,
         status TEXT DEFAULT 'pending',
         created_at TEXT
     )""")
+
     c.execute("""CREATE TABLE IF NOT EXISTS levels (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT,
         emoji TEXT,
         min_stars INTEGER,
@@ -378,16 +398,17 @@ def init_db():
         "review_channel": "",
     }
     for k, v in defaults.items():
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
+        c.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING", (k, v))
 
     for a in SUPER_ADMIN_IDS:
-        c.execute("INSERT OR IGNORE INTO admins (user_id, added_by, added_at) VALUES (?, ?, ?)",
+        c.execute("""INSERT INTO admins (user_id, added_by, added_at) 
+                     VALUES (%s, %s, %s) ON CONFLICT (user_id) DO NOTHING""",
                   (a, a, datetime.now().isoformat()))
 
     c.execute("SELECT COUNT(*) FROM levels")
     if c.fetchone()[0] == 0:
         for lvl in DEFAULT_LEVELS:
-            c.execute("INSERT INTO levels (name, emoji, min_stars, max_stars) VALUES (?, ?, ?, ?)",
+            c.execute("INSERT INTO levels (name, emoji, min_stars, max_stars) VALUES (%s, %s, %s, %s)",
                       (lvl["name"], lvl["emoji"], lvl["min"], lvl["max"]))
 
     c.execute("SELECT COUNT(*) FROM gifts")
@@ -406,7 +427,8 @@ def init_db():
             ("diamond",   "💎", "Diamond",    100),
         ]
         for key, emoji, name, stars in default_gifts:
-            c.execute("INSERT OR IGNORE INTO gifts (key, emoji, name, stars) VALUES (?, ?, ?, ?)",
+            c.execute("""INSERT INTO gifts (key, emoji, name, stars) 
+                         VALUES (%s, %s, %s, %s) ON CONFLICT (key) DO NOTHING""",
                       (key, emoji, name, stars))
 
     c.execute("SELECT COUNT(*) FROM questions")
@@ -420,26 +442,31 @@ def init_db():
         ]
         for q, correct, w1, w2 in default_qs:
             c.execute("""INSERT INTO questions (question, correct_answer, wrong1, wrong2) 
-                        VALUES (?, ?, ?, ?)""", (q, correct, w1, w2))
+                        VALUES (%s, %s, %s, %s)""", (q, correct, w1, w2))
 
-    conn.commit()
+    c.close()
     conn.close()
-    logger.info("DB tayyor")
+    logger.info("PostgreSQL DB tayyor")
 
+# ═══════════════════════════════════════════════════════════
+# YORDAMCHI FUNKSIYALAR
+# ═══════════════════════════════════════════════════════════
 def get_setting(key, default=None):
-    row = db_exec("SELECT value FROM settings WHERE key=?", (key,), fetch=True)
+    row = db_exec("SELECT value FROM settings WHERE key=%s", (key,), fetch=True)
     return row["value"] if row else default
 
 def set_setting(key, value):
-    db_exec("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
+    db_exec("""INSERT INTO settings (key, value) VALUES (%s, %s)
+               ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
+            (key, str(value)))
 
 def get_user(user_id):
-    row = db_exec("SELECT * FROM users WHERE user_id=?", (user_id,), fetch=True)
+    row = db_exec("SELECT * FROM users WHERE user_id=%s", (user_id,), fetch=True)
     return dict(row) if row else None
 
 def get_user_by_username(username):
     uname = username.lstrip("@").lower()
-    row = db_exec("SELECT * FROM users WHERE LOWER(username)=?", (uname,), fetch=True)
+    row = db_exec("SELECT * FROM users WHERE LOWER(username)=%s", (uname,), fetch=True)
     return dict(row) if row else None
 
 def get_user_lang(user_id):
@@ -449,31 +476,32 @@ def get_user_lang(user_id):
 def update_user(user_id, **kwargs):
     if not kwargs:
         return
-    fields = ", ".join([f"{k}=?" for k in kwargs.keys()])
+    fields = ", ".join([f"{k}=%s" for k in kwargs.keys()])
     values = list(kwargs.values()) + [user_id]
-    db_exec(f"UPDATE users SET {fields} WHERE user_id=?", values)
+    db_exec(f"UPDATE users SET {fields} WHERE user_id=%s", values)
 
 def create_user(user_id, username, first_name, last_name, referrer_id=0):
-    db_exec("""INSERT OR IGNORE INTO users 
+    db_exec("""INSERT INTO users 
         (user_id, username, first_name, last_name, referrer_id, joined_at) 
-        VALUES (?, ?, ?, ?, ?, ?)""",
+        VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (user_id) DO NOTHING""",
         (user_id, username, first_name, last_name, referrer_id, datetime.now().isoformat()))
 
 def is_admin(user_id):
     if user_id in SUPER_ADMIN_IDS:
         return True
-    row = db_exec("SELECT 1 FROM admins WHERE user_id=?", (user_id,), fetch=True)
+    row = db_exec("SELECT 1 FROM admins WHERE user_id=%s", (user_id,), fetch=True)
     return row is not None
 
 def is_super_admin(user_id):
     return user_id in SUPER_ADMIN_IDS
 
 def add_admin(user_id, added_by):
-    db_exec("INSERT OR IGNORE INTO admins (user_id, added_by, added_at) VALUES (?, ?, ?)",
+    db_exec("""INSERT INTO admins (user_id, added_by, added_at) VALUES (%s, %s, %s)
+               ON CONFLICT (user_id) DO NOTHING""",
             (user_id, added_by, datetime.now().isoformat()))
 
 def remove_admin(user_id):
-    db_exec("DELETE FROM admins WHERE user_id=?", (user_id,))
+    db_exec("DELETE FROM admins WHERE user_id=%s", (user_id,))
 
 def list_admins():
     rows = db_exec("SELECT * FROM admins", fetchall=True)
@@ -484,25 +512,25 @@ def get_channels():
     return [r["channel_username"] for r in rows] if rows else []
 
 def add_channel(ch):
-    db_exec("INSERT OR IGNORE INTO channels (channel_username) VALUES (?)", (ch,))
+    db_exec("INSERT INTO channels (channel_username) VALUES (%s) ON CONFLICT DO NOTHING", (ch,))
 
 def remove_channel(ch):
-    db_exec("DELETE FROM channels WHERE channel_username=?", (ch,))
+    db_exec("DELETE FROM channels WHERE channel_username=%s", (ch,))
 
 def get_random_question():
     row = db_exec("SELECT * FROM questions ORDER BY RANDOM() LIMIT 1", fetch=True)
     return dict(row) if row else None
 
 def get_question(q_id):
-    row = db_exec("SELECT * FROM questions WHERE id=?", (q_id,), fetch=True)
+    row = db_exec("SELECT * FROM questions WHERE id=%s", (q_id,), fetch=True)
     return dict(row) if row else None
 
 def add_question(q, correct, wrong1, wrong2):
     db_exec("""INSERT INTO questions (question, correct_answer, wrong1, wrong2) 
-               VALUES (?, ?, ?, ?)""", (q, correct, wrong1, wrong2))
+               VALUES (%s, %s, %s, %s)""", (q, correct, wrong1, wrong2))
 
 def remove_question(q_id):
-    db_exec("DELETE FROM questions WHERE id=?", (q_id,))
+    db_exec("DELETE FROM questions WHERE id=%s", (q_id,))
 
 def get_questions():
     rows = db_exec("SELECT * FROM questions", fetchall=True)
@@ -513,27 +541,30 @@ def get_all_gifts():
     return [dict(r) for r in rows] if rows else []
 
 def get_gift(key):
-    row = db_exec("SELECT * FROM gifts WHERE key=?", (key,), fetch=True)
+    row = db_exec("SELECT * FROM gifts WHERE key=%s", (key,), fetch=True)
     return dict(row) if row else None
 
 def add_gift(key, emoji, name, stars):
-    db_exec("INSERT OR REPLACE INTO gifts (key, emoji, name, stars) VALUES (?, ?, ?, ?)",
+    db_exec("""INSERT INTO gifts (key, emoji, name, stars) VALUES (%s, %s, %s, %s)
+               ON CONFLICT (key) DO UPDATE SET emoji=EXCLUDED.emoji, name=EXCLUDED.name, stars=EXCLUDED.stars""",
             (key, emoji, name, stars))
 
 def remove_gift(key):
-    db_exec("DELETE FROM gifts WHERE key=?", (key,))
+    db_exec("DELETE FROM gifts WHERE key=%s", (key,))
 
 def get_chat_status(user_id):
-    row = db_exec("SELECT status FROM support_chats WHERE user_id=?", (user_id,), fetch=True)
+    row = db_exec("SELECT status FROM support_chats WHERE user_id=%s", (user_id,), fetch=True)
     return row["status"] if row else None
 
 def open_chat(user_id):
-    db_exec("""INSERT OR REPLACE INTO support_chats (user_id, status, admin_id, updated_at)
-               VALUES (?, 'open', 0, ?)""", (user_id, datetime.now().isoformat()))
+    db_exec("""INSERT INTO support_chats (user_id, status, admin_id, updated_at)
+               VALUES (%s, 'open', 0, %s)
+               ON CONFLICT (user_id) DO UPDATE SET status='open', updated_at=EXCLUDED.updated_at""",
+            (user_id, datetime.now().isoformat()))
 
 def close_chat(user_id, closed_by="user"):
     status = f"closed_by_{closed_by}"
-    db_exec("UPDATE support_chats SET status=?, updated_at=? WHERE user_id=?",
+    db_exec("UPDATE support_chats SET status=%s, updated_at=%s WHERE user_id=%s",
             (status, datetime.now().isoformat(), user_id))
 
 def is_chat_open(user_id):
@@ -541,12 +572,12 @@ def is_chat_open(user_id):
 
 def save_support_msg(user_id, admin_id, msg_type, content, is_from_admin):
     db_exec("""INSERT INTO support_tickets (user_id, admin_id, message_type, content, is_from_admin, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               VALUES (%s, %s, %s, %s, %s, %s)""",
             (user_id, admin_id, msg_type, content, is_from_admin, datetime.now().isoformat()))
 
 def delete_chat(user_id):
-    db_exec("DELETE FROM support_tickets WHERE user_id=?", (user_id,))
-    db_exec("DELETE FROM support_chats WHERE user_id=?", (user_id,))
+    db_exec("DELETE FROM support_tickets WHERE user_id=%s", (user_id,))
+    db_exec("DELETE FROM support_chats WHERE user_id=%s", (user_id,))
 
 def get_chat_users():
     rows = db_exec(
@@ -799,32 +830,88 @@ async def cb_profile(cb: types.CallbackQuery, state: FSMContext):
     if not user:
         await cb.answer(T(lang, "start_first"), show_alert=True)
         return
+
     refs = db_exec(
-        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=? AND is_verified=1",
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1",
         (uid,), fetch=True
     )
     ref_count = refs["c"] if refs else 0
+
+    rank_row = db_exec(
+        "SELECT COUNT(*) + 1 AS rank FROM users WHERE stars > %s AND is_verified=1 AND is_banned=0",
+        (user["stars"],), fetch=True
+    )
+    rank = rank_row["rank"] if rank_row else "—"
+
+    total_row = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE is_verified=1 AND is_banned=0",
+        fetch=True
+    )
+    total_users = total_row["c"] if total_row else 0
+
     uname = f"@{user['username']}" if user["username"] else "—"
-    ver = "✅" if user["is_verified"] else "❌"
+    ver = "✅ Ha" if user["is_verified"] else "❌ Yo'q"
+    ban = "🚫 Ha" if user["is_banned"] else "✅ Yo'q"
     joined = user["joined_at"][:10] if user["joined_at"] else "—"
+
     lvl = get_user_level(user["stars"])
-    lvl_text = f"{lvl.get('emoji', '🥉')} <b>{lvl.get('name', 'Bronza')}</b>"
+    lvl_emoji = lvl.get("emoji", "🥉")
+    lvl_name = lvl.get("name", "Bronza")
+    lvl_min = lvl.get("min_stars", 0)
+    lvl_max = lvl.get("max_stars", 10)
+
+    levels = get_levels()
+    next_lvl = None
+    for l in levels:
+        if l["min_stars"] > user["stars"]:
+            next_lvl = l
+            break
+    if next_lvl:
+        next_text = f"{next_lvl.get('emoji', '')} {next_lvl.get('name', '')} — {next_lvl['min_stars']} ⭐"
+    else:
+        next_text = "👑 <b>Eng yuqori daraja!</b>"
+
     text = (
-        f"╭━━━〔 👤 <b>{T(lang, 'profile')}</b> 〕━━━╮\n\n"
+        f"╭━━━〔 👤 <b>PROFIL</b> 〕━━━╮\n\n"
         f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
         f"👤 <b>Ism:</b> {user['first_name'] or 'N/A'}\n"
         f"🔗 <b>Username:</b> {uname}\n"
-        f"⭐ <b>Stars:</b> {user['stars']}\n"
-        f"🏅 <b>{T(lang, 'level')}:</b> {lvl_text}\n"
-        f"👥 <b>Referallar:</b> {ref_count}\n"
+        f"🌐 <b>Til:</b> {user.get('language', 'uz').upper()}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"💰 <b>MOLIYAVIY</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"⭐ <b>Stars:</b> <b>{user['stars']}</b> ⭐\n"
+        f"🏅 <b>Daraja:</b> {lvl_emoji} <b>{lvl_name}</b>\n"
+        f"📊 <b>Oraliq:</b> {lvl_min} - {lvl_max} ⭐\n"
+        f"⬆️ <b>Keyingi:</b> {next_text}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"👥 <b>REFERALLAR</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"👥 <b>Taklif qilganlar:</b> <b>{ref_count}</b> ta\n"
+        f"🎁 <b>Har biri uchun:</b> +{get_setting('stars_per_referral', '2')} ⭐\n\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"🏆 <b>REYTING</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"📈 <b>O'rningiz:</b> <b>#{rank}</b>\n"
+        f"👥 <b>Jami userlar:</b> {total_users} ta\n\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"ℹ️ <b>HOLAT</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
         f"✅ <b>Tasdiqlangan:</b> {ver}\n"
+        f"🚫 <b>Ban:</b> {ban}\n"
         f"📅 <b>Qo'shilgan:</b> {joined}\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
+
+    b = InlineKeyboardBuilder()
+    b.button(text="🔄 Yangilash", callback_data="m_profile")
+    b.button(text="🏠 Asosiy menyu", callback_data="m_menu")
+    b.adjust(1, 1)
+
     try:
-        await cb.message.edit_text(text, parse_mode="HTML", reply_markup=back_to_menu_kb(uid))
+        await cb.message.edit_text(text, parse_mode="HTML", reply_markup=b.as_markup())
     except Exception:
-        await cb.message.answer(text, parse_mode="HTML", reply_markup=back_to_menu_kb(uid))
+        await cb.message.answer(text, parse_mode="HTML", reply_markup=b.as_markup())
     await cb.answer()
 
 @dp.callback_query(F.data == "m_reflink")
@@ -835,7 +922,7 @@ async def cb_reflink(cb: types.CallbackQuery, state: FSMContext):
     me = await bot.get_me()
     link = f"https://t.me/{me.username}?start=ref_{uid}"
     refs = db_exec(
-        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=? AND is_verified=1",
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1",
         (uid,), fetch=True
     )
     ref_count = refs["c"] if refs else 0
@@ -1495,7 +1582,7 @@ async def review_text_input(message: types.Message, state: FSMContext):
         return
 
     db_exec(
-        "INSERT INTO reviews (user_id, text, status, created_at) VALUES (?, ?, 'pending', ?)",
+        "INSERT INTO reviews (user_id, text, status, created_at) VALUES (%s, %s, 'pending', %s)",
         (uid, text, datetime.now().isoformat())
     )
     last = db_exec("SELECT MAX(id) AS id FROM reviews", fetch=True)
@@ -1638,7 +1725,7 @@ async def w_stars_process(message: types.Message, state: FSMContext):
         return
 
     db_exec(
-        "INSERT INTO withdrawals (user_id, stars, reward_type, status, created_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO withdrawals (user_id, stars, reward_type, status, created_at) VALUES (%s, %s, %s, %s, %s)",
         (uid, amount, "stars", "pending", datetime.now().isoformat())
     )
     last = db_exec("SELECT MAX(id) AS id FROM withdrawals", fetch=True)
@@ -1750,7 +1837,7 @@ async def gift_select(cb: types.CallbackQuery, state: FSMContext):
         return
 
     db_exec(
-        "INSERT INTO withdrawals (user_id, stars, reward_type, gift_key, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO withdrawals (user_id, stars, reward_type, gift_key, status, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
         (uid, gift["stars"], "gift", key, "pending", datetime.now().isoformat())
     )
     last = db_exec("SELECT MAX(id) AS id FROM withdrawals", fetch=True)
@@ -2060,7 +2147,7 @@ async def gift_emoji_process(message: types.Message, state: FSMContext):
     data = await state.get_data()
     if data.get("edit_gift_key"):
         if message.text.strip() != "/skip":
-            db_exec("UPDATE gifts SET emoji=? WHERE key=?",
+            db_exec("UPDATE gifts SET emoji=%s WHERE key=%s",
                     (message.text.strip(), data["edit_gift_key"]))
         await message.answer("📝 <b>Nom (yoki /skip):</b>", parse_mode="HTML")
         await state.set_state(AS.gift_name)
@@ -2076,7 +2163,7 @@ async def gift_name_process(message: types.Message, state: FSMContext):
     data = await state.get_data()
     if data.get("edit_gift_key"):
         if message.text.strip() != "/skip":
-            db_exec("UPDATE gifts SET name=? WHERE key=?",
+            db_exec("UPDATE gifts SET name=%s WHERE key=%s",
                     (message.text.strip(), data["edit_gift_key"]))
         await message.answer("⭐ <b>Narx (yoki /skip):</b>", parse_mode="HTML")
         await state.set_state(AS.gift_stars)
@@ -2094,7 +2181,7 @@ async def gift_stars_process(message: types.Message, state: FSMContext):
         if message.text.strip() != "/skip":
             try:
                 stars = int(message.text.strip())
-                db_exec("UPDATE gifts SET stars=? WHERE key=?",
+                db_exec("UPDATE gifts SET stars=%s WHERE key=%s",
                         (stars, data["edit_gift_key"]))
             except ValueError:
                 await message.answer("❌ Raqam.")
@@ -2387,7 +2474,7 @@ async def approve_w(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
     w_id = int(cb.data.replace("appr_", ""))
-    w = db_exec("SELECT * FROM withdrawals WHERE id=?", (w_id,), fetch=True)
+    w = db_exec("SELECT * FROM withdrawals WHERE id=%s", (w_id,), fetch=True)
     if not w or w["status"] != "pending":
         await cb.answer("—", show_alert=True)
         return
@@ -2400,7 +2487,7 @@ async def approve_w(cb: types.CallbackQuery):
         return
 
     update_user(w["user_id"], stars=user["stars"] - w["stars"])
-    db_exec("UPDATE withdrawals SET status='approved' WHERE id=?", (w_id,))
+    db_exec("UPDATE withdrawals SET status='approved' WHERE id=%s", (w_id,))
 
     try:
         await cb.message.edit_text(
@@ -2412,7 +2499,6 @@ async def approve_w(cb: types.CallbackQuery):
 
     u_lang = get_user_lang(w["user_id"])
 
-    # OTZIV KANALGA POST (BATAFSIL)
     review_ch = get_setting("review_channel", "")
     if review_ch:
         try:
@@ -2443,7 +2529,6 @@ async def approve_w(cb: types.CallbackQuery):
         except Exception as e:
             logger.warning(f"Otziv kanalga post: {e}")
 
-    # FOYDALANUVCHIGA XABAR (send_invoice YO'Q!)
     if w["reward_type"] == "stars":
         try:
             await bot.send_message(
@@ -2453,7 +2538,6 @@ async def approve_w(cb: types.CallbackQuery):
             )
             await cb.answer("✅")
 
-            # Adminga eslatma — Fragment orqali qo'lda yuborish uchun
             uname = f"@{user['username']}" if user["username"] else "—"
             for a in list_admins():
                 try:
@@ -2471,7 +2555,7 @@ async def approve_w(cb: types.CallbackQuery):
                     pass
         except Exception as e:
             update_user(w["user_id"], stars=user["stars"])
-            db_exec("UPDATE withdrawals SET status='pending' WHERE id=?", (w_id,))
+            db_exec("UPDATE withdrawals SET status='pending' WHERE id=%s", (w_id,))
             await cb.answer(f"❌ {e}", show_alert=True)
             return
     else:
@@ -2489,11 +2573,11 @@ async def reject_w(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
     w_id = int(cb.data.replace("rej_", ""))
-    w = db_exec("SELECT * FROM withdrawals WHERE id=?", (w_id,), fetch=True)
+    w = db_exec("SELECT * FROM withdrawals WHERE id=%s", (w_id,), fetch=True)
     if not w or w["status"] != "pending":
         await cb.answer("—", show_alert=True)
         return
-    db_exec("UPDATE withdrawals SET status='rejected' WHERE id=?", (w_id,))
+    db_exec("UPDATE withdrawals SET status='rejected' WHERE id=%s", (w_id,))
     try:
         await cb.message.edit_text(
             cb.message.html_text + "\n\n❌ <b>RAD ETILGAN</b>",
@@ -2545,7 +2629,7 @@ async def chat_open(cb: types.CallbackQuery):
         open_chat(uid)
 
     rows = db_exec(
-        "SELECT * FROM support_tickets WHERE user_id=? ORDER BY id DESC LIMIT 10",
+        "SELECT * FROM support_tickets WHERE user_id=%s ORDER BY id DESC LIMIT 10",
         (uid,), fetchall=True
     ) or []
     history = f"╭━━━〔 💬 <b>TARIX</b> 〕━━━╮\n\n👤 <b>{user['first_name']}</b> (<code>{uid}</code>)\n\n"
@@ -2613,12 +2697,12 @@ async def review_approve(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
     r_id = int(cb.data.replace("revappr_", ""))
-    r = db_exec("SELECT * FROM reviews WHERE id=?", (r_id,), fetch=True)
+    r = db_exec("SELECT * FROM reviews WHERE id=%s", (r_id,), fetch=True)
     if not r or r["status"] != "pending":
         await cb.answer("—", show_alert=True)
         return
 
-    db_exec("UPDATE reviews SET status='approved' WHERE id=?", (r_id,))
+    db_exec("UPDATE reviews SET status='approved' WHERE id=%s", (r_id,))
     user = get_user(r["user_id"])
 
     review_ch = get_setting("review_channel", "")
@@ -2658,12 +2742,12 @@ async def review_reject(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
     r_id = int(cb.data.replace("revrej_", ""))
-    r = db_exec("SELECT * FROM reviews WHERE id=?", (r_id,), fetch=True)
+    r = db_exec("SELECT * FROM reviews WHERE id=%s", (r_id,), fetch=True)
     if not r or r["status"] != "pending":
         await cb.answer("—", show_alert=True)
         return
 
-    db_exec("UPDATE reviews SET status='rejected' WHERE id=?", (r_id,))
+    db_exec("UPDATE reviews SET status='rejected' WHERE id=%s", (r_id,))
     try:
         u_lang = get_user_lang(r["user_id"])
         await bot.send_message(r["user_id"], T(u_lang, "review_rejected"), parse_mode="HTML")
@@ -2745,7 +2829,7 @@ async def level_max_input(message: types.Message, state: FSMContext):
         await message.answer("❌ Raqam.")
         return
     data = await state.get_data()
-    db_exec("INSERT INTO levels (name, emoji, min_stars, max_stars) VALUES (?, ?, ?, ?)",
+    db_exec("INSERT INTO levels (name, emoji, min_stars, max_stars) VALUES (%s, %s, %s, %s)",
             (data["level_name"], data["level_emoji"], data["level_min"], val))
     await state.clear()
     await message.answer("✅ <b>Daraja qo'shildi!</b>", parse_mode="HTML")
@@ -2769,7 +2853,7 @@ async def del_level_do(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
         return
     lvl_id = int(cb.data.replace("dellvl_", ""))
-    db_exec("DELETE FROM levels WHERE id=?", (lvl_id,))
+    db_exec("DELETE FROM levels WHERE id=%s", (lvl_id,))
     await cb.answer("✅")
     await a_levels(cb)
 
