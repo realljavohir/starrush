@@ -85,7 +85,6 @@ LANGS = {
         "chat_active": "💬 <b>Suhbat faol</b>\n\nXabaringizni yozing. Tugatish uchun «🔚 Suhbatni tugatish» tugmasini bosing.",
         "chat_closed_by_user": "🔚 <b>Suhbat tugatildi!</b>\n\nYangi savol berish uchun «💬 Admin bilan aloqa» tugmasini bosing.",
         "chat_closed_by_admin": "🔚 <b>Admin suhbatni tugatdi.</b>\n\nYangi savol berish uchun «💬 Admin bilan aloqa» tugmasini bosing.",
-        "chat_closed_admin_side": "🔚 <b>Suhbat tugatildi!</b>",
         "no_active_chat": "ℹ️ Sizda faol suhbat yo'q.",
         "admin_reply": "📬 <b>Admindan javob:</b>",
         "user_msg": "📩 <b>Foydalanuvchidan xabar:</b>",
@@ -141,7 +140,6 @@ LANGS = {
         "chat_active": "💬 <b>Чат активен</b>\n\nНапишите сообщение. Для завершения нажмите «🔚 Завершить чат».",
         "chat_closed_by_user": "🔚 <b>Чат завершён!</b>\n\nДля нового вопроса нажмите «💬 Связь с админом».",
         "chat_closed_by_admin": "🔚 <b>Админ завершил чат.</b>\n\nДля нового вопроса нажмите «💬 Связь с админом».",
-        "chat_closed_admin_side": "🔚 <b>Чат завершён!</b>",
         "no_active_chat": "ℹ️ У вас нет активного чата.",
         "admin_reply": "📬 <b>Ответ от админа:</b>",
         "user_msg": "📩 <b>Сообщение от пользователя:</b>",
@@ -197,7 +195,6 @@ LANGS = {
         "chat_active": "💬 <b>Chat active</b>\n\nSend your message. To finish, press «🔚 Close chat».",
         "chat_closed_by_user": "🔚 <b>Chat closed!</b>\n\nFor a new question press «💬 Contact admin».",
         "chat_closed_by_admin": "🔚 <b>Admin closed the chat.</b>\n\nFor a new question press «💬 Contact admin».",
-        "chat_closed_admin_side": "🔚 <b>Chat closed!</b>",
         "no_active_chat": "ℹ️ You have no active chat.",
         "admin_reply": "📬 <b>Reply from admin:</b>",
         "user_msg": "📩 <b>Message from user:</b>",
@@ -280,7 +277,6 @@ def init_db():
         added_by INTEGER,
         added_at TEXT
     )""")
-    # Yangilangan support tizimi — status bilan
     c.execute("""CREATE TABLE IF NOT EXISTS support_tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -436,11 +432,8 @@ def add_gift(key, emoji, name, stars):
 def remove_gift(key):
     db_exec("DELETE FROM gifts WHERE key=?", (key,))
 
-# ═══════════════════════════════════════════════════════════
-# SUPPORT CHAT (yangi)
-# ═══════════════════════════════════════════════════════════
+# SUPPORT CHAT
 def get_chat_status(user_id):
-    """Suhbat holatini olish: 'open' | 'closed_by_user' | 'closed_by_admin' | None"""
     row = db_exec("SELECT status FROM support_chats WHERE user_id=?", (user_id,), fetch=True)
     return row["status"] if row else None
 
@@ -462,12 +455,10 @@ def save_support_msg(user_id, admin_id, msg_type, content, is_from_admin):
             (user_id, admin_id, msg_type, content, is_from_admin, datetime.now().isoformat()))
 
 def delete_chat(user_id):
-    """Foydalanuvchi suhbatini butunlay o'chirish"""
     db_exec("DELETE FROM support_tickets WHERE user_id=?", (user_id,))
     db_exec("DELETE FROM support_chats WHERE user_id=?", (user_id,))
 
 def get_chat_users():
-    """Faol suhbatli foydalanuvchilar ro'yxati"""
     rows = db_exec(
         "SELECT sc.user_id, sc.status, sc.updated_at, u.first_name, u.username "
         "FROM support_chats sc LEFT JOIN users u ON sc.user_id=u.user_id "
@@ -978,7 +969,7 @@ async def check_sub_cb(cb: types.CallbackQuery, state: FSMContext):
     )
 
 # ═══════════════════════════════════════════════════════════
-# SUPPORT (yangi — suhbat holati bilan)
+# SUPPORT
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_support")
 async def cb_support(cb: types.CallbackQuery, state: FSMContext):
@@ -990,54 +981,34 @@ async def cb_support(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer(T(lang, "start_first"), show_alert=True)
         return
 
-    # Eski suhbatni tekshirish
     chat_status = get_chat_status(uid)
     if chat_status == "open":
-        # Suhbat allaqachon ochiq
         b = InlineKeyboardBuilder()
         b.button(text=T(lang, "close_chat"), callback_data="chat_close_user")
         b.button(text=T(lang, "menu"), callback_data="m_menu")
         b.adjust(1)
         try:
-            await cb.message.edit_text(
-                T(lang, "chat_active"),
-                reply_markup=b.as_markup(),
-                parse_mode="HTML"
-            )
+            await cb.message.edit_text(T(lang, "chat_active"), reply_markup=b.as_markup(), parse_mode="HTML")
         except Exception:
-            await cb.message.answer(
-                T(lang, "chat_active"),
-                reply_markup=b.as_markup(),
-                parse_mode="HTML"
-            )
+            await cb.message.answer(T(lang, "chat_active"), reply_markup=b.as_markup(), parse_mode="HTML")
         await state.set_state(US.support_msg)
         await cb.answer()
         return
 
-    # Yangi suhbat ochish
     open_chat(uid)
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "close_chat"), callback_data="chat_close_user")
     b.button(text=T(lang, "menu"), callback_data="m_menu")
     b.adjust(1)
     try:
-        await cb.message.edit_text(
-            T(lang, "support_title"),
-            reply_markup=b.as_markup(),
-            parse_mode="HTML"
-        )
+        await cb.message.edit_text(T(lang, "support_title"), reply_markup=b.as_markup(), parse_mode="HTML")
     except Exception:
-        await cb.message.answer(
-            T(lang, "support_title"),
-            reply_markup=b.as_markup(),
-            parse_mode="HTML"
-        )
+        await cb.message.answer(T(lang, "support_title"), reply_markup=b.as_markup(), parse_mode="HTML")
     await state.set_state(US.support_msg)
     await cb.answer()
 
 @dp.callback_query(F.data == "chat_close_user")
 async def chat_close_user(cb: types.CallbackQuery, state: FSMContext):
-    """Foydalanuvchi suhbatni yopadi"""
     await state.clear()
     uid = cb.from_user.id
     lang = get_user_lang(uid)
@@ -1047,8 +1018,6 @@ async def chat_close_user(cb: types.CallbackQuery, state: FSMContext):
         return
 
     close_chat(uid, closed_by="user")
-
-    # Adminga xabar
     user = get_user(uid)
     uname = f"@{user['username']}" if user and user["username"] else "—"
     for a in list_admins():
@@ -1065,22 +1034,15 @@ async def chat_close_user(cb: types.CallbackQuery, state: FSMContext):
             pass
 
     try:
-        await cb.message.edit_text(
-            T(lang, "chat_closed_by_user"),
-            reply_markup=back_to_menu_kb(uid),
-            parse_mode="HTML"
-        )
+        await cb.message.edit_text(T(lang, "chat_closed_by_user"),
+                                   reply_markup=back_to_menu_kb(uid), parse_mode="HTML")
     except Exception:
-        await cb.message.answer(
-            T(lang, "chat_closed_by_user"),
-            reply_markup=back_to_menu_kb(uid),
-            parse_mode="HTML"
-        )
+        await cb.message.answer(T(lang, "chat_closed_by_user"),
+                                reply_markup=back_to_menu_kb(uid), parse_mode="HTML")
     await cb.answer("✅")
 
 @dp.message(US.support_msg)
 async def support_send(message: types.Message, state: FSMContext):
-    """Foydalanuvchi xabarini adminga yuborish"""
     uid = message.from_user.id
     lang = get_user_lang(uid)
     user = get_user(uid)
@@ -1088,17 +1050,12 @@ async def support_send(message: types.Message, state: FSMContext):
         await message.answer(T(lang, "start_first"))
         return
 
-    # Suhbat ochiqmi?
     if not is_chat_open(uid):
         await state.clear()
-        await message.answer(
-            T(lang, "chat_closed_by_admin"),
-            reply_markup=back_to_menu_kb(uid),
-            parse_mode="HTML"
-        )
+        await message.answer(T(lang, "chat_closed_by_admin"),
+                             reply_markup=back_to_menu_kb(uid), parse_mode="HTML")
         return
 
-    # Xabar turi aniqlash
     if message.text:
         msg_type, content = "text", message.text
     elif message.photo:
@@ -1121,7 +1078,6 @@ async def support_send(message: types.Message, state: FSMContext):
 
     save_support_msg(uid, 0, msg_type, content, 0)
 
-    # Adminga xabar
     uname = f"@{user['username']}" if user["username"] else "—"
     admin_header = T("uz", "user_msg") + "\n\n" + T("uz", "support_new_msg",
                      name=user["first_name"] or "User",
@@ -1137,10 +1093,8 @@ async def support_send(message: types.Message, state: FSMContext):
     sent = 0
     for a in list_admins():
         try:
-            await bot.send_message(
-                a["user_id"], admin_header,
-                reply_markup=kb.as_markup(), parse_mode="HTML"
-            )
+            await bot.send_message(a["user_id"], admin_header,
+                                   reply_markup=kb.as_markup(), parse_mode="HTML")
             await message.forward(a["user_id"])
             sent += 1
         except Exception as e:
@@ -1150,16 +1104,8 @@ async def support_send(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Hech qanday admin topilmadi.")
         return
 
-    # Foydalanuvchiga tasdiq
-    b = InlineKeyboardBuilder()
-    b.button(text=T(lang, "close_chat"), callback_data="chat_close_user")
-    b.button(text=T(lang, "menu"), callback_data="m_menu")
-    b.adjust(1)
     await message.answer(T(lang, "support_sent"), parse_mode="HTML")
 
-# ═══════════════════════════════════════════════════════════
-# ADMIN JAVOB BERISH
-# ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data.startswith("reply_"))
 async def reply_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
@@ -1171,7 +1117,6 @@ async def reply_start(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer("❌ User topilmadi!", show_alert=True)
         return
 
-    # Suhbat ochiqmi?
     if not is_chat_open(uid):
         await cb.answer("⚠️ Bu suhbat allaqachon yopilgan!", show_alert=True)
         return
@@ -1202,7 +1147,6 @@ async def reply_send(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    # Suhbat ochiqmi?
     if not is_chat_open(uid):
         await message.answer("⚠️ Bu suhbat yopilgan.")
         await state.clear()
@@ -1225,11 +1169,7 @@ async def reply_send(message: types.Message, state: FSMContext):
 
     u_lang = get_user_lang(uid)
     try:
-        await bot.send_message(
-            uid,
-            T(u_lang, "admin_reply"),
-            parse_mode="HTML"
-        )
+        await bot.send_message(uid, T(u_lang, "admin_reply"), parse_mode="HTML")
         await message.copy_to(chat_id=uid)
     except TelegramForbiddenError:
         await message.answer("❌ Foydalanuvchi botni bloklagan.")
@@ -1243,12 +1183,8 @@ async def reply_send(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("✅ <b>Javob yuborildi!</b>", parse_mode="HTML")
 
-# ═══════════════════════════════════════════════════════════
-# ADMIN SUHBATNI YOPISH
-# ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data.startswith("chat_close_admin_"))
 async def chat_close_admin(cb: types.CallbackQuery):
-    """Admin suhbatni yopadi"""
     if not is_admin(cb.from_user.id):
         await cb.answer("❌", show_alert=True)
         return
@@ -1262,13 +1198,8 @@ async def chat_close_admin(cb: types.CallbackQuery):
     close_chat(uid, closed_by="admin")
 
     u_lang = get_user_lang(uid)
-    # Foydalanuvchiga xabar
     try:
-        await bot.send_message(
-            uid,
-            T(u_lang, "chat_closed_by_admin"),
-            parse_mode="HTML"
-        )
+        await bot.send_message(uid, T(u_lang, "chat_closed_by_admin"), parse_mode="HTML")
     except Exception:
         pass
 
@@ -1283,7 +1214,7 @@ async def chat_close_admin(cb: types.CallbackQuery):
     await cb.answer("✅ Suhbat tugatildi")
 
 # ═══════════════════════════════════════════════════════════
-# YECHIB OLISH
+# YECHIB OLISH — Min/Max faqat STARS da!
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_withdraw")
 async def cb_withdraw(cb: types.CallbackQuery, state: FSMContext):
@@ -1295,13 +1226,8 @@ async def cb_withdraw(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer(T(lang, "start_first"), show_alert=True)
         return
 
-    min_w = int(get_setting("min_withdraw", "50"))
-    if user["stars"] < min_w:
-        await cb.answer(
-            f"{T(lang, 'not_enough')}\n📉 Min: {min_w} ⭐\n💰 {T(lang, 'balance')}: {user['stars']} ⭐",
-            show_alert=True
-        )
-        return
+    # 0 stars bo'lsa ham ko'rsatiladi — Min/Max YO'Q!
+    stars_count = user["stars"]
 
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "stars_withdraw"), callback_data="w_stars")
@@ -1309,24 +1235,17 @@ async def cb_withdraw(cb: types.CallbackQuery, state: FSMContext):
     b.button(text=T(lang, "cancel"), callback_data="w_cancel")
     b.adjust(1)
 
+    text = (
+        f"╭━━━〔 💰 <b>{T(lang, 'withdraw')}</b> 〕━━━╮\n\n"
+        f"⭐ <b>{T(lang, 'balance')}:</b> {stars_count} ⭐\n\n"
+        f"{T(lang, 'choose_reward')}\n\n"
+        f"╰━━━━━━━━━━━━━━━━━╯"
+    )
+
     try:
-        await cb.message.edit_text(
-            f"╭━━━〔 💰 <b>{T(lang, 'withdraw')}</b> 〕━━━╮\n\n"
-            f"⭐ <b>Sizda:</b> {user['stars']} ⭐\n\n"
-            f"{T(lang, 'choose_reward')}\n\n"
-            f"╰━━━━━━━━━━━━━━━━━╯",
-            reply_markup=b.as_markup(),
-            parse_mode="HTML"
-        )
+        await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     except Exception:
-        await cb.message.answer(
-            f"╭━━━〔 💰 <b>{T(lang, 'withdraw')}</b> 〕━━━╮\n\n"
-            f"⭐ <b>Sizda:</b> {user['stars']} ⭐\n\n"
-            f"{T(lang, 'choose_reward')}\n\n"
-            f"╰━━━━━━━━━━━━━━━━━╯",
-            reply_markup=b.as_markup(),
-            parse_mode="HTML"
-        )
+        await cb.message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
 @dp.callback_query(F.data == "w_cancel")
@@ -1356,18 +1275,20 @@ async def w_stars(cb: types.CallbackQuery, state: FSMContext):
     b.button(text=T(lang, "cancel"), callback_data="w_cancel")
     b.adjust(1)
 
+    text = (
+        f"╭━━━〔 ⭐ <b>Stars yechib olish</b> 〕━━━╮\n\n"
+        f"💰 <b>{T(lang, 'balance')}:</b> {user['stars']} ⭐\n"
+        f"📉 <b>Min:</b> {min_w} ⭐\n"
+        f"📈 <b>Max:</b> {max_w:,} ⭐\n\n"
+        f"💬 Nechta stars yechib olmoqchisiz?\n"
+        f"<i>Raqamni kiriting:</i>\n\n"
+        f"╰━━━━━━━━━━━━━━━━━╯"
+    )
+
     try:
-        await cb.message.edit_text(
-            T(lang, "stars_title", bal=user["stars"], min=min_w, max=f"{max_w:,}"),
-            reply_markup=b.as_markup(),
-            parse_mode="HTML"
-        )
+        await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     except Exception:
-        await cb.message.answer(
-            T(lang, "stars_title", bal=user["stars"], min=min_w, max=f"{max_w:,}"),
-            reply_markup=b.as_markup(),
-            parse_mode="HTML"
-        )
+        await cb.message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await state.set_state(US.withdraw_stars)
     await cb.answer()
 
@@ -1451,7 +1372,11 @@ async def w_gift(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer("❌ Giftlar yo'q!", show_alert=True)
         return
 
-    text = T(lang, "gift_title", bal=user["stars"]) + "\n\n"
+    text = (
+        f"╭━━━〔 🎁 <b>Telegram Gift olish</b> 〕━━━╮\n\n"
+        f"💰 <b>{T(lang, 'balance')}:</b> {user['stars']} ⭐\n\n"
+        f"<i>Giftni tanlang — narxi yonida:</i>\n\n"
+    )
     b = InlineKeyboardBuilder()
     for g in gifts:
         text += f"{g['emoji']} <b>{g['name']}</b> — {g['stars']} ⭐\n"
@@ -1459,6 +1384,7 @@ async def w_gift(cb: types.CallbackQuery, state: FSMContext):
             text=f"{g['emoji']} {g['name']} — {g['stars']}⭐",
             callback_data=f"gift_{g['key']}"
         )
+    text += "\n╰━━━━━━━━━━━━━━━━━╯"
     b.button(text=T(lang, "back"), callback_data="w_back")
     b.adjust(1)
 
@@ -1481,15 +1407,15 @@ async def w_back(cb: types.CallbackQuery, state: FSMContext):
     b.button(text=T(lang, "cancel"), callback_data="w_cancel")
     b.adjust(1)
 
+    text = (
+        f"╭━━━〔 💰 <b>{T(lang, 'withdraw')}</b> 〕━━━╮\n\n"
+        f"⭐ <b>{T(lang, 'balance')}:</b> {user['stars']} ⭐\n\n"
+        f"{T(lang, 'choose_reward')}\n\n"
+        f"╰━━━━━━━━━━━━━━━━━╯"
+    )
+
     try:
-        await cb.message.edit_text(
-            f"╭━━━〔 💰 <b>{T(lang, 'withdraw')}</b> 〕━━━╮\n\n"
-            f"⭐ <b>Sizda:</b> {user['stars']} ⭐\n\n"
-            f"{T(lang, 'choose_reward')}\n\n"
-            f"╰━━━━━━━━━━━━━━━━━╯",
-            reply_markup=b.as_markup(),
-            parse_mode="HTML"
-        )
+        await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     except Exception:
         pass
     await cb.answer()
@@ -2077,10 +2003,6 @@ async def broadcast_do(message: types.Message, state: FSMContext):
                     from_chat_id=message.chat.id,
                     message_id=message.message_id
                 )
-            elif is_poll or is_location or is_contact:
-                await message.copy_to(chat_id=u["user_id"])
-            elif has_media:
-                await message.copy_to(chat_id=u["user_id"])
             else:
                 await message.copy_to(chat_id=u["user_id"])
             ok += 1
@@ -2120,7 +2042,7 @@ async def broadcast_do(message: types.Message, state: FSMContext):
         await message.answer(result, parse_mode="HTML")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
-# ---------- Yechib olish ----------
+# ---------- Yechib olish (admin) ----------
 @dp.callback_query(F.data == "a_withdrawals")
 async def a_withdrawals(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2159,8 +2081,7 @@ async def approve_w(cb: types.CallbackQuery):
     w = db_exec("SELECT * FROM withdrawals WHERE id=?", (w_id,), fetch=True)
     if not w or w["status"] != "pending":
         await cb.answer("—", show_alert=True)
-        return
-    user = get_user(w["user_id"])
+        return    user = get_user(w["user_id"])
     if not user:
         await cb.answer("—", show_alert=True)
         return
@@ -2244,7 +2165,7 @@ async def reject_w(cb: types.CallbackQuery):
     except Exception:
         pass
 
-# ---------- Suhbatlar (yangi) ----------
+# ---------- Suhbatlar ----------
 @dp.callback_query(F.data == "a_chats")
 async def a_chats(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2257,18 +2178,11 @@ async def a_chats(cb: types.CallbackQuery):
     b = InlineKeyboardBuilder()
     for c in chats[:20]:
         uname = f"@{c['username']}" if c["username"] else "—"
-        # Holat belgisi
         status_icon = "🟢" if c["status"] == "open" else "🔴"
         status_text = c["status"].replace("closed_by_", "closed: ")
         text += f"{status_icon} {c['first_name'] or 'User'} ({uname})\n  <code>{c['user_id']}</code> — {status_text}\n\n"
-        b.button(
-            text=f"💬 {c['first_name'] or 'User'}",
-            callback_data=f"chat_open_{c['user_id']}"
-        )
-        b.button(
-            text=f"🗑 O'chirish",
-            callback_data=f"chat_del_{c['user_id']}"
-        )
+        b.button(text=f"💬 {c['first_name'] or 'User'}", callback_data=f"chat_open_{c['user_id']}")
+        b.button(text=f"🗑 O'chirish", callback_data=f"chat_del_{c['user_id']}")
     text += "╰━━━━━━━━━━━━━━━━━╯"
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1)
@@ -2277,7 +2191,6 @@ async def a_chats(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("chat_open_"))
 async def chat_open(cb: types.CallbackQuery):
-    """Admin suhbatni ochadi va javob yozishi mumkin"""
     if not is_admin(cb.from_user.id):
         return
     uid = int(cb.data.replace("chat_open_", ""))
@@ -2286,9 +2199,7 @@ async def chat_open(cb: types.CallbackQuery):
         await cb.answer("❌ User topilmadi!", show_alert=True)
         return
 
-    # Suhbat ochiqmi?
     if not is_chat_open(uid):
-        # Qayta ochish
         open_chat(uid)
         u_lang = get_user_lang(uid)
         try:
@@ -2300,7 +2211,6 @@ async def chat_open(cb: types.CallbackQuery):
         except Exception:
             pass
 
-    # Suhbat tarixini ko'rsatish
     rows = db_exec(
         "SELECT * FROM support_tickets WHERE user_id=? ORDER BY id DESC LIMIT 10",
         (uid,), fetchall=True
@@ -2332,19 +2242,18 @@ async def chat_open(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("chat_del_"))
 async def chat_del(cb: types.CallbackQuery):
-    """Admin suhbatni butunlay o'chiradi"""
     if not is_admin(cb.from_user.id):
         return
     uid = int(cb.data.replace("chat_del_", ""))
     delete_chat(uid)
     await cb.answer("✅ Suhbat o'chirildi!")
     try:
+        b = InlineKeyboardBuilder()
+        b.button(text="⬅️ Orqaga", callback_data="a_chats")
+        b.adjust(1)
         await cb.message.edit_text(
-            "✅ <b>Suhbat butunlay o'chirildi!</b>\n\n"
-            "Foydalanuvchi qaytadan yozishi mumkin.",
-            reply_markup=InlineKeyboardBuilder().button(
-                text="⬅️ Orqaga", callback_data="a_chats"
-            ).as_markup(),
+            "✅ <b>Suhbat butunlay o'chirildi!</b>\n\nFoydalanuvchi qaytadan yozishi mumkin.",
+            reply_markup=b.as_markup(),
             parse_mode="HTML"
         )
     except Exception:
@@ -2355,10 +2264,7 @@ async def chat_del(cb: types.CallbackQuery):
 async def a_users(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
         return
-    await cb.message.edit_text(
-        "👤 <b>Foydalanuvchi ID sini kiriting:</b>",
-        parse_mode="HTML"
-    )
+    await cb.message.edit_text("👤 <b>Foydalanuvchi ID sini kiriting:</b>", parse_mode="HTML")
     await state.set_state(AS.user_id)
     await cb.answer()
 
@@ -2377,10 +2283,7 @@ async def user_info(message: types.Message, state: FSMContext):
         return
     await state.clear()
     b = InlineKeyboardBuilder()
-    b.button(
-        text="🚫 Ban" if not user["is_banned"] else "✅ Unban",
-        callback_data=f"tog_{uid}"
-    )
+    b.button(text="🚫 Ban" if not user["is_banned"] else "✅ Unban", callback_data=f"tog_{uid}")
     b.button(text="➕ Stars qo'shish", callback_data=f"adp_{uid}")
     b.button(text="➖ Stars ayirish", callback_data=f"rem_{uid}")
     b.button(text="✉️ Xabar yuborish", callback_data=f"msg_{uid}")
@@ -2421,11 +2324,7 @@ async def add_stars_start(cb: types.CallbackQuery, state: FSMContext):
         return
     uid = int(cb.data.replace("adp_", ""))
     await state.update_data(target_uid=uid, action="add")
-    await cb.message.edit_text(
-        "➕ <b>Qancha stars qo'shilsin?</b>\n\n"
-        "Faqat raqam kiriting:",
-        parse_mode="HTML"
-    )
+    await cb.message.edit_text("➕ <b>Qancha stars qo'shilsin?</b>\n\nFaqat raqam kiriting:", parse_mode="HTML")
     await state.set_state(AS.stars_amount)
     await cb.answer()
 
@@ -2435,11 +2334,7 @@ async def remove_stars_start(cb: types.CallbackQuery, state: FSMContext):
         return
     uid = int(cb.data.replace("rem_", ""))
     await state.update_data(target_uid=uid, action="remove")
-    await cb.message.edit_text(
-        "➖ <b>Qancha stars ayirilsin?</b>\n\n"
-        "Faqat raqam kiriting:",
-        parse_mode="HTML"
-    )
+    await cb.message.edit_text("➖ <b>Qancha stars ayirilsin?</b>\n\nFaqat raqam kiriting:", parse_mode="HTML")
     await state.set_state(AS.stars_amount)
     await cb.answer()
 
@@ -2459,12 +2354,10 @@ async def stars_amount_input(message: types.Message, state: FSMContext):
     action = data.get("action", "add")
     await state.update_data(stars_amount=amount)
     prompt = (
-        "📝 <b>Sababni kiriting:</b>\n\n"
-        "Masalan: <i>«Referal bonusi»</i>, <i>«Admin sovg'asi»</i>"
+        "📝 <b>Sababni kiriting:</b>\n\nMasalan: <i>«Referal bonusi»</i>, <i>«Admin sovg'asi»</i>"
         if action == "add"
         else
-        "📝 <b>Ayirish sababini kiriting:</b>\n\n"
-        "Masalan: <i>«Qoidabuzarlik»</i>, <i>«Xato»</i>"
+        "📝 <b>Ayirish sababini kiriting:</b>\n\nMasalan: <i>«Qoidabuzarlik»</i>, <i>«Xato»</i>"
     )
     await message.answer(prompt, parse_mode="HTML")
     await state.set_state(AS.stars_reason)
@@ -2494,8 +2387,7 @@ async def stars_reason_input(message: types.Message, state: FSMContext):
     else:
         if amount > user["stars"]:
             await message.answer(
-                f"❌ Foydalanuvchida faqat <b>{user['stars']} ⭐</b> bor.\n"
-                f"Ayirish mumkin emas.",
+                f"❌ Foydalanuvchida faqat <b>{user['stars']} ⭐</b> bor.\nAyirish mumkin emas.",
                 parse_mode="HTML"
             )
             return
@@ -2516,10 +2408,7 @@ async def stars_reason_input(message: types.Message, state: FSMContext):
 
     sign = "➕" if action == "add" else "➖"
     await message.answer(
-        f"✅ <b>Bajarildi!</b>\n\n"
-        f"{sign} <b>{amount} ⭐</b>\n"
-        f"📝 <i>{reason}</i>\n"
-        f"💰 Yangi balans: <b>{new_stars} ⭐</b>",
+        f"✅ <b>Bajarildi!</b>\n\n{sign} <b>{amount} ⭐</b>\n📝 <i>{reason}</i>\n💰 Yangi balans: <b>{new_stars} ⭐</b>",
         parse_mode="HTML"
     )
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
