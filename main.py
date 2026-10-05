@@ -772,4 +772,170 @@ async def a_withdrawals(cb: types.CallbackQuery):
         b.button(text=f"❌ {r['id']}", callback_data=f"rej_{r['id']}")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2)
-    await cb.message.edit_text(text, reply_markup=b)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+@dp.callback_query(F.data.startswith("appr_"))
+async def approve_w(cb: types.CallbackQuery):
+    if cb.from_user.id not in ADMIN_IDS:
+        return
+    w_id = int(cb.data.replace("appr_", ""))
+    w = db_exec("SELECT * FROM withdrawals WHERE id=?", (w_id,), fetch=True)
+    if not w:
+        await cb.answer("Topilmadi!", show_alert=True)
+        return
+    user = get_user(w["user_id"])
+    if not user or user["points"] < w["amount"]:
+        await cb.answer("❌ Foydalanuvchida yetarli ball yo'q!", show_alert=True)
+        return
+    update_user(w["user_id"], points=user["points"] - w["amount"])
+    db_exec("UPDATE withdrawals SET status='approved' WHERE id=?", (w_id,))
+    await cb.answer("✅ Tasdiqlandi!")
+    try:
+        await bot.send_message(w["user_id"], f"✅ {w['amount']} ball yechib olish tasdiqlandi!")
+    except Exception:
+        pass
+
+@dp.callback_query(F.data.startswith("rej_"))
+async def reject_w(cb: types.CallbackQuery):
+    if cb.from_user.id not in ADMIN_IDS:
+        return
+    w_id = int(cb.data.replace("rej_", ""))
+    db_exec("UPDATE withdrawals SET status='rejected' WHERE id=?", (w_id,))
+    await cb.answer("❌ Rad etildi!")
+
+# ---------- User boshqarish ----------
+@dp.callback_query(F.data == "a_users")
+async def a_users(cb: types.CallbackQuery, state: FSMContext):
+    if cb.from_user.id not in ADMIN_IDS:
+        return
+    await cb.message.edit_text("👤 Foydalanuvchi ID sini kiriting:")
+    await state.set_state(AS.user_id)
+    await cb.answer()
+
+@dp.message(AS.user_id)
+async def user_info(message: types.Message, state: FSMContext):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    try:
+        uid = int(message.text.strip())
+    except ValueError:
+        await message.answer("❌ Raqam kiriting.")
+        return
+    user = get_user(uid)
+    if not user:
+        await message.answer("❌ Topilmadi.")
+        return
+    await state.clear()
+    b = InlineKeyboardBuilder()
+    b.button(
+        text="🚫 Ban" if not user["is_banned"] else "✅ Unban",
+        callback_data=f"tog_{uid}"
+    )
+    b.button(text="➕ Ball qo'shish", callback_data=f"adp_{uid}")
+    b.button(text="✉️ Xabar yuborish", callback_data=f"msg_{uid}")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(2)
+    uname = f"@{user['username']}" if user["username"] else "yo'q"
+    ban = "Ha" if user["is_banned"] else "Yo'q"
+    ver = "Ha" if user["is_verified"] else "Yo'q"
+    text = (
+        f"👤 <b>Foydalanuvchi:</b>\n\n"
+        f"ID: <code>{user['user_id']}</code>\n"
+        f"Ism: {user['first_name']}\n"
+        f"Username: {uname}\n"
+        f"Ball: {user['points']}\n"
+        f"Ban: {ban}\n"
+        f"Tasdiqlangan: {ver}"
+    )
+    await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("tog_"))
+async def toggle_ban(cb: types.CallbackQuery):
+    if cb.from_user.id not in ADMIN_IDS:
+        return
+    uid = int(cb.data.replace("tog_", ""))
+    user = get_user(uid)
+    if not user:
+        return
+    update_user(uid, is_banned=0 if user["is_banned"] else 1)
+    await cb.answer("✅ O'zgartirildi!")
+
+@dp.callback_query(F.data.startswith("adp_"))
+async def add_points_start(cb: types.CallbackQuery, state: FSMContext):
+    if cb.from_user.id not in ADMIN_IDS:
+        return
+    uid = int(cb.data.replace("adp_", ""))
+    await state.update_data(target_uid=uid)
+    await cb.message.edit_text("➕ Qancha ball qo'shilsin? (manfiy ham mumkin)")
+    await state.set_state(AS.points_val)
+    await cb.answer()
+
+@dp.message(AS.points_val)
+async def add_points_do(message: types.Message, state: FSMContext):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    try:
+        amount = int(message.text.strip())
+    except ValueError:
+        await message.answer("❌ Raqam kiriting.")
+        return
+    data = await state.get_data()
+    uid = data["target_uid"]
+    user = get_user(uid)
+    if not user:
+        await message.answer("❌ Topilmadi.")
+        return
+    new_pts = max(0, user["points"] + amount)
+    update_user(uid, points=new_pts)
+    await state.clear()
+    await message.answer(f"✅ Yangi ball: {new_pts}")
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
+
+@dp.callback_query(F.data.startswith("msg_"))
+async def user_msg_start(cb: types.CallbackQuery, state: FSMContext):
+    if cb.from_user.id not in ADMIN_IDS:
+        return
+    uid = int(cb.data.replace("msg_", ""))
+    await state.update_data(target_uid=uid)
+    await cb.message.edit_text("✉️ Yubormoqchi bo'lgan xabaringizni yozing:")
+    await state.set_state(AS.user_msg)
+    await cb.answer()
+
+@dp.message(AS.user_msg)
+async def user_msg_send(message: types.Message, state: FSMContext):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    data = await state.get_data()
+    uid = data["target_uid"]
+    try:
+        await message.copy_to(chat_id=uid)
+        await message.answer("✅ Yuborildi!")
+    except Exception as e:
+        await message.answer(f"❌ Xato: {e}")
+    await state.clear()
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
+
+# ==================== HEALTH + POLLING ====================
+async def health(request):
+    return web.Response(text="OK")
+
+async def start_web():
+    app = web.Application()
+    app.router.add_get("/", health)
+    app.router.add_get("/health", health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+    logger.info(f"Health server portda: {PORT}")
+
+async def main():
+    init_db()
+    await bot.delete_webhook(drop_pending_updates=True)
+    logger.info("Polling rejimida ishga tushmoqda...")
+    asyncio.create_task(start_web())
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+
+if __name__ == "__main__":
+    asyncio.run(main())
