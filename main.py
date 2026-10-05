@@ -772,4 +772,4 @@ async def a_withdrawals(cb: types.CallbackQuery):
         b.button(text=f"❌ {r['id']}", callback_data=f"rej_{r['id']}")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2)
-    await cb.message.edit_text(text, reply_markup=b
+    await cb.message.edit_text(text, reply_markup=b)
