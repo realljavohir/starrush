@@ -10,5 +10,7 @@ services:
         sync: false
       - key: ADMIN_IDS
         sync: false
+      - key: DATABASE_URL
+        sync: false
       - key: PORT
         value: 8080
