@@ -11,11 +11,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import LabeledPrice
 from aiohttp import web
 
 # ==================== SOZLAMALAR ====================
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-ADMIN_IDS = [int(x.strip()) for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
+SUPER_ADMIN_IDS = [int(x.strip()) for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
 PORT = int(os.environ.get("PORT", 8080))
 
 if not BOT_TOKEN:
@@ -26,7 +27,25 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = "bot_data.db"
 
-# ==================== MA'LUMOTLAR BAZASI ====================
+# ==================== GIFTLAR (rasmdan) ====================
+GIFTS = {
+    "heart":     {"emoji": "💝", "name": "Heart",      "stars": 15},
+    "teddy":     {"emoji": "🧸", "name": "Teddy Bear", "stars": 15},
+    "giftbox":   {"emoji": "🎁", "name": "Gift Box",   "stars": 25},
+    "rose":      {"emoji": "🌹", "name": "Rose",       "stars": 25},
+    "cake":      {"emoji": "🎂", "name": "Cake",       "stars": 50},
+    "bouquet":   {"emoji": "💐", "name": "Bouquet",    "stars": 50},
+    "rocket":    {"emoji": "🚀", "name": "Rocket",     "stars": 50},
+    "champagne": {"emoji": "🍾", "name": "Champagne",  "stars": 50},
+    "trophy":    {"emoji": "🏆", "name": "Trophy",     "stars": 100},
+    "ring":      {"emoji": "💍", "name": "Ring",       "stars": 100},
+    "diamond":   {"emoji": "💎", "name": "Diamond",    "stars": 100},
+}
+
+MIN_STARS = 50
+MAX_STARS = 1_000_000
+
+# ==================== DB ====================
 def db_exec(query, params=(), fetch=False, fetchall=False):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -70,6 +89,8 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         amount INTEGER,
+        reward_type TEXT,
+        gift_key TEXT,
         status TEXT DEFAULT 'pending',
         created_at TEXT
     )""")
@@ -77,14 +98,26 @@ def init_db():
         key TEXT PRIMARY KEY,
         value TEXT
     )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS admins (
+        user_id INTEGER PRIMARY KEY,
+        added_by INTEGER,
+        added_at TEXT
+    )""")
     defaults = {
         "points_per_referral": "5",
         "min_withdraw": "50",
-        "reward_type": "stars",
         "daily_bonus": "1",
+        "star_per_point": "1",  # 1 ball = 1 star
+        "reward_mode": "both",  # stars | gift | both
     }
     for k, v in defaults.items():
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
+
+    # Super adminlarni admins jadvaliga qo'shish
+    for a in SUPER_ADMIN_IDS:
+        c.execute("INSERT OR IGNORE INTO admins (user_id, added_by, added_at) VALUES (?, ?, ?)",
+                  (a, a, datetime.now().isoformat()))
+
     c.execute("SELECT COUNT(*) FROM questions")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO questions (question, answer) VALUES (?, ?)",
@@ -121,6 +154,26 @@ def create_user(user_id, username, first_name, last_name, referrer_id=0):
         VALUES (?, ?, ?, ?, ?, ?)""",
         (user_id, username, first_name, last_name, referrer_id, datetime.now().isoformat()))
 
+def is_admin(user_id):
+    if user_id in SUPER_ADMIN_IDS:
+        return True
+    row = db_exec("SELECT 1 FROM admins WHERE user_id=?", (user_id,), fetch=True)
+    return row is not None
+
+def is_super_admin(user_id):
+    return user_id in SUPER_ADMIN_IDS
+
+def add_admin(user_id, added_by):
+    db_exec("INSERT OR IGNORE INTO admins (user_id, added_by, added_at) VALUES (?, ?, ?)",
+            (user_id, added_by, datetime.now().isoformat()))
+
+def remove_admin(user_id):
+    db_exec("DELETE FROM admins WHERE user_id=?", (user_id,))
+
+def list_admins():
+    rows = db_exec("SELECT * FROM admins", fetchall=True)
+    return [dict(r) for r in rows] if rows else []
+
 def get_channels():
     rows = db_exec("SELECT channel_username FROM channels", fetchall=True)
     return [r["channel_username"] for r in rows] if rows else []
@@ -155,7 +208,8 @@ dp = Dispatcher()
 
 class US(StatesGroup):
     answer = State()
-    withdraw = State()
+    withdraw_stars = State()
+    withdraw_gift = State()
 
 class AS(StatesGroup):
     channel = State()
@@ -166,6 +220,10 @@ class AS(StatesGroup):
     user_id = State()
     points_val = State()
     user_msg = State()
+    add_admin_id = State()
+    set_stars_per_point = State()
+    set_min_stars = State()
+    set_max_stars = State()
 
 # ==================== KLAVIATURALAR ====================
 def main_menu(uid):
@@ -175,12 +233,12 @@ def main_menu(uid):
     b.button(text="🏆 Reyting")
     b.button(text="🎁 Kunlik bonus")
     b.button(text="💰 Yechib olish")
-    if uid in ADMIN_IDS:
+    if is_admin(uid):
         b.button(text="🛠 Admin Panel")
     b.adjust(2)
     return b.as_markup(resize_keyboard=True)
 
-def admin_menu():
+def admin_menu(uid):
     b = InlineKeyboardBuilder()
     b.button(text="📢 Kanallar", callback_data="a_channels")
     b.button(text="❓ Savollar", callback_data="a_questions")
@@ -189,10 +247,13 @@ def admin_menu():
     b.button(text="📨 Broadcast", callback_data="a_broadcast")
     b.button(text="💸 Yechib olish", callback_data="a_withdrawals")
     b.button(text="👤 User boshqarish", callback_data="a_users")
+    b.button(text="🎁 Giftlar", callback_data="a_gifts")
+    if is_super_admin(uid):
+        b.button(text="👑 Adminlar", callback_data="a_admins")
     b.adjust(2)
     return b.as_markup()
 
-# ==================== OBUNA TEKSHIRISH ====================
+# ==================== OBUNA ====================
 async def check_subs(uid):
     channels = get_channels()
     if not channels:
@@ -283,7 +344,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     await state.set_state(US.answer)
     await message.answer(f"🤖 Iltimos, bot emasligingizni tasdiqlang:\n\n❓ {q['question']}")
 
-# ==================== JAVOB TEKSHIRISH ====================
+# ==================== JAVOB ====================
 @dp.message(US.answer)
 async def check_ans(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -367,12 +428,15 @@ async def profile(message: types.Message):
     uname = f"@{user['username']}" if user["username"] else "yo'q"
     ver = "Ha" if user["is_verified"] else "Yo'q"
     joined = user["joined_at"][:10] if user["joined_at"] else "N/A"
+    ratio = int(get_setting("star_per_point", "1"))
+    stars = user["points"] * ratio
     text = (
         f"👤 <b>Profilingiz</b>\n\n"
         f"🆔 ID: <code>{user['user_id']}</code>\n"
         f"👤 Ism: {user['first_name'] or 'N/A'}\n"
         f"🔗 Username: {uname}\n"
         f"🎯 Ball: {user['points']}\n"
+        f"⭐ Stars: {stars} (1 ball = {ratio} ⭐)\n"
         f"👥 Referallar: {ref_count}\n"
         f"✅ Tasdiqlangan: {ver}\n"
         f"📅 Qo'shilgan: {joined}"
@@ -430,6 +494,7 @@ async def daily_bonus(message: types.Message):
     update_user(uid, points=user["points"] + bonus, last_bonus=today)
     await message.answer(f"🎁 Siz {bonus} ball oldingiz!\nJami: {user['points'] + bonus} ball")
 
+# ==================== YECHIB OLISH ====================
 @dp.message(F.text == "💰 Yechib olish")
 async def withdraw_start(message: types.Message, state: FSMContext):
     user = get_user(message.from_user.id)
@@ -440,35 +505,168 @@ async def withdraw_start(message: types.Message, state: FSMContext):
     if user["points"] < min_w:
         await message.answer(f"❌ Minimal: {min_w} ball. Sizda: {user['points']}")
         return
-    await message.answer(f"💰 Yechib olmoqchi bo'lgan ball miqdorini kiriting (min: {min_w}):")
-    await state.set_state(US.withdraw)
 
-@dp.message(US.withdraw)
-async def withdraw_process(message: types.Message, state: FSMContext):
+    reward_mode = get_setting("reward_mode", "both")
+    b = InlineKeyboardBuilder()
+    if reward_mode in ("stars", "both"):
+        b.button(text="⭐ Stars olish", callback_data="w_stars")
+    if reward_mode in ("gift", "both"):
+        b.button(text="🎁 Gift olish", callback_data="w_gift")
+    b.button(text="❌ Bekor qilish", callback_data="w_cancel")
+    b.adjust(1)
+    ratio = int(get_setting("star_per_point", "1"))
+    await message.answer(
+        f"💰 Sizda {user['points']} ball bor (≈ {user['points'] * ratio} ⭐).\n\n"
+        f"Mukofot turini tanlang:",
+        reply_markup=b.as_markup()
+    )
+
+@dp.callback_query(F.data == "w_cancel")
+async def w_cancel(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
+    await cb.answer("Bekor qilindi")
+
+# ----- STARS -----
+@dp.callback_query(F.data == "w_stars")
+async def w_stars(cb: types.CallbackQuery, state: FSMContext):
+    user = get_user(cb.from_user.id)
+    ratio = int(get_setting("star_per_point", "1"))
+    stars_available = user["points"] * ratio
+    await cb.message.edit_text(
+        f"⭐ Sizda {stars_available} ⭐ mavjud.\n\n"
+        f"Nechta stars yechib olmoqchisiz?\n"
+        f"(min: {MIN_STARS}, max: {MAX_STARS})\n\n"
+        f"Raqamni kiriting:"
+    )
+    await state.set_state(US.withdraw_stars)
+    await cb.answer()
+
+@dp.message(US.withdraw_stars)
+async def w_stars_process(message: types.Message, state: FSMContext):
     try:
         amount = int(message.text.strip())
     except ValueError:
         await message.answer("❌ Faqat raqam kiriting.")
         return
+
+    if amount < MIN_STARS:
+        await message.answer(f"❌ Minimal: {MIN_STARS} ⭐")
+        return
+    if amount > MAX_STARS:
+        await message.answer(f"❌ Maksimal: {MAX_STARS} ⭐")
+        return
+
     user = get_user(message.from_user.id)
-    min_w = int(get_setting("min_withdraw", "50"))
-    if amount < min_w:
-        await message.answer(f"❌ Minimal: {min_w}")
+    ratio = int(get_setting("star_per_point", "1"))
+    stars_available = user["points"] * ratio
+    if amount > stars_available:
+        await message.answer(f"❌ Yetarli emas. Sizda: {stars_available} ⭐")
         return
-    if amount > user["points"]:
-        await message.answer(f"❌ Yetarli emas. Sizda: {user['points']}")
+
+    # Ballarga aylantirish
+    points_needed = (amount + ratio - 1) // ratio
+    if points_needed > user["points"]:
+        await message.answer("❌ Ball yetarli emas.")
         return
+
     db_exec(
-        "INSERT INTO withdrawals (user_id, amount, created_at) VALUES (?, ?, ?)",
-        (user["user_id"], amount, datetime.now().isoformat())
+        "INSERT INTO withdrawals (user_id, amount, reward_type, status, created_at) VALUES (?, ?, ?, ?, ?)",
+        (user["user_id"], amount, "stars", "pending", datetime.now().isoformat())
     )
     await state.clear()
-    await message.answer(f"✅ {amount} ball yechib olish so'rovi yuborildi. Admin tasdiqlashini kuting.")
-    for admin_id in ADMIN_IDS:
+    await message.answer(
+        f"✅ {amount} ⭐ yechib olish so'rovi yuborildi.\n"
+        f"Admin tasdiqlashini kuting."
+    )
+
+    # Adminga xabar
+    for a in list_admins():
         try:
             await bot.send_message(
-                admin_id,
-                f"💸 Yangi so'rov!\nUser: {user['first_name']} ({user['user_id']})\nMiqdor: {amount} ball"
+                a["user_id"],
+                f"💸 Yangi STARS so'rovi!\n"
+                f"User: {user['first_name']} (<code>{user['user_id']}</code>)\n"
+                f"Miqdor: {amount} ⭐",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+
+# ----- GIFT -----
+@dp.callback_query(F.data == "w_gift")
+async def w_gift(cb: types.CallbackQuery, state: FSMContext):
+    b = InlineKeyboardBuilder()
+    for key, g in GIFTS.items():
+        b.button(text=f"{g['emoji']} {g['name']} — {g['stars']}⭐", callback_data=f"gift_{key}")
+    b.button(text="⬅️ Orqaga", callback_data="w_back")
+    b.adjust(1)
+    await cb.message.edit_text(
+        "🎁 Qaysi giftni olmoqchisiz?\n"
+        "(Stars narxi ko'rsatilgan)",
+        reply_markup=b.as_markup()
+    )
+    await cb.answer()
+
+@dp.callback_query(F.data == "w_back")
+async def w_back(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    user = get_user(cb.from_user.id)
+    reward_mode = get_setting("reward_mode", "both")
+    b = InlineKeyboardBuilder()
+    if reward_mode in ("stars", "both"):
+        b.button(text="⭐ Stars olish", callback_data="w_stars")
+    if reward_mode in ("gift", "both"):
+        b.button(text="🎁 Gift olish", callback_data="w_gift")
+    b.button(text="❌ Bekor qilish", callback_data="w_cancel")
+    b.adjust(1)
+    ratio = int(get_setting("star_per_point", "1"))
+    await cb.message.edit_text(
+        f"💰 Sizda {user['points']} ball (≈ {user['points'] * ratio} ⭐)\n\nMukofot turini tanlang:",
+        reply_markup=b.as_markup()
+    )
+    await cb.answer()
+
+@dp.callback_query(F.data.startswith("gift_"))
+async def gift_select(cb: types.CallbackQuery, state: FSMContext):
+    key = cb.data.replace("gift_", "")
+    gift = GIFTS.get(key)
+    if not gift:
+        await cb.answer("Topilmadi!", show_alert=True)
+        return
+
+    user = get_user(cb.from_user.id)
+    ratio = int(get_setting("star_per_point", "1"))
+    points_needed = (gift["stars"] + ratio - 1) // ratio
+    if points_needed > user["points"]:
+        await cb.answer(
+            f"❌ Yetarli emas!\nKerak: {points_needed} ball\nSizda: {user['points']} ball",
+            show_alert=True
+        )
+        return
+
+    db_exec(
+        "INSERT INTO withdrawals (user_id, amount, reward_type, gift_key, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (user["user_id"], gift["stars"], "gift", key, "pending", datetime.now().isoformat())
+    )
+    await state.clear()
+    await cb.message.edit_text(
+        f"✅ {gift['emoji']} {gift['name']} ({gift['stars']}⭐) so'rovingiz yuborildi.\n"
+        f"Admin tasdiqlashini kuting."
+    )
+    await cb.answer()
+
+    for a in list_admins():
+        try:
+            await bot.send_message(
+                a["user_id"],
+                f"🎁 Yangi GIFT so'rovi!\n"
+                f"User: {user['first_name']} (<code>{user['user_id']}</code>)\n"
+                f"Gift: {gift['emoji']} {gift['name']} — {gift['stars']}⭐",
+                parse_mode="HTML"
             )
         except Exception:
             pass
@@ -477,24 +675,28 @@ async def withdraw_process(message: types.Message, state: FSMContext):
 @dp.message(Command("admin"))
 @dp.message(F.text == "🛠 Admin Panel")
 async def admin_panel(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         await message.answer("❌ Siz admin emassiz!")
         return
     await state.clear()
-    await message.answer("🛠 <b>Admin Panel</b>", reply_markup=admin_menu(), parse_mode="HTML")
+    await message.answer("🛠 <b>Admin Panel</b>", reply_markup=admin_menu(message.from_user.id), parse_mode="HTML")
 
 @dp.callback_query(F.data == "a_back")
 async def a_back(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     await state.clear()
-    await cb.message.edit_text("🛠 <b>Admin Panel</b>", reply_markup=admin_menu(), parse_mode="HTML")
+    await cb.message.edit_text(
+        "🛠 <b>Admin Panel</b>",
+        reply_markup=admin_menu(cb.from_user.id),
+        parse_mode="HTML"
+    )
     await cb.answer()
 
 # ---------- Kanallar ----------
 @dp.callback_query(F.data == "a_channels")
 async def a_channels(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     channels = get_channels()
     text = "📢 <b>Majburiy kanallar:</b>\n\n"
@@ -508,7 +710,7 @@ async def a_channels(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data == "add_ch")
 async def add_ch_start(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     await cb.message.edit_text("📢 Kanal username kiriting (masalan: @mychannel):")
     await state.set_state(AS.channel)
@@ -516,7 +718,7 @@ async def add_ch_start(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message(AS.channel)
 async def add_ch_process(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         return
     ch = message.text.strip()
     if not ch.startswith("@"):
@@ -524,11 +726,11 @@ async def add_ch_process(message: types.Message, state: FSMContext):
     add_channel(ch)
     await state.clear()
     await message.answer(f"✅ {ch} qo'shildi!")
-    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
 @dp.callback_query(F.data == "del_ch_list")
 async def del_ch_list(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     channels = get_channels()
     if not channels:
@@ -544,24 +746,17 @@ async def del_ch_list(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("delch_"))
 async def del_ch_do(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     ch = cb.data.replace("delch_", "")
     remove_channel(ch)
     await cb.answer(f"✅ {ch} o'chirildi!")
-    channels = get_channels()
-    text = "📢 <b>Majburiy kanallar:</b>\n\n"
-    text += "\n".join([f"• {c}" for c in channels]) if channels else "Hozircha kanal yo'q."
-    b = InlineKeyboardBuilder()
-    b.button(text="➕ Qo'shish", callback_data="add_ch")
-    b.button(text="➖ O'chirish", callback_data="del_ch_list")
-    b.button(text="⬅️ Orqaga", callback_data="a_back")
-    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await a_channels(cb)
 
 # ---------- Savollar ----------
 @dp.callback_query(F.data == "a_questions")
 async def a_questions(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     qs = get_questions()
     text = "❓ <b>Savollar:</b>\n\n"
@@ -579,7 +774,7 @@ async def a_questions(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data == "add_q")
 async def add_q_start(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     await cb.message.edit_text("❓ Savolni kiriting:")
     await state.set_state(AS.q_text)
@@ -587,7 +782,7 @@ async def add_q_start(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message(AS.q_text)
 async def add_q_text(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         return
     await state.update_data(q_text=message.text.strip())
     await message.answer("Endi to'g'ri javobni kiriting:")
@@ -595,17 +790,17 @@ async def add_q_text(message: types.Message, state: FSMContext):
 
 @dp.message(AS.q_ans)
 async def add_q_ans(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         return
     data = await state.get_data()
     add_question(data.get("q_text"), message.text.strip())
     await state.clear()
     await message.answer("✅ Savol qo'shildi!")
-    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
 @dp.callback_query(F.data == "del_q_list")
 async def del_q_list(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     qs = get_questions()
     if not qs:
@@ -621,7 +816,7 @@ async def del_q_list(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("delq_"))
 async def del_q_do(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     q_id = int(cb.data.replace("delq_", ""))
     remove_question(q_id)
@@ -631,20 +826,22 @@ async def del_q_do(cb: types.CallbackQuery):
 # ---------- Sozlamalar ----------
 @dp.callback_query(F.data == "a_settings")
 async def a_settings(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     text = (
         f"⚙️ <b>Sozlamalar</b>\n\n"
         f"🎯 Referal ball: {get_setting('points_per_referral')}\n"
-        f"💰 Minimal yechish: {get_setting('min_withdraw')}\n"
-        f"🎁 Mukofot turi: {get_setting('reward_type')}\n"
-        f"🎁 Kunlik bonus: {get_setting('daily_bonus')}"
+        f"💰 Minimal yechish: {get_setting('min_withdraw')} ball\n"
+        f"🎁 Kunlik bonus: {get_setting('daily_bonus')} ball\n"
+        f"⭐ 1 ball = {get_setting('star_per_point')} stars\n"
+        f"💎 Mukofot rejimi: {get_setting('reward_mode')}"
     )
     b = InlineKeyboardBuilder()
     b.button(text="🎯 Referal ball", callback_data="set_points")
     b.button(text="💰 Min yechish", callback_data="set_minw")
-    b.button(text="🎁 Mukofot turi", callback_data="set_reward")
     b.button(text="🎁 Kunlik bonus", callback_data="set_daily")
+    b.button(text="⭐ Star/ball", callback_data="set_star_ratio")
+    b.button(text="💎 Rejim", callback_data="set_reward_mode")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
@@ -652,12 +849,12 @@ async def a_settings(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data.in_({"set_points", "set_minw", "set_daily"}))
 async def set_val_start(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     mapping = {
         "set_points": ("points_per_referral", "🎯 Referal ball miqdorini kiriting:"),
-        "set_minw": ("min_withdraw", "💰 Minimal yechish miqdorini kiriting:"),
-        "set_daily": ("daily_bonus", "🎁 Kunlik bonus miqdorini kiriting:"),
+        "set_minw": ("min_withdraw", "💰 Minimal yechish (ball) kiriting:"),
+        "set_daily": ("daily_bonus", "🎁 Kunlik bonus (ball) kiriting:"),
     }
     key, prompt = mapping[cb.data]
     await state.update_data(setting_key=key)
@@ -667,7 +864,7 @@ async def set_val_start(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message(AS.setting_val)
 async def set_val_do(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         return
     try:
         val = int(message.text.strip())
@@ -678,33 +875,166 @@ async def set_val_do(message: types.Message, state: FSMContext):
     set_setting(data["setting_key"], val)
     await state.clear()
     await message.answer(f"✅ Yangilandi: {data['setting_key']} = {val}")
-    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
-@dp.callback_query(F.data == "set_reward")
-async def set_reward(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+# ----- Star/ball nisbati -----
+@dp.callback_query(F.data == "set_star_ratio")
+async def set_star_ratio(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
         return
-    b = InlineKeyboardBuilder()
-    for t in ["stars", "gift", "premium", "sum"]:
-        b.button(text=t.capitalize(), callback_data=f"rt_{t}")
-    b.button(text="⬅️ Orqaga", callback_data="a_settings")
-    b.adjust(2)
-    await cb.message.edit_text("🎁 Mukofot turini tanlang:", reply_markup=b.as_markup())
+    await cb.message.edit_text(
+        "⭐ 1 ball nechta starsga teng?\n\n"
+        "Misol: 1 (1 ball = 1⭐), 2 (1 ball = 2⭐), 10 (1 ball = 10⭐)\n\n"
+        "Raqamni kiriting:"
+    )
+    await state.set_state(AS.set_stars_per_point)
     await cb.answer()
 
-@dp.callback_query(F.data.startswith("rt_"))
-async def set_reward_do(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+@dp.message(AS.set_stars_per_point)
+async def set_star_ratio_do(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
         return
-    t = cb.data.replace("rt_", "")
-    set_setting("reward_type", t)
-    await cb.answer(f"✅ {t}")
+    try:
+        val = int(message.text.strip())
+    except ValueError:
+        await message.answer("❌ Raqam kiriting.")
+        return
+    if val < 1:
+        await message.answer("❌ Kamida 1 bo'lishi kerak.")
+        return
+    set_setting("star_per_point", val)
+    await state.clear()
+    await message.answer(f"✅ 1 ball = {val} ⭐ qilib o'rnatildi!")
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
+# ----- Mukofot rejimi -----
+@dp.callback_query(F.data == "set_reward_mode")
+async def set_reward_mode(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    b = InlineKeyboardBuilder()
+    b.button(text="⭐ Faqat Stars", callback_data="rm_stars")
+    b.button(text="🎁 Faqat Gift", callback_data="rm_gift")
+    b.button(text="💎 Ikkisi ham", callback_data="rm_both")
+    b.button(text="⬅️ Orqaga", callback_data="a_settings")
+    b.adjust(1)
+    await cb.message.edit_text("💎 Mukofot rejimini tanlang:", reply_markup=b.as_markup())
+    await cb.answer()
+
+@dp.callback_query(F.data.startswith("rm_"))
+async def set_reward_mode_do(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    mode = cb.data.replace("rm_", "")
+    set_setting("reward_mode", mode)
+    await cb.answer(f"✅ {mode}")
     await a_settings(cb)
+
+# ---------- Giftlar ----------
+@dp.callback_query(F.data == "a_gifts")
+async def a_gifts(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    text = "🎁 <b>Mavjud giftlar va narxlari:</b>\n\n"
+    for key, g in GIFTS.items():
+        text += f"{g['emoji']} <b>{g['name']}</b> — {g['stars']} ⭐\n"
+    text += f"\n<i>Eslatma: Giftlar Telegram tomonidan yuboriladi. Narxlar rasmiy.</i>"
+    b = InlineKeyboardBuilder()
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+# ---------- Adminlar ----------
+@dp.callback_query(F.data == "a_admins")
+async def a_admins(cb: types.CallbackQuery):
+    if not is_super_admin(cb.from_user.id):
+        await cb.answer("❌ Faqat super admin!", show_alert=True)
+        return
+    admins = list_admins()
+    text = "👑 <b>Adminlar ro'yxati:</b>\n\n"
+    for a in admins:
+        u = get_user(a["user_id"])
+        name = u["first_name"] if u else "N/A"
+        tag = " (SUPER)" if a["user_id"] in SUPER_ADMIN_IDS else ""
+        text += f"• {name} — <code>{a['user_id']}</code>{tag}\n"
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ Admin qo'shish", callback_data="add_admin")
+    b.button(text="➖ Admin o'chirish", callback_data="del_admin_list")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(1)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+@dp.callback_query(F.data == "add_admin")
+async def add_admin_start(cb: types.CallbackQuery, state: FSMContext):
+    if not is_super_admin(cb.from_user.id):
+        return
+    await cb.message.edit_text(
+        "👑 Yangi admin ID sini kiriting:\n\n"
+        "(Foydalanuvchi botga /start bosgan bo'lishi kerak)"
+    )
+    await state.set_state(AS.add_admin_id)
+    await cb.answer()
+
+@dp.message(AS.add_admin_id)
+async def add_admin_do(message: types.Message, state: FSMContext):
+    if not is_super_admin(message.from_user.id):
+        return
+    try:
+        uid = int(message.text.strip())
+    except ValueError:
+        await message.answer("❌ Raqam kiriting.")
+        return
+    user = get_user(uid)
+    if not user:
+        await message.answer("❌ Bu foydalanuvchi topilmadi. U avval /start bosishi kerak.")
+        return
+    if uid in SUPER_ADMIN_IDS:
+        await message.answer("❌ Bu allaqachon super admin.")
+        return
+    add_admin(uid, message.from_user.id)
+    await state.clear()
+    await message.answer(f"✅ {user['first_name']} (<code>{uid}</code>) admin qilindi!", parse_mode="HTML")
+    # Yangi adminga xabar
+    try:
+        await bot.send_message(uid, "🎉 Siz admin etib tayinlandingiz!\n\n/admin buyrug'ini yuboring.")
+    except Exception:
+        pass
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
+@dp.callback_query(F.data == "del_admin_list")
+async def del_admin_list(cb: types.CallbackQuery):
+    if not is_super_admin(cb.from_user.id):
+        return
+    admins = list_admins()
+    b = InlineKeyboardBuilder()
+    for a in admins:
+        if a["user_id"] in SUPER_ADMIN_IDS:
+            continue
+        u = get_user(a["user_id"])
+        name = u["first_name"] if u else "N/A"
+        b.button(text=f"❌ {name} ({a['user_id']})", callback_data=f"deladmin_{a['user_id']}")
+    b.button(text="⬅️ Orqaga", callback_data="a_admins")
+    b.adjust(1)
+    await cb.message.edit_text("O'chirmoqchi bo'lgan adminni tanlang:", reply_markup=b.as_markup())
+    await cb.answer()
+
+@dp.callback_query(F.data.startswith("deladmin_"))
+async def del_admin_do(cb: types.CallbackQuery):
+    if not is_super_admin(cb.from_user.id):
+        return
+    uid = int(cb.data.replace("deladmin_", ""))
+    if uid in SUPER_ADMIN_IDS:
+        await cb.answer("❌ Super adminni o'chirib bo'lmaydi!", show_alert=True)
+        return
+    remove_admin(uid)
+    await cb.answer("✅ O'chirildi!")
+    await a_admins(cb)
 
 # ---------- Statistika ----------
 @dp.callback_query(F.data == "a_stats")
 async def a_stats(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     total = db_exec("SELECT COUNT(*) AS c FROM users", fetch=True)["c"]
     ver = db_exec("SELECT COUNT(*) AS c FROM users WHERE is_verified=1", fetch=True)["c"]
@@ -727,7 +1057,7 @@ async def a_stats(cb: types.CallbackQuery):
 # ---------- Broadcast ----------
 @dp.callback_query(F.data == "a_broadcast")
 async def a_broadcast(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     await cb.message.edit_text("📨 Yubormoqchi bo'lgan xabaringizni yuboring (forward yoki matn):")
     await state.set_state(AS.broadcast)
@@ -735,7 +1065,7 @@ async def a_broadcast(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message(AS.broadcast)
 async def broadcast_do(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         return
     await state.clear()
     users = db_exec("SELECT user_id FROM users WHERE is_banned=0", fetchall=True) or []
@@ -749,16 +1079,16 @@ async def broadcast_do(message: types.Message, state: FSMContext):
             fail += 1
         await asyncio.sleep(0.05)
     await message.answer(f"📨 Yuborildi!\n✅ {ok}\n❌ {fail}")
-    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
 # ---------- Yechib olish ----------
 @dp.callback_query(F.data == "a_withdrawals")
 async def a_withdrawals(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     rows = db_exec(
-        "SELECT w.id, w.user_id, w.amount, u.first_name FROM withdrawals w "
-        "JOIN users u ON w.user_id=u.user_id WHERE w.status='pending'",
+        "SELECT w.*, u.first_name FROM withdrawals w "
+        "JOIN users u ON w.user_id=u.user_id WHERE w.status='pending' ORDER BY w.id DESC",
         fetchall=True
     ) or []
     if not rows:
@@ -767,9 +1097,14 @@ async def a_withdrawals(cb: types.CallbackQuery):
     text = "💸 <b>Kutilayotgan so'rovlar:</b>\n\n"
     b = InlineKeyboardBuilder()
     for r in rows:
-        text += f"• {r['first_name']} ({r['user_id']}) — {r['amount']} ball\n"
-        b.button(text=f"✅ {r['id']}", callback_data=f"appr_{r['id']}")
-        b.button(text=f"❌ {r['id']}", callback_data=f"rej_{r['id']}")
+        if r["reward_type"] == "gift":
+            g = GIFTS.get(r["gift_key"], {})
+            info = f"{g.get('emoji', '🎁')} {g.get('name', 'Gift')} ({r['amount']}⭐)"
+        else:
+            info = f"{r['amount']} ⭐"
+        text += f"• #{r['id']} {r['first_name']} ({r['user_id']}) — {info}\n"
+        b.button(text=f"✅ #{r['id']}", callback_data=f"appr_{r['id']}")
+        b.button(text=f"❌ #{r['id']}", callback_data=f"rej_{r['id']}")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(2)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
@@ -777,7 +1112,7 @@ async def a_withdrawals(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("appr_"))
 async def approve_w(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     w_id = int(cb.data.replace("appr_", ""))
     w = db_exec("SELECT * FROM withdrawals WHERE id=?", (w_id,), fetch=True)
@@ -785,29 +1120,77 @@ async def approve_w(cb: types.CallbackQuery):
         await cb.answer("Topilmadi!", show_alert=True)
         return
     user = get_user(w["user_id"])
-    if not user or user["points"] < w["amount"]:
-        await cb.answer("❌ Foydalanuvchida yetarli ball yo'q!", show_alert=True)
+    if not user:
+        await cb.answer("User topilmadi!", show_alert=True)
         return
-    update_user(w["user_id"], points=user["points"] - w["amount"])
+
+    ratio = int(get_setting("star_per_point", "1"))
+    points_needed = (w["amount"] + ratio - 1) // ratio
+
+    if user["points"] < points_needed:
+        await cb.answer(f"❌ User'da yetarli ball yo'q! Kerak: {points_needed}, bor: {user['points']}", show_alert=True)
+        return
+
+    # Ballarni ayirish
+    update_user(w["user_id"], points=user["points"] - points_needed)
+
+    # Stars avtomatik yuborish
+    if w["reward_type"] == "stars":
+        try:
+            # Stars yuborish uchun invoice (Telegram Stars)
+            await bot.send_invoice(
+                chat_id=w["user_id"],
+                title=f"{w['amount']} Stars",
+                description=f"Siz {w['amount']} ⭐ yechib oldingiz!",
+                payload=f"stars_{w['id']}",
+                provider_token="",  # Stars uchun bo'sh
+                currency="XTR",
+                prices=[LabeledPrice(label="Stars", amount=w["amount"])],
+            )
+            await bot.send_message(
+                w["user_id"],
+                f"✅ {w['amount']} ⭐ yechib olish tasdiqlandi!\n"
+                f"To'lovni qabul qilish uchun yuqoridagi xabarni bosing."
+            )
+        except Exception as e:
+            logger.error(f"Stars yuborishda xato: {e}")
+            await cb.answer(f"❌ Stars yuborishda xato: {e}", show_alert=True)
+            # Ballarni qaytarish
+            update_user(w["user_id"], points=user["points"])
+            return
+    else:
+        # Gift — qo'lda yuborish
+        g = GIFTS.get(w["gift_key"], {})
+        await bot.send_message(
+            w["user_id"],
+            f"✅ {g.get('emoji', '🎁')} {g.get('name', 'Gift')} so'rovingiz tasdiqlandi!\n"
+            f"Admin tez orada giftni yuboradi."
+        )
+
     db_exec("UPDATE withdrawals SET status='approved' WHERE id=?", (w_id,))
     await cb.answer("✅ Tasdiqlandi!")
-    try:
-        await bot.send_message(w["user_id"], f"✅ {w['amount']} ball yechib olish tasdiqlandi!")
-    except Exception:
-        pass
 
 @dp.callback_query(F.data.startswith("rej_"))
 async def reject_w(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     w_id = int(cb.data.replace("rej_", ""))
+    w = db_exec("SELECT * FROM withdrawals WHERE id=?", (w_id,), fetch=True)
     db_exec("UPDATE withdrawals SET status='rejected' WHERE id=?", (w_id,))
     await cb.answer("❌ Rad etildi!")
+    if w:
+        try:
+            await bot.send_message(
+                w["user_id"],
+                f"❌ {w['amount']} ⭐ yechib olish so'rovingiz rad etildi."
+            )
+        except Exception:
+            pass
 
 # ---------- User boshqarish ----------
 @dp.callback_query(F.data == "a_users")
 async def a_users(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     await cb.message.edit_text("👤 Foydalanuvchi ID sini kiriting:")
     await state.set_state(AS.user_id)
@@ -815,7 +1198,7 @@ async def a_users(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message(AS.user_id)
 async def user_info(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         return
     try:
         uid = int(message.text.strip())
@@ -839,12 +1222,14 @@ async def user_info(message: types.Message, state: FSMContext):
     uname = f"@{user['username']}" if user["username"] else "yo'q"
     ban = "Ha" if user["is_banned"] else "Yo'q"
     ver = "Ha" if user["is_verified"] else "Yo'q"
+    ratio = int(get_setting("star_per_point", "1"))
     text = (
         f"👤 <b>Foydalanuvchi:</b>\n\n"
         f"ID: <code>{user['user_id']}</code>\n"
         f"Ism: {user['first_name']}\n"
         f"Username: {uname}\n"
         f"Ball: {user['points']}\n"
+        f"Stars ekv: {user['points'] * ratio} ⭐\n"
         f"Ban: {ban}\n"
         f"Tasdiqlangan: {ver}"
     )
@@ -852,7 +1237,7 @@ async def user_info(message: types.Message, state: FSMContext):
 
 @dp.callback_query(F.data.startswith("tog_"))
 async def toggle_ban(cb: types.CallbackQuery):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     uid = int(cb.data.replace("tog_", ""))
     user = get_user(uid)
@@ -863,7 +1248,7 @@ async def toggle_ban(cb: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("adp_"))
 async def add_points_start(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     uid = int(cb.data.replace("adp_", ""))
     await state.update_data(target_uid=uid)
@@ -873,7 +1258,7 @@ async def add_points_start(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message(AS.points_val)
 async def add_points_do(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         return
     try:
         amount = int(message.text.strip())
@@ -890,11 +1275,11 @@ async def add_points_do(message: types.Message, state: FSMContext):
     update_user(uid, points=new_pts)
     await state.clear()
     await message.answer(f"✅ Yangi ball: {new_pts}")
-    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
 @dp.callback_query(F.data.startswith("msg_"))
 async def user_msg_start(cb: types.CallbackQuery, state: FSMContext):
-    if cb.from_user.id not in ADMIN_IDS:
+    if not is_admin(cb.from_user.id):
         return
     uid = int(cb.data.replace("msg_", ""))
     await state.update_data(target_uid=uid)
@@ -904,7 +1289,7 @@ async def user_msg_start(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message(AS.user_msg)
 async def user_msg_send(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMIN_IDS:
+    if not is_admin(message.from_user.id):
         return
     data = await state.get_data()
     uid = data["target_uid"]
@@ -914,7 +1299,7 @@ async def user_msg_send(message: types.Message, state: FSMContext):
     except Exception as e:
         await message.answer(f"❌ Xato: {e}")
     await state.clear()
-    await message.answer("🛠 Admin Panel", reply_markup=admin_menu())
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
 # ==================== HEALTH + POLLING ====================
 async def health(request):
