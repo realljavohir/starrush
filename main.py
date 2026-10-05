@@ -838,7 +838,7 @@ async def admin_user_info(message: types.Message, state: FSMContext):
         f"👤 <b>Foydalanuvchi:</b>\n\n"
         f"ID: <code>{user['user_id']}</code>\n"
         f"Ism: {user['first_name']}\n"
-        f"Username: @{user['username'] or 'yo\\'q'}\n"
+        f"Username: @{user['username'] or 'yoq'}\n"
         f"Ball: {user['points']}\n"
         f"Ban: {'Ha' if user['is_banned'] else 'Yo\\'q'}\n"
         f"Tasdiqlangan: {'Ha' if user['is_verified'] else 'Yo\\'q'}"
