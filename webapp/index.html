@@ -15,12 +15,14 @@
   --gold:#F6B73C; --on-gold:#0E1A3A; --tint:#EEF2FB; --icon:#2F4A9E;
   --danger:#C62A1E; --danger-bg:#FDECEA; --ok:#17744A; --ok-bg:#E4F4EB; --wait:#8A5A00; --wait-bg:#FFF3D6;
   --track-d:#E3E7EE;
+  --pink:#E23E7B; --pink-bg:#FDEDF4;
   --font:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
 }
 [data-theme="dark"]{
   --bg:#0A0F1E; --surface:#121A30; --text:#EDF0F7; --muted:#8C97B2; --line:#202A45;
   --navy:#1B2C63; --tint:#1A2547; --icon:#8FA8F5; --danger:#FF8A80; --danger-bg:#3A1A1D;
   --ok:#6FD3A0; --ok-bg:#12301F; --wait:#F6C96B; --wait-bg:#3A2D0E; --track-d:#202A45;
+  --pink:#FF7BA8; --pink-bg:#3A1A28;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg)}
@@ -62,6 +64,7 @@ svg{display:block;flex-shrink:0}
 .ico{width:36px;height:36px;border-radius:10px;background:var(--tint);color:var(--icon);display:grid;place-items:center;font-size:18px}
 .ico svg{width:20px;height:20px}
 .row.me .ico{background:var(--surface)}
+.ico.pink{background:var(--pink-bg);color:var(--pink)}
 .col{flex:1;min-width:0}
 .l{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sub{font-size:13px;color:var(--muted);margin-top:2px;font-weight:500}
@@ -79,6 +82,7 @@ svg{display:block;flex-shrink:0}
 .c-bad{background:var(--danger-bg);color:var(--danger)}
 .c-gold{background:var(--gold);color:var(--on-gold)}
 .c-tint{background:var(--tint);color:var(--icon)}
+.c-pink{background:var(--pink-bg);color:var(--pink)}
 
 /* Gift progress */
 .mini{height:6px;background:var(--track-d);border-radius:3px;overflow:hidden;margin-top:8px}
@@ -87,6 +91,13 @@ svg{display:block;flex-shrink:0}
 .sum > div{flex:1}
 .sum .k{font-size:13px;color:var(--muted);font-weight:600}
 .sum .n{font-size:24px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+
+/* Tabs (segmented) */
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin:14px 0 0;gap:4px}
+.seg button{flex:1;height:40px;border-radius:10px;font-size:13px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:var(--navy);color:#fff}
+[data-theme="dark"] .seg button.on{background:var(--tint);color:var(--text)}
+.seg button svg{width:16px;height:16px}
 
 /* Levels roadmap */
 .lv.locked{opacity:.62}
@@ -97,16 +108,19 @@ svg{display:block;flex-shrink:0}
 .btns{display:flex;gap:10px;margin-top:14px}
 .primary{flex:1;height:52px;border-radius:14px;background:var(--navy);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px}
 .primary:active{opacity:.88}
+.primary.pink{background:var(--pink)}
 .secondary{width:52px;height:52px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;color:var(--text)}
 .secondary:active{background:var(--tint)}
 .ghost{width:100%;height:48px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:700;margin-top:14px}
 .ghost:active{background:var(--tint)}
+.ghost.donate{background:var(--pink);color:#fff;border-color:var(--pink)}
+.ghost.donate:active{opacity:.9}
 
 /* Bottom nav */
 .nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);
   padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
 .nav-in{max-width:480px;margin:0 auto;display:flex;gap:2px}
-.tab{flex:1;min-width:0;height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:12px;font-weight:700}
+.tab{flex:1;min-width:0;height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:11px;font-weight:700}
 .tab svg{width:22px;height:22px}
 .tab[aria-current="page"]{color:var(--text);background:var(--surface)}
 .tab[aria-current="page"] svg{color:var(--icon)}
@@ -122,7 +136,7 @@ svg{display:block;flex-shrink:0}
 .empty b{display:block;font-size:16px;margin-bottom:6px}
 .empty p{font-size:14px;color:var(--muted);line-height:1.45}
 .toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translate(-50%,12px);background:var(--text);color:var(--bg);
-  padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.2s}
+  padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:50}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.sk{animation:none}.fill,.toast{transition:none}}
 </style>
@@ -154,6 +168,7 @@ const $ = id => document.getElementById(id);
 let refLink = '';
 let current = 'home';
 const cache = {};
+let ratingTab = 'stars';
 
 /* Theme */
 const dark = (tg?.colorScheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
@@ -195,11 +210,13 @@ const I = {
   check: svg('<path d="M20 6 9 17l-5-5"/>'),
   x: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
   clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  heart: svg('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8Z"/>'),
 };
 
 const TABS = [
   { id: 'home',    label: 'Asosiy',  icon: I.home },
   { id: 'rating',  label: 'Reyting', icon: I.rank },
+  { id: 'donate',  label: 'Donat',   icon: I.heart },
   { id: 'gifts',   label: 'Giftlar', icon: I.gift },
   { id: 'friends', label: "Do'stlar", icon: I.users },
   { id: 'history', label: 'Tarix',   icon: I.hist },
@@ -256,7 +273,7 @@ function setHeader(d) {
   $('handle').textContent = d.username ? '@' + d.username : "Username yo'q";
 }
 
-/* ---------- Tab renderers ---------- */
+/* ---------- HOME ---------- */
 function renderHome({ profile: d, levels: lv }) {
   setHeader(d);
   const stars = Number(d.stars) || 0;
@@ -297,8 +314,8 @@ function renderHome({ profile: d, levels: lv }) {
     <section class="list" aria-label="Statistika">
       <div class="row"><div class="ico">${I.users}</div><div class="col"><div class="l">Taklif qilgan do'stlar</div></div><div class="v">${fmt(d.referrals)}</div></div>
       <div class="row"><div class="ico">${I.week}</div><div class="col"><div class="l">Bu hafta</div></div><div class="v">+${fmt(d.week_referrals)}</div></div>
+      <div class="row"><div class="ico pink">${I.heart}</div><div class="col"><div class="l">Donat qilgan</div></div><div class="v">${fmt(d.donated)} <small>⭐</small></div></div>
       <div class="row"><div class="ico">${I.rank}</div><div class="col"><div class="l">Reytingdagi o'rin</div></div><div class="v">#${fmt(d.rank)}</div></div>
-      <div class="row"><div class="ico">${I.level}</div><div class="col"><div class="l">Daraja</div></div><div class="v">${esc(d.level_emoji)} ${esc(d.level_name)}</div></div>
     </section>
 
     <h2 class="h2">Darajalar yo'li</h2>
@@ -308,31 +325,98 @@ function renderHome({ profile: d, levels: lv }) {
   requestAnimationFrame(() => requestAnimationFrame(() => { const f = $('fill'); if (f) f.style.width = pct + '%'; }));
 }
 
+/* ---------- RATING (3 tab) ---------- */
 function renderRating(d) {
   const medal = r => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
-  const inTop = d.top.some(x => x.is_me);
-  const rows = d.top.map(x => `
-    <div class="row ${x.is_me ? 'me' : ''}">
-      <div class="rk">${medal(x.rank)}</div>
-      <div class="col"><div class="l">${esc(x.level_emoji)} ${esc(x.name)}${x.is_me ? ' (siz)' : ''}</div></div>
-      <div class="v">${fmt(x.stars)} <small>⭐</small></div>
-    </div>`).join('');
-  const meRow = inTop ? '' : `
-    <div class="dots" aria-hidden="true">···</div>
-    <div class="row me">
-      <div class="rk">${fmt(d.me.rank)}</div>
-      <div class="col"><div class="l">${esc(d.me.name)} (siz)</div></div>
-      <div class="v">${fmt(d.me.stars)} <small>⭐</small></div>
+
+  const seg = `
+    <div class="seg" role="tablist">
+      <button role="tab" data-rt="stars" class="${ratingTab==='stars'?'on':''}">${STAR.replace('<svg','<svg width="16" height="16"')} Stars</button>
+      <button role="tab" data-rt="donate" class="${ratingTab==='donate'?'on':''}">${I.heart.replace('<svg','<svg width="16" height="16"')} Donat</button>
+      <button role="tab" data-rt="ref" class="${ratingTab==='ref'?'on':''}">${I.users.replace('<svg','<svg width="16" height="16"')} Referal</button>
     </div>`;
+
+  let body = '';
+  if (ratingTab === 'stars') {
+    const rows = d.stars.top.map(x => `
+      <div class="row ${x.is_me ? 'me' : ''}">
+        <div class="rk">${medal(x.rank)}</div>
+        <div class="col"><div class="l">${esc(x.level_emoji)} ${esc(x.name)}${x.is_me ? ' (siz)' : ''}</div></div>
+        <div class="v">${fmt(x.stars)} <small>⭐</small></div>
+      </div>`).join('');
+    const meRow = d.stars.top.some(x => x.is_me) ? '' : `
+      <div class="dots" aria-hidden="true">· · ·</div>
+      <div class="row me">
+        <div class="rk">${fmt(d.stars.me.rank)}</div>
+        <div class="col"><div class="l">${esc(d.stars.me.name)} (siz)</div></div>
+        <div class="v">${fmt(d.stars.me.stars)} <small>⭐</small></div>
+      </div>`;
+    body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Reyting bo\'sh</div></div>'}${meRow}</section>`;
+  } else if (ratingTab === 'donate') {
+    const rows = d.donate.top.map(x => `
+      <div class="row ${x.is_me ? 'me' : ''}">
+        <div class="rk">${medal(x.rank)}</div>
+        <div class="col"><div class="l">${esc(x.name)}${x.is_me ? ' (siz)' : ''}</div><div class="sub">${fmt(x.count)} ta donat</div></div>
+        <div class="v">${fmt(x.total)} <small>⭐</small></div>
+      </div>`).join('');
+    const meRow = d.donate.top.some(x => x.is_me) ? '' : `
+      <div class="dots" aria-hidden="true">· · ·</div>
+      <div class="row me">
+        <div class="rk">${fmt(d.donate.me.rank)}</div>
+        <div class="col"><div class="l">${esc(d.donate.me.name)} (siz)</div><div class="sub">${fmt(d.donate.me.count)} ta donat</div></div>
+        <div class="v">${fmt(d.donate.me.total)} <small>⭐</small></div>
+      </div>`;
+    body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha donat yo\'q</div></div>'}${meRow}</section>`;
+  } else {
+    const rows = d.ref.top.map(x => `
+      <div class="row ${x.is_me ? 'me' : ''}">
+        <div class="rk">${medal(x.rank)}</div>
+        <div class="col"><div class="l">${esc(x.name)}${x.is_me ? ' (siz)' : ''}</div></div>
+        <div class="v">${fmt(x.count)} <small>ta</small></div>
+      </div>`).join('');
+    const meRow = d.ref.top.some(x => x.is_me) ? '' : `
+      <div class="dots" aria-hidden="true">· · ·</div>
+      <div class="row me">
+        <div class="rk">${fmt(d.ref.me.rank)}</div>
+        <div class="col"><div class="l">${esc(d.ref.me.name)} (siz)</div></div>
+        <div class="v">${fmt(d.ref.me.count)} <small>ta</small></div>
+      </div>`;
+    body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha referal yo\'q</div></div>'}${meRow}</section>`;
+  }
+
   $('content').innerHTML = `
     <section class="sum" aria-label="Sizning o'rningiz">
-      <div><div class="k">Sizning o'rningiz</div><div class="n">#${fmt(d.me.rank)}</div></div>
-      <div><div class="k">Stars</div><div class="n">${fmt(d.me.stars)}</div></div>
+      <div><div class="k">Sizning o'rningiz</div><div class="n">#${fmt(d.stars.me.rank)}</div></div>
+      <div><div class="k">Stars</div><div class="n">${fmt(d.stars.me.stars)}</div></div>
     </section>
-    <h2 class="h2">Top 10</h2>
-    <section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha reyting bo\'sh</div></div>'}${meRow}</section>`;
+    ${seg}
+    <h2 class="h2">TOP 10</h2>
+    ${body}`;
 }
 
+/* ---------- DONATE ---------- */
+function renderDonate(d) {
+  const rows = d.top.map(x => `
+    <div class="row ${x.is_me ? 'me' : ''}">
+      <div class="rk">${x.rank === 1 ? '🥇' : x.rank === 2 ? '🥈' : x.rank === 3 ? '🥉' : x.rank}</div>
+      <div class="col"><div class="l">${esc(x.name)}${x.is_me ? ' (siz)' : ''}</div><div class="sub">${fmt(x.count)} ta</div></div>
+      <div class="v">${fmt(x.total)} <small>⭐</small></div>
+    </div>`).join('');
+
+  $('content').innerHTML = `
+    <section class="sum" aria-label="Donat">
+      <div><div class="k">Siz donat qilgansiz</div><div class="n">${fmt(d.me.total)} ⭐</div></div>
+      <div><div class="k">Sizning o'rningiz</div><div class="n">#${fmt(d.me.rank)}</div></div>
+    </section>
+
+    <button class="ghost donate" data-act="donate">${I.heart.replace('<svg','<svg width="20" height="20"')} Donat qilish</button>
+
+    <h2 class="h2">Eng ko'p donat qilganlar</h2>
+    <section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha donat yo\'q</div></div>'}</section>
+    <p class="sub" style="margin:10px 4px 0;text-align:center">Donat — botni qo'llab-quvvatlash uchun. Har bir donat reytingda ko'rinadi.</p>`;
+}
+
+/* ---------- GIFTS ---------- */
 function renderGifts(d) {
   const rows = d.gifts.map(g => {
     const ok = d.free >= g.stars;
@@ -359,6 +443,7 @@ function renderGifts(d) {
     <p class="sub" style="margin:10px 4px 0;text-align:center">Bo'sh balans — kutilayotgan so'rovlardan keyin qolgan stars.</p>`;
 }
 
+/* ---------- FRIENDS ---------- */
 function renderFriends(d) {
   const rows = d.items.map(x => `
     <div class="row">
@@ -378,10 +463,13 @@ function renderFriends(d) {
       : `<div class="empty"><b>Hali do'st taklif qilmagansiz</b><p>Havolani ulashing — har bir tasdiqlangan do'st uchun ${fmt(d.reward)} ⭐ olasiz.</p></div>`}`;
 }
 
+/* ---------- HISTORY ---------- */
 const STATUS = {
-  pending:  { cls: 'c-wait', icon: I.clock, text: 'Kutilmoqda' },
-  approved: { cls: 'c-ok',   icon: I.check, text: 'Tasdiqlandi' },
-  rejected: { cls: 'c-bad',  icon: I.x,     text: 'Rad etildi' },
+  pending:    { cls: 'c-wait', icon: I.clock, text: 'Kutilmoqda' },
+  processing: { cls: 'c-wait', icon: I.clock, text: 'Jarayonda' },
+  approved:   { cls: 'c-ok',   icon: I.check, text: 'Tasdiqlandi' },
+  rejected:   { cls: 'c-bad',  icon: I.x,     text: 'Rad etildi' },
+  failed:     { cls: 'c-bad',  icon: I.x,     text: 'Xato' },
 };
 function renderHistory(d) {
   if (!d.items.length) {
@@ -406,18 +494,19 @@ function renderHistory(d) {
     <p class="sub" style="margin:10px 4px 0;text-align:center">Oxirgi 20 ta so'rov</p>`;
 }
 
-/* ---------- Loading per tab ---------- */
+/* ---------- Loaders ---------- */
 const LOADERS = {
   home: async () => {
     const [profile, levels] = await Promise.all([api('/api/profile'), api('/api/levels')]);
     return { profile, levels };
   },
   rating:  () => api('/api/rating'),
+  donate:  () => api('/api/donations'),
   gifts:   () => api('/api/gifts'),
   friends: () => api('/api/referrals'),
   history: () => api('/api/withdrawals'),
 };
-const RENDERERS = { home: renderHome, rating: renderRating, gifts: renderGifts, friends: renderFriends, history: renderHistory };
+const RENDERERS = { home: renderHome, rating: renderRating, donate: renderDonate, gifts: renderGifts, friends: renderFriends, history: renderHistory };
 
 async function openTab(id, force) {
   current = id;
@@ -454,13 +543,28 @@ async function copyLink() {
 }
 
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-act]');
+  const el = e.target.closest('[data-act], [data-rt]');
   if (!el) return;
+
+  // Reyting tablari
+  if (el.dataset.rt) {
+    tap();
+    ratingTab = el.dataset.rt;
+    if (cache.rating) renderRating(cache.rating);
+    return;
+  }
+
   tap();
   const act = el.dataset.act;
   if (act === 'retry') { openTab(current, true); return; }
   if (act === 'close') { tg ? tg.close() : null; return; }
-  if (!refLink) { toast('Avval «Asosiy» bo\'limini oching'); return; }
+  if (act === 'donate') {
+    // Donat qilish uchun botni ochamiz
+    const url = `https://t.me/${BOT_USERNAME}`;
+    tg ? tg.openTelegramLink(url) : window.open(url);
+    return;
+  }
+  if (!refLink) { toast("Avval «Asosiy» bo'limini oching"); return; }
   if (act === 'share') {
     const text = "Star Rush botga qo'shiling va Stars yig'ing!";
     const url = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(text)}`;
@@ -485,7 +589,6 @@ $('nav').addEventListener('click', e => {
 if (!tg?.initData) {
   showError('Ilovani Telegram ichidagi bot orqali oching.');
 } else {
-  // ref havolasini darhol tayyorlaymiz (ID Telegram'dan olinadi)
   const uid = tg.initDataUnsafe?.user?.id;
   if (uid) refLink = `https://t.me/${BOT_USERNAME}?start=ref_${uid}`;
   openTab('home', true);
