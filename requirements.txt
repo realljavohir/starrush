@@ -1,4 +1,6 @@
-aiogram>=3.0.0
-aiohttp
-psycopg2-binary
-Pillow
+aiogram>=3.22,<4
+aiohttp>=3.9
+psycopg2-binary>=2.9
+Pillow>=10.1
+telethon>=1.40
+cryptg>=0.4
