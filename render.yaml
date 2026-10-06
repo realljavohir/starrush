@@ -1,39 +1,24 @@
 services:
   - type: web
-    name: starrush
+    name: starrush-bot
     runtime: python
-    plan: free
-    region: frankfurt
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    plan: starter
+    buildCommand: pip install -r requirements.txt
     startCommand: python main.py
-    healthCheckPath: /health
-    autoDeploy: true
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.7
-      - key: TZ
-        value: Asia/Tashkent
-      - key: DATABASE_URL
-        fromDatabase:
-          name: starrush-db
-          property: connectionString
-      # Quyidagilarni Render Dashboard -> Environment bo'limida to'ldiring
       - key: BOT_TOKEN
         sync: false
-      - key: ADMIN_IDS          # vergul bilan: 12345,67890
+      - key: ADMIN_IDS
         sync: false
-      - key: WEBAPP_URL         # masalan: https://starrush.onrender.com
+      - key: DATABASE_URL
         sync: false
-      - key: API_ID             # my.telegram.org dan
+      - key: WEBAPP_URL
+        sync: false
+      - key: API_ID
         sync: false
       - key: API_HASH
         sync: false
-      - key: SESSION_STRING     # session.py chiqargan qator
+      - key: SESSION_STRING
         sync: false
-
-databases:
-  - name: starrush-db
-    plan: free
-    region: frankfurt
-    databaseName: starrush
-    user: starrush
+      - key: PORT
+        value: 8080
