@@ -328,7 +328,6 @@ def init_db():
         status TEXT DEFAULT 'received',
         created_at TEXT
     )""")
-    # Mini o'yinlar (kelajakda ishlatish uchun)
     c.execute("""CREATE TABLE IF NOT EXISTS games (
         id SERIAL PRIMARY KEY,
         title TEXT,
@@ -3666,25 +3665,152 @@ def build_profile(uid):
 
 
 def build_rating(uid):
-    me = db_exec("SELECT first_name, stars FROM users WHERE user_id=%s", (uid,), fetch=True)
-    if not me:
+    # 1) Stars reytingi
+    me_stars = db_exec("SELECT first_name, stars FROM users WHERE user_id=%s", (uid,), fetch=True)
+    if not me_stars:
         return {"error": "Foydalanuvchi topilmadi. Botda /start bosing."}
+
     rows = db_exec(
         "SELECT user_id, first_name, stars FROM users "
         "WHERE is_verified=1 AND is_banned=0 ORDER BY stars DESC, user_id ASC LIMIT 10",
         fetchall=True) or []
-    top = [{
+    stars_top = [{
         "rank": i,
         "name": r["first_name"] or "User",
         "stars": r["stars"],
         "level_emoji": get_user_level(r["stars"]).get("emoji", ""),
         "is_me": r["user_id"] == uid,
     } for i, r in enumerate(rows, 1)]
-    rank = db_exec(
+    stars_rank = db_exec(
         "SELECT COUNT(*) + 1 AS rank FROM users WHERE stars > %s AND is_verified=1 AND is_banned=0",
-        (me["stars"],), fetch=True)
-    return {"top": top,
-            "me": {"rank": rank["rank"] if rank else 0, "name": me["first_name"] or "User", "stars": me["stars"]}}
+        (me_stars["stars"],), fetch=True)
+
+    # 2) Donat reytingi
+    d_rows = db_exec(
+        "SELECT u.user_id, u.first_name, COALESCE(SUM(d.stars),0) AS total, COUNT(d.id) AS count "
+        "FROM donations d JOIN users u ON d.user_id=u.user_id "
+        "GROUP BY u.user_id, u.first_name ORDER BY total DESC LIMIT 10",
+        fetchall=True) or []
+    donate_top = [{
+        "rank": i,
+        "name": r["first_name"] or "User",
+        "total": int(r["total"]),
+        "count": int(r["count"]),
+        "is_me": r["user_id"] == uid,
+    } for i, r in enumerate(d_rows, 1)]
+
+    me_d = db_exec(
+        "SELECT COALESCE(SUM(stars),0) AS total, COUNT(id) AS count FROM donations WHERE user_id=%s",
+        (uid,), fetch=True) or {"total": 0, "count": 0}
+    my_don_total = int(me_d["total"])
+    my_don_count = int(me_d["count"])
+    don_rank = db_exec(
+        "SELECT COUNT(*) + 1 AS rank FROM ("
+        "  SELECT user_id, SUM(stars) AS total FROM donations "
+        "  GROUP BY user_id HAVING SUM(stars) > %s"
+        ") t",
+        (my_don_total,), fetch=True)
+
+    # 3) Referal reytingi
+    r_rows = db_exec(
+        "SELECT u.user_id, u.first_name, COUNT(r.user_id) AS cnt "
+        "FROM users r JOIN users u ON r.referrer_id=u.user_id "
+        "WHERE r.is_verified=1 "
+        "GROUP BY u.user_id, u.first_name ORDER BY cnt DESC LIMIT 10",
+        fetchall=True) or []
+    ref_top = [{
+        "rank": i,
+        "name": r["first_name"] or "User",
+        "count": int(r["cnt"]),
+        "is_me": r["user_id"] == uid,
+    } for i, r in enumerate(r_rows, 1)]
+
+    my_ref = _count_refs(uid)
+    ref_rank = db_exec(
+        "SELECT COUNT(*) + 1 AS rank FROM ("
+        "  SELECT referrer_id, COUNT(*) AS cnt FROM users "
+        "  WHERE is_verified=1 AND referrer_id<>0 "
+        "  GROUP BY referrer_id HAVING COUNT(*) > %s"
+        ") t",
+        (my_ref,), fetch=True)
+
+    return {
+        "stars": {
+            "top": stars_top,
+            "me": {
+                "rank": stars_rank["rank"] if stars_rank else 0,
+                "name": me_stars["first_name"] or "User",
+                "stars": me_stars["stars"],
+            },
+        },
+        "donate": {
+            "top": donate_top,
+            "me": {
+                "rank": don_rank["rank"] if don_rank else 0,
+                "name": me_stars["first_name"] or "User",
+                "total": my_don_total,
+                "count": my_don_count,
+            },
+        },
+        "ref": {
+            "top": ref_top,
+            "me": {
+                "rank": ref_rank["rank"] if ref_rank else 0,
+                "name": me_stars["first_name"] or "User",
+                "count": my_ref,
+            },
+        },
+    }
+
+
+def build_donations(uid):
+    """Donat sahifasi uchun: TOP 10 + foydalanuvchining shaxsiy statistikasi."""
+    me = db_exec("SELECT first_name FROM users WHERE user_id=%s", (uid,), fetch=True)
+    if not me:
+        return {"error": "Foydalanuvchi topilmadi. Botda /start bosing."}
+
+    rows = db_exec(
+        "SELECT u.user_id, u.first_name, "
+        "       COALESCE(SUM(d.stars),0) AS total, "
+        "       COUNT(d.id) AS count "
+        "FROM donations d JOIN users u ON d.user_id=u.user_id "
+        "GROUP BY u.user_id, u.first_name "
+        "ORDER BY total DESC LIMIT 10",
+        fetchall=True
+    ) or []
+
+    me_row = db_exec(
+        "SELECT COALESCE(SUM(stars),0) AS total, COUNT(id) AS count "
+        "FROM donations WHERE user_id=%s",
+        (uid,), fetch=True
+    ) or {"total": 0, "count": 0}
+
+    my_total = int(me_row["total"])
+    rank = db_exec(
+        "SELECT COUNT(*) + 1 AS rank FROM ("
+        "  SELECT user_id, SUM(stars) AS total FROM donations "
+        "  GROUP BY user_id HAVING SUM(stars) > %s"
+        ") t",
+        (my_total,), fetch=True
+    )
+
+    top = [{
+        "rank": i,
+        "name": r["first_name"] or "User",
+        "total": int(r["total"]),
+        "count": int(r["count"]),
+        "is_me": r["user_id"] == uid,
+    } for i, r in enumerate(rows, 1)]
+
+    return {
+        "top": top,
+        "me": {
+            "rank": rank["rank"] if rank else 0,
+            "name": me["first_name"] or "User",
+            "total": my_total,
+            "count": int(me_row["count"]),
+        },
+    }
 
 
 def build_withdrawals(uid):
@@ -3781,7 +3907,7 @@ async def index(request):
 async def init_userbot():
     global tg_client, API_ID, API_HASH, SESSION_STRING
 
-    # Avval DB'dagi sozlamalarni tekshiramiz (admin almashtirgan bo'lishi mumkin)
+    # DB'dagi sozlamalarni tekshiramiz (admin almashtirgan bo'lishi mumkin)
     db_api_id = get_setting("userbot_api_id", "")
     db_api_hash = get_setting("userbot_api_hash", "")
     db_session = get_setting("userbot_session", "")
@@ -3826,9 +3952,13 @@ async def main():
     app.router.add_get("/", index)
     app.router.add_get("/health", health)
     for path, builder in (
-        ("/api/profile", build_profile), ("/api/rating", build_rating),
-        ("/api/withdrawals", build_withdrawals), ("/api/gifts", build_gifts),
-        ("/api/referrals", build_referrals), ("/api/levels", build_levels),
+        ("/api/profile", build_profile),
+        ("/api/rating", build_rating),
+        ("/api/donations", build_donations),
+        ("/api/withdrawals", build_withdrawals),
+        ("/api/gifts", build_gifts),
+        ("/api/referrals", build_referrals),
+        ("/api/levels", build_levels),
     ):
         app.router.add_get(path, make_api(builder))
     runner = web.AppRunner(app)
