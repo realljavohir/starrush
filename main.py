@@ -3871,6 +3871,10 @@ def build_profile(uid):
     rank = db_exec(
         "SELECT COUNT(*) + 1 AS rank FROM users WHERE stars > %s AND is_verified=1 AND is_banned=0",
         (u["stars"],), fetch=True)
+    week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+    week = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1 AND joined_at >= %s",
+        (uid, week_ago), fetch=True)
     lvl = get_user_level(u["stars"])
     return {
         "user_id": u["user_id"],
@@ -3882,7 +3886,97 @@ def build_profile(uid):
         "level_min": lvl.get("min_stars", 0),
         "level_max": lvl.get("max_stars", 10),
         "referrals": refs["c"] if refs else 0,
+        "week_referrals": week["c"] if week else 0,
         "rank": rank["rank"] if rank else 0,
+    }
+
+
+def build_rating(uid):
+    """Top 10 + foydalanuvchining o'z o'rni. Boshqa userlarning ID si berilmaydi."""
+    me = db_exec("SELECT first_name, stars FROM users WHERE user_id=%s", (uid,), fetch=True)
+    if not me:
+        return {"error": "Foydalanuvchi topilmadi. Botda /start bosing."}
+    rows = db_exec(
+        "SELECT user_id, first_name, stars FROM users "
+        "WHERE is_verified=1 AND is_banned=0 ORDER BY stars DESC, user_id ASC LIMIT 10",
+        fetchall=True) or []
+    top = []
+    for i, r in enumerate(rows, 1):
+        top.append({
+            "rank": i,
+            "name": r["first_name"] or "User",
+            "stars": r["stars"],
+            "level_emoji": get_user_level(r["stars"]).get("emoji", ""),
+            "is_me": r["user_id"] == uid,
+        })
+    rank = db_exec(
+        "SELECT COUNT(*) + 1 AS rank FROM users WHERE stars > %s AND is_verified=1 AND is_banned=0",
+        (me["stars"],), fetch=True)
+    return {
+        "top": top,
+        "me": {"rank": rank["rank"] if rank else 0,
+               "name": me["first_name"] or "User",
+               "stars": me["stars"]},
+    }
+
+
+def build_withdrawals(uid):
+    rows = db_exec(
+        "SELECT w.id, w.stars, w.reward_type, w.status, w.created_at, g.emoji, g.name "
+        "FROM withdrawals w LEFT JOIN gifts g ON g.key = w.gift_key "
+        "WHERE w.user_id=%s ORDER BY w.id DESC LIMIT 20",
+        (uid,), fetchall=True) or []
+    return {"items": [{
+        "id": r["id"],
+        "stars": r["stars"],
+        "type": r["reward_type"],
+        "status": r["status"],
+        "created_at": r["created_at"],
+        "gift_emoji": r["emoji"],
+        "gift_name": r["name"],
+    } for r in rows]}
+
+
+def build_gifts(uid):
+    u = db_exec("SELECT stars FROM users WHERE user_id=%s", (uid,), fetch=True)
+    if not u:
+        return {"error": "Foydalanuvchi topilmadi. Botda /start bosing."}
+    free = max(u["stars"] - pending_total(uid), 0)
+    return {
+        "balance": u["stars"],
+        "free": free,
+        "gifts": [{"key": g["key"], "emoji": g["emoji"], "name": g["name"], "stars": g["stars"]}
+                  for g in get_all_gifts()],
+    }
+
+
+def build_referrals(uid):
+    total = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1",
+        (uid,), fetch=True)
+    week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+    week = db_exec(
+        "SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1 AND joined_at >= %s",
+        (uid, week_ago), fetch=True)
+    rows = db_exec(
+        "SELECT first_name, joined_at FROM users "
+        "WHERE referrer_id=%s AND is_verified=1 ORDER BY joined_at DESC LIMIT 50",
+        (uid,), fetchall=True) or []
+    return {
+        "total": total["c"] if total else 0,
+        "week": week["c"] if week else 0,
+        "reward": int(get_setting("stars_per_referral", "2")),
+        "items": [{"name": r["first_name"] or "User", "joined_at": r["joined_at"]} for r in rows],
+    }
+
+
+def build_levels(uid):
+    u = db_exec("SELECT stars FROM users WHERE user_id=%s", (uid,), fetch=True)
+    return {
+        "stars": u["stars"] if u else 0,
+        "levels": [{"name": l.get("name", ""), "emoji": l.get("emoji", ""),
+                    "min": l.get("min_stars", 0), "max": l.get("max_stars", 0)}
+                   for l in get_levels()],
     }
 
 
@@ -3902,12 +3996,23 @@ async def cors_middleware(request, handler):
     return resp
 
 
-async def api_profile(request):
-    tg_user = validate_init_data(request.headers.get("X-Telegram-Init-Data", ""))
-    if not tg_user:
-        return web.json_response({"error": "Ruxsat yo'q"}, status=401)
-    data = await asyncio.to_thread(build_profile, int(tg_user["id"]))
-    return web.json_response(data)
+def make_api(builder):
+    """initData ni tekshirib, builder(uid) natijasini JSON qilib qaytaradi."""
+    async def handler(request):
+        tg_user = validate_init_data(request.headers.get("X-Telegram-Init-Data", ""))
+        if not tg_user or "id" not in tg_user:
+            return web.json_response({"error": "Ruxsat yo'q"}, status=401)
+        data = await asyncio.to_thread(builder, int(tg_user["id"]))
+        return web.json_response(data)
+    return handler
+
+
+api_profile = make_api(build_profile)
+api_rating = make_api(build_rating)
+api_withdrawals = make_api(build_withdrawals)
+api_gifts = make_api(build_gifts)
+api_referrals = make_api(build_referrals)
+api_levels = make_api(build_levels)
 
 
 async def health(request):
@@ -3936,6 +4041,11 @@ async def main():
     app.router.add_get("/", index)
     app.router.add_get("/health", health)
     app.router.add_get("/api/profile", api_profile)
+    app.router.add_get("/api/rating", api_rating)
+    app.router.add_get("/api/withdrawals", api_withdrawals)
+    app.router.add_get("/api/gifts", api_gifts)
+    app.router.add_get("/api/referrals", api_referrals)
+    app.router.add_get("/api/levels", api_levels)
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", PORT).start()
