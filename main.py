@@ -24,7 +24,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import (
-    BufferedInputFile, WebAppInfo,
+    BufferedInputFile, WebAppInfo, LabeledPrice,
     ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove,
 )
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
@@ -68,6 +68,8 @@ BOT_USERNAME = "StarRushUZBot"
 
 MIN_STARS = 50
 MAX_STARS = 1_000_000
+MIN_DONATE = 1
+MAX_DONATE = 100000
 UZ_PHONE_RE = re.compile(r"^998\d{9}$")
 
 # ═══════════════════════════════════════════════════════════
@@ -141,7 +143,7 @@ LANGS = {
         "sent_to_admin": "✅ <b>So'rov yuborildi!</b>\n\n⭐ Miqdor: <b>{n} ⭐</b>\n⏳ Admin tasdiqlashini kuting...",
         "gift_processing": "⏳ <b>Gift yuborilmoqda...</b>\n\n{gift} — <b>{n} ⭐</b>",
         "gift_done": "🎉 <b>Gift yuborildi!</b>\n\n{gift}\n⭐ Narx: <b>{n} ⭐</b>\n\n🎁 Telegram profilingizni tekshiring!",
-        "gift_failed": "⚠️ <b>Giftni yuborib bo'lmadi.</b>\n\n{gift}\n\n💰 <b>{n} ⭐</b> balansingizga qaytarildi. Birozdan so'ng qayta urinib ko'ring.",
+        "gift_failed": "⚠️ <b>Giftni yuborib bo'lmadi.</b>\n\n{gift}\n\n💰 <b>{n} ⭐</b> balansingizga qaytarildi.",
         "gift_ask_anon": "{gift} — <b>{n} ⭐</b>\n\n🕶 Gift <b>anonim</b> yuborilsinmi?",
         "gift_anon_yes": "🕶 Anonim",
         "gift_anon_no": "👤 Ismim ko'rinsin",
@@ -161,32 +163,42 @@ LANGS = {
         "reply_sent": "✅ <b>Javob yuborildi!</b>",
         "chat_active": "💬 <b>Suhbat faol</b>\n\nXabaringizni yozing.",
         "chat_closed_by_admin": "🔚 <b>Admin suhbatni tugatdi.</b>",
-        "no_active_chat": "ℹ️ Sizda faol suhbat yo'q.",
         "admin_reply": "📬 <b>Admindan javob:</b>",
         "user_msg": "📩 <b>Foydalanuvchidan xabar:</b>",
         "gift_stars_title": "🎁 <b>Stars sovg'a qilish</b>\n\n💰 Sizda: <b>{bal} ⭐</b>\n\nFoydalanuvchi <b>username</b> yoki <b>ID</b> sini kiriting:",
         "gift_stars_amount": "👤 Qabul qiluvchi: <b>{name}</b>\n\nNechta stars sovg'a qilasiz?",
-        "gift_stars_confirm": "🎁 <b>Tasdiqlang</b>\n\n👤 Kimga: <b>{name}</b>\n⭐ Miqdor: <b>{n} ⭐</b>\n\nTasdiqlaysizmi?",
+        "gift_stars_confirm": "🎁 <b>Tasdiqlang</b>\n\n👤 Kimga: <b>{name}</b>\n⭐ Miqdor: <b>{n} ⭐</b>",
         "gift_stars_sent": "✅ <b>{n} ⭐ {name} ga yuborildi!</b>",
         "gift_stars_received": "🎁 <b>Sizga stars sovg'a qilindi!</b>\n\n👤 Kimdan: <b>{name}</b>\n⭐ Miqdor: <b>+{n} ⭐</b>\n\n💰 Jami: <b>{total} ⭐</b>",
         "gift_stars_not_found": "❌ Foydalanuvchi topilmadi.",
         "gift_stars_self": "❌ O'zingizga sovg'a qila olmaysiz.",
-        "review_title": "⭐ <b>Sharh qoldirish</b>\n\nBot haqida fikringizni yozing — admin tasdiqlasa kanalga chiqadi:",
+        "review_title": "⭐ <b>Sharh qoldirish</b>\n\nBot haqida fikringizni yozing:",
         "review_sent": "✅ <b>Sharhingiz yuborildi!</b>",
         "review_approved": "✅ <b>Sharhingiz tasdiqlandi!</b>",
         "review_rejected": "❌ <b>Sharhingiz rad etildi.</b>",
         "level": "Daraja",
-        "stars_will_send": "✅ <b>So'rovingiz tasdiqlandi!</b>\n\n⭐ Miqdor: <b>{n} ⭐</b>\n\n<i>Admin tez orada sizga Stars yuboradi!</i>",
+        "stars_will_send": "✅ <b>So'rovingiz tasdiqlandi!</b>\n\n⭐ Miqdor: <b>{n} ⭐</b>",
         "level_up": "🎉 <b>TABRIKLAYMIZ!</b>\n\nSiz {emoji} <b>{name}</b> darajasiga chiqdingiz!\n\n⬆️ Keyingi: {next_emoji} <b>{next_name}</b>\n📊 Kerak: <b>{need} ⭐</b>",
         "banner_caption": "🎨 <b>Sizning shaxsiy baneringiz</b>",
-        "ask_phone": "📱 <b>Telefon raqamingizni tasdiqlang</b>\n\nFaqat 🇺🇿 <b>+998</b> raqamlari qabul qilinadi.\nPastdagi tugmani bosing 👇",
+        "ask_phone": "📱 <b>Telefon raqamingizni tasdiqlang</b>\n\nFaqat 🇺🇿 <b>+998</b> raqamlari qabul qilinadi.",
         "share_phone": "📱 Raqamni yuborish",
         "phone_not_own": "❌ Faqat o'zingizning raqamingizni yuboring.",
         "phone_only_uz": "❌ Faqat O'zbekiston raqamlari (+998 XX XXX XX XX).",
         "phone_used": "❌ Bu raqam boshqa akkauntga bog'langan.",
         "phone_use_button": "ℹ️ Iltimos, pastdagi «📱 Raqamni yuborish» tugmasidan foydalaning.",
-        "donate_title": "💝 <b>Donat qilish</b>\n\nDonat — botni qo'llab-quvvatlash. Donatingiz maxsus donat reytingida ko'rinadi!\n\n💰 Sizda: <b>{bal} ⭐</b>\n\nNechta star donat qilasiz? (min 1)",
+        # DONAT — B variant
+        "donate_title": (
+            "💝 <b>Donat qilish</b>\n\n"
+            "Donat — botni qo'llab-quvvatlash. Siz <b>Telegram Stars</b> "
+            "yordamida botga stars yuborasiz.\n\n"
+            "💡 <i>Telegram Stars — Telegram'ning ichki valyutasi. "
+            "Uni @PremiumBot orqali sotib olishingiz mumkin.</i>\n\n"
+            "⭐ <b>Necha Stars yubormoqchisiz?</b>"
+        ),
         "donate_ok": "💝 <b>Rahmat!</b>\n\nSiz <b>{n} ⭐</b> donat qildingiz!\n\n🏆 Donat reytingida ko'rinasiz!",
+        "donate_invoice_title": "Botga donat",
+        "donate_invoice_desc": "Botni qo'llab-quvvatlash uchun {n} Stars",
+        "donate_invoice_btn": "⭐ {n} Stars to'lash",
         "rating_choose": "🏆 <b>Reyting</b>\n\nQaysi reytingni ko'rmoqchisiz?",
         "rating_stars": "⭐ Eng ko'p stars egalari",
         "rating_donate": "💝 Eng ko'p donat qilganlar",
@@ -321,21 +333,15 @@ def init_db():
         min_stars INTEGER,
         max_stars INTEGER
     )""")
+
+    # DONAT jadvali — bu yerga Telegram Stars orqali kelgan haqiqiy stars'lar yoziladi
     c.execute("""CREATE TABLE IF NOT EXISTS donations (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
         stars INTEGER,
+        charge_id TEXT UNIQUE,
+        payload TEXT,
         status TEXT DEFAULT 'received',
-        created_at TEXT
-    )""")
-    c.execute("""CREATE TABLE IF NOT EXISTS games (
-        id SERIAL PRIMARY KEY,
-        title TEXT,
-        metric TEXT,
-        starts_at TEXT,
-        ends_at TEXT,
-        prize INTEGER DEFAULT 0,
-        is_active INTEGER DEFAULT 1,
         created_at TEXT
     )""")
 
@@ -344,6 +350,7 @@ def init_db():
         "min_withdraw": "50",
         "max_withdraw": "1000000",
         "review_channel": "",
+        "min_donate": "1",
     }
     for k, v in defaults.items():
         c.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING", (k, v))
@@ -858,17 +865,9 @@ async def cb_menu(cb: types.CallbackQuery, state: FSMContext):
     uid = cb.from_user.id
     lang = get_user_lang(uid)
     try:
-        await cb.message.edit_text(
-            T(lang, "menu_title"),
-            reply_markup=main_menu(uid),
-            parse_mode="HTML"
-        )
+        await cb.message.edit_text(T(lang, "menu_title"), reply_markup=main_menu(uid), parse_mode="HTML")
     except Exception:
-        await cb.message.answer(
-            T(lang, "menu_title"),
-            reply_markup=main_menu(uid),
-            parse_mode="HTML"
-        )
+        await cb.message.answer(T(lang, "menu_title"), reply_markup=main_menu(uid), parse_mode="HTML")
     await cb.answer()
 
 
@@ -1102,23 +1101,13 @@ async def cb_profile(cb: types.CallbackQuery, state: FSMContext):
         f"╭━━━〔 👤 <b>PROFIL</b> 〕━━━╮\n\n"
         f"🆔 <b>ID:</b> <code>{user['user_id']}</code>\n"
         f"👤 <b>Ism:</b> {user['first_name'] or 'N/A'}\n"
-        f"🔗 <b>Username:</b> {uname}\n"
-        f"🌐 <b>Til:</b> {user.get('language', 'uz').upper()}\n\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 <b>MOLIYAVIY</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"🔗 <b>Username:</b> {uname}\n\n"
         f"⭐ <b>Stars:</b> <b>{user['stars']}</b> ⭐\n"
         f"💝 <b>Donat:</b> <b>{donated}</b> ⭐\n"
         f"🏅 <b>Daraja:</b> {lvl.get('emoji', '🥉')} <b>{lvl.get('name', 'Bronza')}</b>\n"
         f"⬆️ <b>Keyingi:</b> {next_text}\n\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"👥 <b>REFERALLAR</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
         f"👥 <b>Taklif qilganlar:</b> <b>{ref_count}</b> ta\n"
         f"🏆 <b>O'rningiz:</b> <b>#{rank}</b>\n\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"ℹ️ <b>HOLAT</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
         f"✅ <b>Tasdiqlangan:</b> {ver}\n"
         f"🚫 <b>Ban:</b> {ban}\n"
         f"📅 <b>Qo'shilgan:</b> {joined}\n\n"
@@ -1182,8 +1171,6 @@ async def cb_stats(cb: types.CallbackQuery, state: FSMContext):
         f"👥 <b>Referallar:</b> {ref_count} ta\n"
         f"📈 <b>Bu hafta:</b> +{week_ref_count} ta\n"
         f"🏆 <b>O'rningiz:</b> #{rank}\n\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"🏅 <b>DARAJA</b>\n"
         f"{lvl.get('emoji', '🥉')} <b>{lvl.get('name', 'Bronza')}</b>\n"
         f"{progress_bar}\n"
         f"📊 <b>{user['stars']}</b> / {lvl_max} ⭐\n"
@@ -1422,7 +1409,7 @@ async def rt_ref(cb: types.CallbackQuery):
     await cb.answer()
 
 # ═══════════════════════════════════════════════════════════
-# DONAT — botning o'ziga
+# DONAT — Telegram Stars invoice (B variant)
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_donate")
 async def cb_donate(cb: types.CallbackQuery, state: FSMContext):
@@ -1433,10 +1420,49 @@ async def cb_donate(cb: types.CallbackQuery, state: FSMContext):
     if not user:
         await cb.answer(T(lang, "start_first"), show_alert=True)
         return
+
+    b = InlineKeyboardBuilder()
+    # Tezkor miqdor tugmalari
+    b.button(text="⭐ 50", callback_data="don_50")
+    b.button(text="⭐ 100", callback_data="don_100")
+    b.button(text="⭐ 250", callback_data="don_250")
+    b.button(text="⭐ 500", callback_data="don_500")
+    b.button(text="⭐ 1000", callback_data="don_1000")
+    b.button(text="✏️ Boshqa miqdor", callback_data="don_custom")
+    b.button(text=T(lang, "menu"), callback_data="m_menu")
+    b.adjust(3, 2, 1, 1)
+
+    txt = T(lang, "donate_title")
+    try:
+        await cb.message.edit_text(txt, reply_markup=b.as_markup(), parse_mode="HTML")
+    except Exception:
+        await cb.message.answer(txt, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data.startswith("don_") & ~F.data.in_({"don_custom"}))
+async def donate_quick(cb: types.CallbackQuery):
+    try:
+        amount = int(cb.data.replace("don_", ""))
+    except ValueError:
+        return
+    await send_donate_invoice(cb, amount)
+
+
+@dp.callback_query(F.data == "don_custom")
+async def donate_custom(cb: types.CallbackQuery, state: FSMContext):
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "cancel"), callback_data="donate_cancel")
     b.adjust(1)
-    txt = T(lang, "donate_title", bal=user["stars"])
+    txt = (
+        f"💝 <b>Boshqa miqdor</b>\n\n"
+        f"⭐ Nechta Stars yubormoqchisiz?\n"
+        f"📉 Min: <b>{MIN_DONATE}</b>\n"
+        f"📈 Max: <b>{MAX_DONATE:,}</b>\n\n"
+        f"<i>Raqamni yozib yuboring:</i>"
+    )
     try:
         await cb.message.edit_text(txt, reply_markup=b.as_markup(), parse_mode="HTML")
     except Exception:
@@ -1457,7 +1483,7 @@ async def donate_cancel(cb: types.CallbackQuery, state: FSMContext):
 
 
 @dp.message(US.donate_amount)
-async def donate_process(message: types.Message, state: FSMContext):
+async def donate_custom_input(message: types.Message, state: FSMContext):
     uid = message.from_user.id
     lang = get_user_lang(uid)
     try:
@@ -1465,42 +1491,107 @@ async def donate_process(message: types.Message, state: FSMContext):
     except ValueError:
         await message.answer(T(lang, "enter_number"))
         return
-    if amount < 1:
-        await message.answer(T(lang, "enter_number"))
+    if amount < MIN_DONATE:
+        await message.answer(f"❌ Min: {MIN_DONATE} ⭐")
+        return
+    if amount > MAX_DONATE:
+        await message.answer(f"❌ Max: {MAX_DONATE:,} ⭐")
+        return
+    await state.clear()
+    await send_donate_invoice_message(message, amount)
+
+
+async def send_donate_invoice(cb: types.CallbackQuery, amount: int):
+    """Callback uchun invoice yuborish."""
+    if amount < MIN_DONATE or amount > MAX_DONATE:
+        await cb.answer(f"❌ {MIN_DONATE} – {MAX_DONATE:,} ⭐", show_alert=True)
+        return
+    try:
+        await bot.send_invoice(
+            chat_id=cb.from_user.id,
+            title=T("uz", "donate_invoice_title"),
+            description=T("uz", "donate_invoice_desc", n=amount),
+            payload=f"donate:{cb.from_user.id}:{amount}",
+            currency="XTR",
+            prices=[LabeledPrice(label="Donat", amount=amount)],
+            start_parameter=f"donate_{amount}",
+        )
+        await cb.answer()
+    except Exception as e:
+        logger.error(f"Invoice xato: {e}")
+        await cb.answer(f"❌ Xato: {e}", show_alert=True)
+
+
+async def send_donate_invoice_message(message: types.Message, amount: int):
+    """Oddiy xabar uchun invoice yuborish."""
+    try:
+        await bot.send_invoice(
+            chat_id=message.chat.id,
+            title=T("uz", "donate_invoice_title"),
+            description=T("uz", "donate_invoice_desc", n=amount),
+            payload=f"donate:{message.from_user.id}:{amount}",
+            currency="XTR",
+            prices=[LabeledPrice(label="Donat", amount=amount)],
+            start_parameter=f"donate_{amount}",
+        )
+    except Exception as e:
+        logger.error(f"Invoice xato: {e}")
+        await message.answer(f"❌ Xato: {e}")
+
+
+@dp.pre_checkout_query()
+async def pre_checkout(q: types.PreCheckoutQuery):
+    """Telegram to'lovdan oldin tasdiqlashni so'raydi."""
+    ok = (q.invoice_payload or "").startswith("donate:")
+    await q.answer(ok=ok, error_message=None if ok else "Bu to'lov qabul qilinmaydi")
+
+
+@dp.message(F.successful_payment)
+async def on_donate_payment(message: types.Message):
+    """To'lov muvaffaqiyatli bo'lganda."""
+    p = message.successful_payment
+    if not (p.invoice_payload or "").startswith("donate:"):
         return
 
-    user = get_user(uid)
-    free = user["stars"] - pending_total(uid)
-    if amount > free:
-        await message.answer(
-            f"{T(lang, 'not_enough')}\n💰 {T(lang, 'balance')}: <b>{max(free, 0)} ⭐</b>",
-            parse_mode="HTML")
+    parts = p.invoice_payload.split(":")
+    uid = int(parts[1])
+    amount = int(parts[2])
+    charge_id = p.telegram_payment_charge_id
+
+    # Takroriy yozuvni oldini olish
+    existing = db_exec("SELECT 1 FROM donations WHERE charge_id=%s", (charge_id,), fetch=True)
+    if existing:
         return
 
-    if spend_stars(uid, amount) is None:
-        await message.answer(T(lang, "not_enough"))
-        return
-
+    # Donat yozuvi
     db_exec(
-        "INSERT INTO donations (user_id, stars, status, created_at) VALUES (%s, %s, 'received', %s)",
-        (uid, amount, now_uz().isoformat()),
+        "INSERT INTO donations (user_id, stars, charge_id, payload, status, created_at) "
+        "VALUES (%s, %s, %s, %s, 'received', %s) ON CONFLICT (charge_id) DO NOTHING",
+        (uid, amount, charge_id, p.invoice_payload, now_uz().isoformat())
     )
 
-    await state.clear()
-    await message.answer(T(lang, "donate_ok", n=amount), parse_mode="HTML")
-    await message.answer(T(lang, "menu_title"), reply_markup=main_menu(uid), parse_mode="HTML")
+    # Userga rahmat
+    lang = get_user_lang(uid)
+    try:
+        await bot.send_message(uid, T(lang, "donate_ok", n=amount), parse_mode="HTML")
+    except Exception:
+        pass
 
-    uname = f"@{user['username']}" if user["username"] else "—"
+    # Adminlarga xabar
+    user = get_user(uid)
     total_don = bot_donate_balance()
+    uname = f"@{user['username']}" if user and user['username'] else "—"
     await notify_admins(
         f"💝 <b>YANGI DONAT!</b>\n\n"
-        f"👤 <b>User:</b> {user['first_name'] or 'User'}\n"
+        f"👤 <b>User:</b> {user['first_name'] if user else 'User'}\n"
         f"🔗 <b>Username:</b> {uname}\n"
         f"🆔 <b>ID:</b> <code>{uid}</code>\n"
         f"⭐ <b>Miqdor:</b> {amount} ⭐\n"
         f"💰 <b>Bot donat balansi:</b> {total_don} ⭐\n"
         f"📅 <b>Vaqt:</b> {now_uz().strftime('%Y-%m-%d %H:%M')}"
     )
+
+    logger.info(f"Donat: user={uid} amount={amount} charge={charge_id}")
 
 # ═══════════════════════════════════════════════════════════
 # YECHIB OLISH
@@ -1691,7 +1782,7 @@ async def _resolve_user(user_id):
 
 async def userbot_send_gift(user_id, gift_row, anon=False, comment=None):
     if not tg_client:
-        return False, "Userbot sozlanmagan (SESSION_STRING)"
+        return False, "Userbot sozlanmagan"
     try:
         if not tg_client.is_connected():
             await tg_client.connect()
@@ -1869,8 +1960,7 @@ async def finish_gift_request(uid, state, send, comment=None):
             f"🆔 So'rov: <code>#{w_id}</code>\n"
             f"👤 User: <code>{uid}</code> ({uname})\n"
             f"🎁 {gift_label} — {gift['stars']} ⭐\n"
-            f"❗ {esc(err)}\n\n"
-            f"Stars userga qaytarildi. Userbot'ni tekshiring.")
+            f"❗ {esc(err)}")
 
 
 @dp.callback_query(F.data == "gcomment_skip")
@@ -2333,12 +2423,16 @@ async def a_userbot(cb: types.CallbackQuery, state: FSMContext):
         return
     await state.clear()
 
+    # Diagnostika
+    diag_lines = []
+    diag_lines.append(f"API_ID: {'✅' if API_ID else '❌'} ({API_ID if API_ID else 'yo`q'})")
+    diag_lines.append(f"API_HASH: {'✅' if API_HASH else '❌'} ({'o`rnatilgan' if API_HASH else 'yo`q'})")
+    diag_lines.append(f"SESSION_STRING: {'✅' if SESSION_STRING else '❌'} ({len(SESSION_STRING) if SESSION_STRING else 0} belgi)")
+
     if not tg_client:
         status = "❌ Ulanmagan"
-        extra = "\n\n<i>API_ID, API_HASH va SESSION_STRING env'larini tekshiring.</i>"
         bal_text = "—"
     else:
-        extra = ""
         try:
             me = await tg_client.get_me()
             status = f"✅ Ulangan: <b>{esc(me.first_name or '')}</b>"
@@ -2355,6 +2449,9 @@ async def a_userbot(cb: types.CallbackQuery, state: FSMContext):
         "╭━━━〔 🤖 <b>USERBOT</b> 〕━━━╮\n\n"
         f"📡 Holat: {status}\n"
         f"💰 Akkauntdagi Stars: {bal_text}\n\n"
+        "━━━━━━━━━━━━━━━━━━━\n"
+        "🔍 <b>Diagnostika:</b>\n"
+        + "\n".join(diag_lines) + "\n\n"
         "Gift'lar avtomatik, shu akkauntning Stars balansidan yuboriladi.\n\n"
         "╰━━━━━━━━━━━━━━━━━╯"
     )
@@ -2362,6 +2459,7 @@ async def a_userbot(cb: types.CallbackQuery, state: FSMContext):
     b.button(text="🔄 Yangilash", callback_data="a_userbot")
     if is_super_admin(cb.from_user.id):
         b.button(text="🔑 Session almashtirish", callback_data="a_userbot_change")
+    b.button(text="🧪 Test (o'zimga gift)", callback_data="a_userbot_test")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(1)
     try:
@@ -2369,6 +2467,45 @@ async def a_userbot(cb: types.CallbackQuery, state: FSMContext):
     except Exception:
         pass
     await cb.answer()
+
+
+@dp.callback_query(F.data == "a_userbot_test")
+async def a_userbot_test(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    if not tg_client:
+        await cb.answer("❌ Userbot ulanmagan!", show_alert=True)
+        return
+    await cb.answer("⏳ Sinab ko'rilmoqda...")
+    try:
+        # Akkaunt holatini tekshiramiz
+        me = await tg_client.get_me()
+        # Stars balansini tekshiramiz
+        try:
+            st = await tg_client(functions.payments.GetStarsStatusRequest(peer=tt.InputPeerSelf()))
+            bal = getattr(st.balance, "amount", st.balance)
+        except Exception as e:
+            bal = f"xato: {e}"
+
+        # Gift ro'yxatini tekshiramiz
+        try:
+            res = await tg_client(functions.payments.GetStarGiftsRequest(hash=0))
+            gift_count = len(getattr(res, "gifts", []))
+        except Exception as e:
+            gift_count = f"xato: {e}"
+
+        await cb.message.answer(
+            f"🧪 <b>Userbot test natijasi:</b>\n\n"
+            f"👤 Akkaunt: <b>{esc(me.first_name or '')}</b>\n"
+            f"🆔 ID: <code>{me.id}</code>\n"
+            f"📞 Telefon: {esc(me.phone or '—')}\n"
+            f"💰 Stars: <b>{bal} ⭐</b>\n"
+            f"🎁 Mavjud giftlar: <b>{gift_count}</b>\n\n"
+            f"✅ Userbot ishlayapti!",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await cb.message.answer(f"❌ Xato: {esc(e)}", parse_mode="HTML")
 
 
 @dp.callback_query(F.data == "a_userbot_change")
@@ -2485,7 +2622,10 @@ async def a_channels(cb: types.CallbackQuery):
 async def add_ch_start(cb: types.CallbackQuery, state: FSMContext):
     if not is_admin(cb.from_user.id):
         return
-    await cb.message.edit_text("📢 <b>Kanal username kiriting</b>\n\nMisol: <code>@mychannel</code>", parse_mode="HTML")
+    await cb.message.edit_text(
+        "📢 <b>Kanal username kiriting</b>\n\nMisol: <code>@mychannel</code>\n\n"
+        "⚠️ <i>Bot kanalga admin qilingan bo'lishi shart!</i>",
+        parse_mode="HTML")
     await state.set_state(AS.channel)
     await cb.answer()
 
@@ -2497,6 +2637,25 @@ async def add_ch_process(message: types.Message, state: FSMContext):
     ch = message.text.strip()
     if not ch.startswith("@"):
         ch = "@" + ch
+
+    # Tekshirish
+    try:
+        chat = await bot.get_chat(ch)
+        # Bot a'zo ekanligini tekshirish
+        member = await bot.get_chat_member(ch, (await bot.get_me()).id)
+        if member.status not in ("administrator", "creator"):
+            await message.answer(
+                f"⚠️ <b>Diqqat!</b>\n\nBot <b>{esc(ch)}</b> kanalida admin emas.\n"
+                f"Botni admin qiling va qaytadan urinib ko'ring.",
+                parse_mode="HTML")
+            return
+    except Exception as e:
+        await message.answer(
+            f"❌ Kanal tekshirib bo'lmadi: <code>{esc(e)}</code>\n\n"
+            f"Botni kanalga qo'shganingizga ishonch hosil qiling.",
+            parse_mode="HTML")
+        return
+
     add_channel(ch)
     await state.clear()
     await message.answer(f"✅ <b>{esc(ch)}</b> qo'shildi!", parse_mode="HTML")
@@ -2800,6 +2959,7 @@ async def a_settings(cb: types.CallbackQuery):
         f"🎯 1 referal = <b>{get_setting('stars_per_referral')} ⭐</b>\n"
         f"💰 Min yechish = <b>{get_setting('min_withdraw')} ⭐</b>\n"
         f"💎 Max yechish = <b>{get_setting('max_withdraw')} ⭐</b>\n"
+        f"💝 Min donat = <b>{get_setting('min_donate')} ⭐</b>\n"
         f"📢 Sharh kanali: <b>{esc(get_setting('review_channel') or 'yo`q')}</b>\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
@@ -2918,7 +3078,7 @@ async def a_donations(cb: types.CallbackQuery):
     text = (
         f"╭━━━〔 💝 <b>BOT DONAT BALANSI</b> 〕━━━╮\n\n"
         f"💰 <b>Jami donat:</b> <b>{total} ⭐</b>\n\n"
-        f"<i>Bu stars'lar botning o'ziga tegishli — Telegram akkauntingizdan ishlatishingiz mumkin.</i>\n\n"
+        f"<i>Bu stars'lar botning o'ziga tegishli — Telegram orqali ishlatishingiz mumkin.</i>\n\n"
     )
     if rows:
         text += "━━━━━━━━━━━━━━━━━━━\n"
@@ -2965,16 +3125,10 @@ async def broadcast_do(message: types.Message, state: FSMContext):
     total = len(users)
     status = await message.answer(f"📨 Yuborilmoqda... 0/{total}")
     ok = fail = blocked = 0
-    is_forward = (getattr(message, "forward_origin", None) is not None
-                  or getattr(message, "forward_date", None) is not None)
 
     for i, u in enumerate(users, 1):
         try:
-            if is_forward:
-                await bot.forward_message(chat_id=u["user_id"], from_chat_id=message.chat.id,
-                                          message_id=message.message_id)
-            else:
-                await message.copy_to(chat_id=u["user_id"])
+            await message.copy_to(chat_id=u["user_id"])
             ok += 1
         except TelegramForbiddenError:
             blocked += 1
@@ -3665,7 +3819,7 @@ def build_profile(uid):
 
 
 def build_rating(uid):
-    # 1) Stars reytingi
+    # STARS
     me_stars = db_exec("SELECT first_name, stars FROM users WHERE user_id=%s", (uid,), fetch=True)
     if not me_stars:
         return {"error": "Foydalanuvchi topilmadi. Botda /start bosing."}
@@ -3685,7 +3839,7 @@ def build_rating(uid):
         "SELECT COUNT(*) + 1 AS rank FROM users WHERE stars > %s AND is_verified=1 AND is_banned=0",
         (me_stars["stars"],), fetch=True)
 
-    # 2) Donat reytingi
+    # DONAT
     d_rows = db_exec(
         "SELECT u.user_id, u.first_name, COALESCE(SUM(d.stars),0) AS total, COUNT(d.id) AS count "
         "FROM donations d JOIN users u ON d.user_id=u.user_id "
@@ -3711,7 +3865,7 @@ def build_rating(uid):
         ") t",
         (my_don_total,), fetch=True)
 
-    # 3) Referal reytingi
+    # REF
     r_rows = db_exec(
         "SELECT u.user_id, u.first_name, COUNT(r.user_id) AS cnt "
         "FROM users r JOIN users u ON r.referrer_id=u.user_id "
@@ -3764,7 +3918,6 @@ def build_rating(uid):
 
 
 def build_donations(uid):
-    """Donat sahifasi uchun: TOP 10 + foydalanuvchining shaxsiy statistikasi."""
     me = db_exec("SELECT first_name FROM users WHERE user_id=%s", (uid,), fetch=True)
     if not me:
         return {"error": "Foydalanuvchi topilmadi. Botda /start bosing."}
@@ -3907,10 +4060,10 @@ async def index(request):
 async def init_userbot():
     global tg_client, API_ID, API_HASH, SESSION_STRING
 
-    # DB'dagi sozlamalarni tekshiramiz (admin almashtirgan bo'lishi mumkin)
     db_api_id = get_setting("userbot_api_id", "")
     db_api_hash = get_setting("userbot_api_hash", "")
     db_session = get_setting("userbot_session", "")
+
     if db_api_id and db_api_hash and db_session:
         try:
             API_ID = int(db_api_id)
@@ -3918,22 +4071,32 @@ async def init_userbot():
             pass
         API_HASH = db_api_hash
         SESSION_STRING = db_session
+        logger.info("Userbot sozlamalari DB'dan olindi")
 
-    if not (API_ID and API_HASH and SESSION_STRING):
-        logger.warning("Userbot sozlanmagan — gift yuborilmaydi")
+    if not API_ID:
+        logger.warning("❌ API_ID yo'q — userbot ulanmaydi")
         return
+    if not API_HASH:
+        logger.warning("❌ API_HASH yo'q — userbot ulanmaydi")
+        return
+    if not SESSION_STRING:
+        logger.warning("❌ SESSION_STRING yo'q — userbot ulanmaydi")
+        return
+
+    logger.info(f"Userbot ulanmoqda (API_ID={API_ID}, SESSION={len(SESSION_STRING)} belgi)...")
+
     try:
         client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
         await client.connect()
         if not await client.is_user_authorized():
-            logger.error("Userbot sessiyasi yaroqsiz — SESSION_STRING ni qayta oling")
+            logger.error("❌ Userbot sessiyasi YAROQSIZ — session.py ni qayta ishga tushiring")
             await client.disconnect()
             return
         tg_client = client
         me = await client.get_me()
-        logger.info(f"Userbot ulandi: {me.first_name} (id {me.id})")
+        logger.info(f"✅ Userbot ulandi: {me.first_name} (id {me.id})")
     except Exception as e:
-        logger.error(f"Userbot ulanmadi: {e}")
+        logger.error(f"❌ Userbot ulanmadi: {e}")
         tg_client = None
 
 # ═══════════════════════════════════════════════════════════
@@ -3943,10 +4106,7 @@ async def main():
     init_db()
     await init_userbot()
 
-    try:
-        await bot.set_my_name(BOT_NAME)
-    except Exception as e:
-        logger.warning(f"set_my_name: {e}")
+    # set_my_name OLIB TASHLANDI (flood control xatosidan qochish)
 
     app = web.Application(middlewares=[cors_middleware])
     app.router.add_get("/", index)
