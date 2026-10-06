@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import html
 import hmac
 import time
@@ -22,7 +23,10 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import BufferedInputFile, WebAppInfo
+from aiogram.types import (
+    BufferedInputFile, WebAppInfo, LabeledPrice,
+    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove,
+)
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiohttp import web
 
@@ -48,6 +52,9 @@ BOT_USERNAME = "StarRushUZBot"
 
 MIN_STARS = 50
 MAX_STARS = 1_000_000
+
+# O'zbekiston raqami: 998 + 9 ta raqam (jami 12 raqam)
+UZ_PHONE_RE = re.compile(r"^998\d{9}$")
 
 # ═══════════════════════════════════════════════════════════
 # DARAJALAR
@@ -154,6 +161,13 @@ LANGS = {
         "stars_will_send": "✅ <b>So'rovingiz tasdiqlandi!</b>\n\n⭐ Miqdor: <b>{n} ⭐</b>\n\n<i>Admin tez orada sizga Stars yuboradi!</i>",
         "level_up": "🎉 <b>TABRIKLAYMIZ!</b>\n\nSiz {emoji} <b>{name}</b> darajasiga chiqdingiz!\n\n⬆️ Keyingi: {next_emoji} <b>{next_name}</b>\n📊 Kerak: <b>{need} ⭐</b>\n\n🚀 Davom eting!",
         "banner_caption": "🎨 <b>Sizning shaxsiy baneringiz</b>\n\n📤 Do'stlaringizga yuboring!",
+        # --- telefon ---
+        "ask_phone": "📱 <b>Telefon raqamingizni tasdiqlang</b>\n\nFaqat 🇺🇿 <b>+998</b> raqamlari qabul qilinadi.\nPastdagi tugmani bosing 👇",
+        "share_phone": "📱 Raqamni yuborish",
+        "phone_not_own": "❌ Faqat o'zingizning raqamingizni yuboring.",
+        "phone_only_uz": "❌ Faqat O'zbekiston raqamlari (+998 XX XXX XX XX) qabul qilinadi.",
+        "phone_used": "❌ Bu raqam boshqa akkauntga bog'langan.",
+        "phone_use_button": "ℹ️ Iltimos, pastdagi «📱 Raqamni yuborish» tugmasidan foydalaning.",
     },
     "ru": {
         "flag": "🇷🇺", "name": "Русский",
@@ -226,6 +240,13 @@ LANGS = {
         "stars_will_send": "✅ <b>Ваш запрос подтверждён!</b>\n\n⭐ Сумма: <b>{n} ⭐</b>\n\n<i>Админ скоро отправит вам Stars!</i>",
         "level_up": "🎉 <b>ПОЗДРАВЛЯЕМ!</b>\n\nВы достигли уровня {emoji} <b>{name}</b>!\n\n⬆️ Следующий: {next_emoji} <b>{next_name}</b>\n📊 Нужно: <b>{need} ⭐</b>\n\n🚀 Продолжайте!",
         "banner_caption": "🎨 <b>Ваш личный баннер</b>\n\n📤 Отправьте друзьям!",
+        # --- телефон ---
+        "ask_phone": "📱 <b>Подтвердите номер телефона</b>\n\nПринимаются только 🇺🇿 номера <b>+998</b>.\nНажмите кнопку ниже 👇",
+        "share_phone": "📱 Отправить номер",
+        "phone_not_own": "❌ Отправьте только свой номер.",
+        "phone_only_uz": "❌ Принимаются только номера Узбекистана (+998 XX XXX XX XX).",
+        "phone_used": "❌ Этот номер уже привязан к другому аккаунту.",
+        "phone_use_button": "ℹ️ Пожалуйста, используйте кнопку «📱 Отправить номер» ниже.",
     },
     "en": {
         "flag": "🇬🇧", "name": "English",
@@ -298,6 +319,13 @@ LANGS = {
         "stars_will_send": "✅ <b>Your request approved!</b>\n\n⭐ Amount: <b>{n} ⭐</b>\n\n<i>Admin will send you Stars soon!</i>",
         "level_up": "🎉 <b>CONGRATULATIONS!</b>\n\nYou reached {emoji} <b>{name}</b> level!\n\n⬆️ Next: {next_emoji} <b>{next_name}</b>\n📊 Need: <b>{need} ⭐</b>\n\n🚀 Keep going!",
         "banner_caption": "🎨 <b>Your personal banner</b>\n\n📤 Send to friends!",
+        # --- phone ---
+        "ask_phone": "📱 <b>Confirm your phone number</b>\n\nOnly 🇺🇿 <b>+998</b> numbers are accepted.\nPress the button below 👇",
+        "share_phone": "📱 Share number",
+        "phone_not_own": "❌ Send only your own number.",
+        "phone_only_uz": "❌ Only Uzbekistan numbers (+998 XX XXX XX XX) are accepted.",
+        "phone_used": "❌ This number is linked to another account.",
+        "phone_use_button": "ℹ️ Please use the «📱 Share number» button below.",
     },
 }
 
@@ -362,6 +390,9 @@ def init_db():
         is_suspicious INTEGER DEFAULT 0,
         joined_at TEXT
     )""")
+    # Telefon raqami (faqat +998)
+    c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT")
+
     c.execute("""CREATE TABLE IF NOT EXISTS channels (
         id SERIAL PRIMARY KEY,
         channel_username TEXT UNIQUE
@@ -425,6 +456,14 @@ def init_db():
         emoji TEXT,
         min_stars INTEGER,
         max_stars INTEGER
+    )""")
+    # Bot balansini Stars bilan to'ldirish tarixi
+    c.execute("""CREATE TABLE IF NOT EXISTS bot_topups (
+        id SERIAL PRIMARY KEY,
+        admin_id BIGINT,
+        stars INTEGER,
+        charge_id TEXT,
+        created_at TEXT
     )""")
 
     defaults = {
@@ -702,6 +741,7 @@ dp = Dispatcher()
 
 
 class US(StatesGroup):
+    phone = State()
     answer = State()
     withdraw_stars = State()
     support_msg = State()
@@ -733,6 +773,7 @@ class AS(StatesGroup):
     level_emoji = State()
     level_min = State()
     level_max = State()
+    topup_amount = State()
 
 
 # ═══════════════════════════════════════════════════════════
@@ -774,6 +815,7 @@ def admin_menu(uid):
     b.button(text="💬 Suhbatlar", callback_data="a_chats")
     b.button(text="⭐ Sharhlar", callback_data="a_reviews")
     b.button(text="🏅 Darajalar", callback_data="a_levels")
+    b.button(text="⭐ Bot balansi", callback_data="a_botbal")
     if is_super_admin(uid):
         b.button(text="👑 Adminlar", callback_data="a_admins")
     b.button(text="🏠 Asosiy menyu", callback_data="m_menu")
@@ -835,10 +877,24 @@ async def subs_kb(uid):
 
 
 # ═══════════════════════════════════════════════════════════
-# BOT EMASLIKNI TEKSHIRISH (savol yuborish)
+# TELEFON + BOT EMASLIKNI TEKSHIRISH
 # ═══════════════════════════════════════════════════════════
 async def send_human_check(target: types.Message, state: FSMContext, uid: int, lang: str, user: dict):
-    """Tasdiqlanmagan userga random savol yuboradi. Savol yo'q bo'lsa avtomatik tasdiqlaydi."""
+    """
+    1) Telefon raqami yo'q bo'lsa — faqat +998 raqamini so'raydi (kontakt tugmasi orqali).
+    2) Keyin tasdiqlanmagan userga random savol yuboradi.
+       Savol yo'q bo'lsa avtomatik tasdiqlaydi.
+    """
+    if not user.get("phone"):
+        kb = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=T(lang, "share_phone"), request_contact=True)]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        )
+        await state.set_state(US.phone)
+        await target.answer(T(lang, "ask_phone"), reply_markup=kb, parse_mode="HTML")
+        return
+
     q = get_random_question()
     if not q:
         update_user(uid, is_verified=1)
@@ -868,6 +924,38 @@ async def send_human_check(target: types.Message, state: FSMContext, uid: int, l
         reply_markup=b.as_markup(),
         parse_mode="HTML"
     )
+
+
+@dp.message(US.phone, F.contact)
+async def phone_received(message: types.Message, state: FSMContext):
+    uid = message.from_user.id
+    lang = get_user_lang(uid)
+    c = message.contact
+
+    # Boshqaning kontakti bo'lmasin
+    if c.user_id != uid:
+        await message.answer(T(lang, "phone_not_own"))
+        return
+
+    phone = re.sub(r"\D", "", c.phone_number or "")
+    if not UZ_PHONE_RE.match(phone):
+        await message.answer(T(lang, "phone_only_uz"))
+        return
+
+    # Bitta raqam — bitta akkaunt
+    if db_exec("SELECT 1 FROM users WHERE phone=%s AND user_id<>%s", (phone, uid), fetch=True):
+        await message.answer(T(lang, "phone_used"))
+        return
+
+    update_user(uid, phone=phone)
+    await message.answer("✅", reply_markup=ReplyKeyboardRemove())
+    user = get_user(uid)
+    await send_human_check(message, state, uid, lang, user)
+
+
+@dp.message(US.phone)
+async def phone_other(message: types.Message, state: FSMContext):
+    await message.answer(T(get_user_lang(message.from_user.id), "phone_use_button"))
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1040,6 +1128,17 @@ async def check_ans(cb: types.CallbackQuery, state: FSMContext):
         except Exception:
             pass
         await cb.message.answer(T(lang, "wrong_ans_retry"), parse_mode="HTML")
+        return
+
+    # Telefon tasdiqlanmagan bo'lsa, verifikatsiya o'tmaydi
+    if not user.get("phone"):
+        await state.clear()
+        try:
+            await cb.message.delete()
+        except Exception:
+            pass
+        await cb.answer()
+        await send_human_check(cb.message, state, uid, lang, user)
         return
 
     # Allaqachon tasdiqlangan bo'lsa, qayta mukofot berilmaydi
@@ -2336,6 +2435,95 @@ async def a_back(cb: types.CallbackQuery, state: FSMContext):
     await cb.answer()
 
 
+# ---------- Bot balansi (Stars to'ldirish) ----------
+@dp.callback_query(F.data == "a_botbal")
+async def a_botbal(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        return
+    await state.clear()
+    try:
+        bal = (await bot.get_my_star_balance()).amount
+        bal_text = f"<b>{bal} ⭐</b>"
+    except Exception as e:
+        bal_text = f"<i>o'qib bo'lmadi ({esc(e)})</i>"
+
+    text = (
+        "╭━━━〔 ⭐ <b>BOT BALANSI</b> 〕━━━╮\n\n"
+        f"💰 Botdagi Stars: {bal_text}\n\n"
+        "Gift'lar shu balansdan avtomatik yuboriladi.\n\n"
+        "╰━━━━━━━━━━━━━━━━━╯"
+    )
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ To'ldirish", callback_data="botbal_topup")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(1)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "botbal_topup")
+async def botbal_topup(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        return
+    await cb.message.edit_text(
+        "➕ <b>Nechta ⭐ to'ldirasiz?</b>\n\nRaqam kiriting (1 – 10000):",
+        parse_mode="HTML"
+    )
+    await state.set_state(AS.topup_amount)
+    await cb.answer()
+
+
+@dp.message(AS.topup_amount)
+async def botbal_amount(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    try:
+        amount = int((message.text or "").strip())
+    except ValueError:
+        await message.answer("❌ Faqat raqam.")
+        return
+    if not 1 <= amount <= 10000:
+        await message.answer("❌ 1 dan 10000 gacha kiriting.")
+        return
+
+    await state.clear()
+    await message.answer_invoice(
+        title="Bot balansini to'ldirish",
+        description=f"Botning Stars balansiga {amount} ⭐ qo'shish",
+        payload=f"topup_{message.from_user.id}",
+        currency="XTR",
+        prices=[LabeledPrice(label="Stars", amount=amount)],
+        provider_token="",          # Stars uchun bo'sh
+    )
+
+
+@dp.pre_checkout_query()
+async def pre_checkout(q: types.PreCheckoutQuery):
+    ok = q.invoice_payload.startswith("topup_") and is_admin(q.from_user.id)
+    await q.answer(ok=ok, error_message=None if ok else "Ruxsat yo'q")
+
+
+@dp.message(F.successful_payment)
+async def topup_paid(message: types.Message):
+    p = message.successful_payment
+    if not p.invoice_payload.startswith("topup_"):
+        return
+    db_exec(
+        "INSERT INTO bot_topups (admin_id, stars, charge_id, created_at) VALUES (%s, %s, %s, %s)",
+        (message.from_user.id, p.total_amount,
+         p.telegram_payment_charge_id, datetime.now().isoformat())
+    )
+    try:
+        bal = (await bot.get_my_star_balance()).amount
+        extra = f"\n💰 Botdagi jami: <b>{bal} ⭐</b>"
+    except Exception:
+        extra = ""
+    await message.answer(
+        f"✅ <b>To'lov qabul qilindi!</b>\n\n➕ <b>{p.total_amount} ⭐</b> botga qo'shildi.{extra}",
+        parse_mode="HTML"
+    )
+
+
 # ---------- Kanallar ----------
 @dp.callback_query(F.data == "a_channels")
 async def a_channels(cb: types.CallbackQuery):
@@ -2902,6 +3090,30 @@ async def a_withdrawals(cb: types.CallbackQuery):
     await cb.answer()
 
 
+# ---------- Gift'ni avtomatik yuborish ----------
+async def auto_send_gift(user_id: int, gift_row: dict):
+    """
+    Telegram gift'ni bot o'zining Stars balansidan to'lab, userga yuboradi.
+    (True, None) yoki (False, xato_matni) qaytaradi.
+    """
+    try:
+        available = (await bot.get_available_gifts()).gifts
+        match = next((g for g in available
+                      if g.sticker and g.sticker.emoji == gift_row.get("emoji")), None)
+        if not match:
+            return False, "Telegram gift ro'yxatida topilmadi"
+
+        bal = (await bot.get_my_star_balance()).amount
+        if bal < match.star_count:
+            return False, f"Botda Stars yetarli emas (bor: {bal}, kerak: {match.star_count})"
+
+        await bot.send_gift(user_id=user_id, gift_id=match.id,
+                            text="🎉 StarRush Bot sovg'asi!")
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
 @dp.callback_query(F.data.startswith("appr_"))
 async def approve_w(cb: types.CallbackQuery):
     if not is_admin(cb.from_user.id):
@@ -2979,13 +3191,31 @@ async def approve_w(cb: types.CallbackQuery):
             )
         else:
             g = get_gift(w["gift_key"]) or {}
-            await bot.send_message(
-                w["user_id"],
-                T(u_lang, "approved")
-                + f"\n\n{esc(g.get('emoji', '🎁'))} <b>{esc(g.get('name', 'Gift'))}</b>\n\n"
-                f"<i>Admin tez orada giftni yuboradi!</i>",
-                parse_mode="HTML"
-            )
+            ok, err = await auto_send_gift(w["user_id"], g)
+            label = f"{esc(g.get('emoji', '🎁'))} <b>{esc(g.get('name', 'Gift'))}</b>"
+            if ok:
+                await bot.send_message(
+                    w["user_id"],
+                    T(u_lang, "approved") + f"\n\n{label}\n\n🎁 <i>Gift akkauntingizga yuborildi!</i>",
+                    parse_mode="HTML"
+                )
+            else:
+                await bot.send_message(
+                    w["user_id"],
+                    T(u_lang, "approved") + f"\n\n{label}\n\n<i>Admin tez orada giftni yuboradi!</i>",
+                    parse_mode="HTML"
+                )
+                for a in list_admins():
+                    try:
+                        await bot.send_message(
+                            a["user_id"],
+                            f"⚠️ <b>Gift avtomatik yuborilmadi</b>\n\n"
+                            f"🆔 <code>{w['user_id']}</code>\n🎁 {label}\n"
+                            f"❗ {esc(err)}\n\nQo'lda yuboring.",
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
     except Exception as e:
         logger.warning(f"Userga xabar ({w['user_id']}): {e}")
 
@@ -3359,11 +3589,13 @@ async def user_info(message: types.Message, state: FSMContext):
     lvl_text = f"{esc(lvl.get('emoji', ''))} {esc(lvl.get('name', ''))}"
     ban_text = "Ha" if user["is_banned"] else "Yo'q"
     ver_text = "Ha" if user["is_verified"] else "Yo'q"
+    phone_text = f"+{user['phone']}" if user.get("phone") else "—"
     text = (
         f"╭━━━〔 👤 <b>USER INFO</b> 〕━━━╮\n\n"
         f"🆔 <code>{user['user_id']}</code>\n"
         f"👤 {user['first_name']}\n"
         f"🔗 {uname}\n"
+        f"📱 {phone_text}\n"
         f"⭐ {user['stars']}\n"
         f"🏅 {lvl_text}\n"
         f"🚫 Ban: {ban_text}\n"
