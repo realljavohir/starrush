@@ -539,7 +539,6 @@ def init_db():
         max_stars INTEGER
     )""")
 
-    # DONAT jadvali
     c.execute("""CREATE TABLE IF NOT EXISTS donations (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
@@ -555,6 +554,7 @@ def init_db():
         "min_withdraw": "50",
         "max_withdraw": "1000000",
         "review_channel": "",
+        "gift_channel": "",
         "min_donate": "1",
     }
     for k, v in defaults.items():
@@ -573,10 +573,7 @@ def init_db():
 
     c.execute("SELECT COUNT(*) FROM gifts")
     if c.fetchone()[0] == 0:
-        # gift_id — Telegram'dagi haqiqiy ID. Admin panelda
-        # "🔄 Telegram'dan sinxronlash" orqali ID larni bilib oling.
         default_gifts = [
-            # (key, emoji, name, stars, gift_id)
             ("heart",     "💝", "Heart",      15,  5170145012310081615),
             ("teddy",     "🧸", "Teddy Bear", 15,  5170233102089325572),
             ("giftbox",   "🎁", "Gift Box",   25,  5170250435875467955),
@@ -829,6 +826,7 @@ class AS(StatesGroup):
     gift_stars = State()
     reply_to_user = State()
     review_channel = State()
+    gift_channel = State()
     level_name = State()
     level_emoji = State()
     level_min = State()
@@ -1516,7 +1514,7 @@ async def cb_reflink(cb: types.CallbackQuery, state: FSMContext):
     await cb.answer()
 
 # ═══════════════════════════════════════════════════════════
-# REYTING — 3 INLINE
+# REYTING
 # ═══════════════════════════════════════════════════════════
 def rating_menu_kb(lang):
     b = InlineKeyboardBuilder()
@@ -1951,7 +1949,7 @@ async def w_stars_process(message: types.Message, state: FSMContext):
             logger.warning(f"Adminga xabar: {e}")
 
 # ═══════════════════════════════════════════════════════════
-# GIFT YUBORISH (userbot) — ID BO'YICHA TUZATILGAN
+# GIFT YUBORISH (userbot)
 # ═══════════════════════════════════════════════════════════
 def _norm_emoji(e):
     return (e or "").replace("\ufe0f", "").strip()
@@ -1963,6 +1961,49 @@ def _tg_gift_emoji(g):
         if isinstance(a, tt.DocumentAttributeSticker):
             return a.alt
     return None
+
+
+def _extract_gift_emoji(g):
+    sticker = getattr(g, "sticker", None)
+    if sticker:
+        for a in getattr(sticker, "attributes", None) or []:
+            if isinstance(a, tt.DocumentAttributeSticker):
+                alt = getattr(a, "alt", None)
+                if alt:
+                    return alt
+        emoji = getattr(sticker, "emoji", None)
+        if emoji:
+            return emoji
+    for attr in ("title", "name", "emoji"):
+        val = getattr(g, attr, None)
+        if val and isinstance(val, str):
+            if any(ord(c) > 0x1F000 for c in val):
+                return val
+    doc = getattr(g, "document", None)
+    if doc:
+        for a in getattr(doc, "attributes", None) or []:
+            if isinstance(a, tt.DocumentAttributeSticker):
+                alt = getattr(a, "alt", None)
+                if alt:
+                    return alt
+    return "🎁"
+
+
+def _extract_gift_name(g):
+    title = getattr(g, "title", None)
+    if title:
+        return title
+    name = getattr(g, "name", None)
+    if name:
+        return name
+    sticker = getattr(g, "sticker", None)
+    if sticker:
+        for a in getattr(sticker, "attributes", None) or []:
+            if isinstance(a, tt.DocumentAttributeSticker):
+                alt = getattr(a, "alt", None)
+                if alt:
+                    return alt
+    return "Gift"
 
 
 async def _resolve_user(user_id):
@@ -1986,26 +2027,18 @@ async def _resolve_user(user_id):
 
 
 async def userbot_send_gift(user_id, gift_row, anon=False, comment=None):
-    """
-    Gift yuborish — 3 bosqichli qidiruv:
-    1) gift_id bo'yicha (eng ishonchli)
-    2) emoji + stars bo'yicha
-    3) faqat stars bo'yicha
-    """
     if not tg_client:
         return False, "Userbot sozlanmagan"
     try:
         if not tg_client.is_connected():
             await tg_client.connect()
 
-        # Telegram'dagi mavjud giftlar ro'yxatini olish
         res = await tg_client(functions.payments.GetStarGiftsRequest(hash=0))
         all_gifts = [
             g for g in getattr(res, "gifts", [])
             if not getattr(g, "limited", False)
             and not getattr(g, "sold_out", False)
         ]
-
         if not all_gifts:
             return False, "Telegram gift ro'yxati bo'sh qaytdi"
 
@@ -2014,29 +2047,22 @@ async def userbot_send_gift(user_id, gift_row, anon=False, comment=None):
         want_emoji = _norm_emoji(gift_row.get("emoji"))
         want_stars = gift_row.get("stars")
 
-        # 1) gift_id bo'yicha qidirish (ENG ISHONCHLI)
         if want_id:
             match = next((g for g in all_gifts if getattr(g, "id", None) == int(want_id)), None)
-
-        # 2) emoji + stars bo'yicha
         if not match:
-            cands = [g for g in all_gifts if _norm_emoji(_tg_gift_emoji(g)) == want_emoji]
+            cands = [g for g in all_gifts if _norm_emoji(_extract_gift_emoji(g)) == want_emoji]
             if cands:
                 match = next((g for g in cands if getattr(g, "stars", None) == want_stars), cands[0])
-
-        # 3) faqat stars bo'yicha
         if not match and want_stars:
             match = next((g for g in all_gifts if getattr(g, "stars", None) == want_stars), None)
 
-        # Xato bo'lsa — mavjud giftlar ro'yxatini ko'rsatish
         if not match:
             available = ", ".join(
-                f"{_tg_gift_emoji(g) or '?'}(ID:{getattr(g,'id','?')}:{getattr(g,'stars','?')}⭐)"
+                f"{_extract_gift_emoji(g)}(ID:{getattr(g,'id','?')}:{getattr(g,'stars','?')}⭐)"
                 for g in all_gifts[:8]
             )
             return False, f"Gift topilmadi (ID:{want_id}, {want_emoji}, {want_stars}⭐). Mavjud: {available}"
 
-        # Giftni yuborish
         peer = await _resolve_user(user_id)
         msg = tt.TextWithEntities(text=comment[:120], entities=[]) if comment else None
         invoice = tt.InputInvoiceStarGift(
@@ -2067,6 +2093,60 @@ async def notify_admins(text, kb=None):
             await bot.send_message(a["user_id"], text, reply_markup=kb, parse_mode="HTML")
         except Exception:
             pass
+
+# ═══════════════════════════════════════════════════════════
+# POST YASASH VA YUBORISH
+# ═══════════════════════════════════════════════════════════
+def build_gift_post(user, amount, gift_emoji=None, gift_name=None, is_anon=False, is_stars=False):
+    """Gift yoki Stars olganda post matnini yasaydi."""
+    if is_stars:
+        title = "🎉 <b>YANGI STARS OLINDI!</b>"
+        item_line = "🎁 <b>Stars</b>"
+    else:
+        title = "🎉 <b>YANGI GIFT OLINDI!</b>"
+        item_line = f"🎁 <b>Gift:</b> {esc(gift_emoji or '🎁')} {esc(gift_name or 'Gift')}"
+
+    if is_anon:
+        who_line = "👤 <b>User:</b> 🕶 <i>Anonim</i>"
+        uname_line = "🔗 <b>Username:</b> <i>yashirin</i>"
+        uid_line = "🆔 <b>ID:</b> <i>yashirin</i>"
+    else:
+        uname = f"@{user['username']}" if user.get("username") else "—"
+        who_line = f"👤 <b>User:</b> {esc(user['first_name'] or 'User')}"
+        uname_line = f"🔗 <b>Username:</b> {esc(uname)}"
+        uid_line = f"🆔 <b>ID:</b> <code>{user['user_id']}</code>"
+
+    time_str = now_uz().strftime("%d.%m.%Y %H:%M")
+
+    return (
+        f"{title}\n\n"
+        f"{who_line}\n"
+        f"{uname_line}\n"
+        f"{uid_line}\n"
+        f"{item_line}\n"
+        f"⭐ <b>Narx:</b> {amount} ⭐\n"
+        f"📅 <b>Vaqt:</b> {time_str}"
+    )
+
+
+async def send_gift_post(uid, post_text, is_anon=False):
+    """Postni KANALGA va FOYDALANUVCHIGA yuboradi."""
+    channel = get_setting("gift_channel", "")
+    if channel:
+        try:
+            await bot.send_message(channel, post_text, parse_mode="HTML")
+            logger.info(f"Post kanalga yuborildi: {channel}")
+        except Exception as e:
+            logger.warning(f"Kanalga post yuborilmadi ({channel}): {e}")
+
+    try:
+        personal_text = post_text.replace("YANGI GIFT OLINDI", "SIZ GIFT OLDINGIZ")
+        personal_text = personal_text.replace("YANGI STARS OLINDI", "SIZ STARS OLDINGIZ")
+        if channel:
+            personal_text += "\n\n📢 <i>Bu e'lon kanalda ham paydo bo'ldi!</i>"
+        await bot.send_message(uid, personal_text, parse_mode="HTML")
+    except Exception as e:
+        logger.warning(f"Foydalanuvchiga post yuborilmadi ({uid}): {e}")
 
 # ═══════════════════════════════════════════════════════════
 # GIFT TANLASH
@@ -2193,6 +2273,16 @@ async def finish_gift_request(uid, state, send, comment=None):
         db_exec("UPDATE withdrawals SET status='approved' WHERE id=%s", (w_id,))
         await send(T(lang, "gift_done", gift=gift_label, n=gift["stars"]), back_to_menu_kb(uid))
         logger.info(f"Gift #{w_id} yuborildi -> {uid}")
+
+        post_text = build_gift_post(
+            user=user,
+            amount=gift["stars"],
+            gift_emoji=gift["emoji"],
+            gift_name=gift["name"],
+            is_anon=bool(is_anon),
+            is_stars=False,
+        )
+        await send_gift_post(uid, post_text, is_anon)
     else:
         add_stars(uid, gift["stars"])
         db_exec("UPDATE withdrawals SET status='failed', error=%s WHERE id=%s", ((err or "")[:500], w_id))
@@ -3059,16 +3149,10 @@ async def sync_gifts(cb: types.CallbackQuery):
         all_gifts = getattr(res, "gifts", []) or []
         lines = []
         for g in all_gifts[:40]:
-            emoji = _tg_gift_emoji(g) or "?"
+            emoji = _extract_gift_emoji(g)
             stars = getattr(g, "stars", "?")
             gid = getattr(g, "id", "?")
-            name = ""
-            sticker = getattr(g, "sticker", None)
-            if sticker:
-                for a in getattr(sticker, "attributes", None) or []:
-                    if isinstance(a, tt.DocumentAttributeSticker):
-                        name = getattr(a, "alt", "") or ""
-                        break
+            name = _extract_gift_name(g)
             limited = "🔒" if getattr(g, "limited", False) else ""
             sold = "❌" if getattr(g, "sold_out", False) else ""
             lines.append(f"{emoji} <b>{esc(name)}</b>\n  ID: <code>{gid}</code> | {stars} ⭐ {limited}{sold}")
@@ -3267,7 +3351,8 @@ async def a_settings(cb: types.CallbackQuery):
         f"💰 Min yechish = <b>{get_setting('min_withdraw')} ⭐</b>\n"
         f"💎 Max yechish = <b>{get_setting('max_withdraw')} ⭐</b>\n"
         f"💝 Min donat = <b>{get_setting('min_donate')} ⭐</b>\n"
-        f"📢 Sharh kanali: <b>{esc(get_setting('review_channel') or 'yo`q')}</b>\n\n"
+        f"📢 Sharh kanali: <b>{esc(get_setting('review_channel') or 'yo`q')}</b>\n"
+        f"🎁 Gift/Stars kanali: <b>{esc(get_setting('gift_channel') or 'yo`q')}</b>\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
     b = InlineKeyboardBuilder()
@@ -3275,8 +3360,9 @@ async def a_settings(cb: types.CallbackQuery):
     b.button(text="💰 Min", callback_data="set_minw")
     b.button(text="💎 Max", callback_data="set_maxw")
     b.button(text="📢 Sharh kanali", callback_data="set_rev_ch")
+    b.button(text="🎁 Gift/Stars kanali", callback_data="set_gift_ch")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
-    b.adjust(2, 2, 1)
+    b.adjust(2, 2, 2, 1)
     await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
     await cb.answer()
 
@@ -3318,6 +3404,44 @@ async def set_rev_ch_process(message: types.Message, state: FSMContext):
     set_setting("review_channel", ch)
     await state.clear()
     await message.answer(f"✅ Sharh kanali: <b>{esc(ch)}</b>", parse_mode="HTML")
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
+
+@dp.callback_query(F.data == "set_gift_ch")
+async def set_gift_ch_start(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        return
+    await cb.message.edit_text(
+        "🎁 <b>Gift/Stars kanali username kiriting</b>\n\nMisol: <code>@starrush_gifts</code>\n\n"
+        "⚠️ Bot kanalga <b>admin</b> qilingan bo'lishi kerak!",
+        parse_mode="HTML")
+    await state.set_state(AS.gift_channel)
+    await cb.answer()
+
+
+@dp.message(AS.gift_channel)
+async def set_gift_ch_process(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    ch = message.text.strip()
+    if not ch.startswith("@"):
+        ch = "@" + ch
+    try:
+        await bot.get_chat(ch)
+        me = await bot.get_me()
+        member = await bot.get_chat_member(ch, me.id)
+        if member.status not in ("administrator", "creator"):
+            await message.answer(
+                f"⚠️ Bot <b>{esc(ch)}</b> kanalida admin emas!\n"
+                f"Botni admin qiling va qaytadan urinib ko'ring.",
+                parse_mode="HTML")
+            return
+    except Exception as e:
+        await message.answer(f"❌ Kanal tekshirilmadi: <code>{esc(e)}</code>", parse_mode="HTML")
+        return
+    set_setting("gift_channel", ch)
+    await state.clear()
+    await message.answer(f"✅ Gift/Stars kanali: <b>{esc(ch)}</b>", parse_mode="HTML")
     await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
 
 
@@ -3535,11 +3659,31 @@ async def approve_w(cb: types.CallbackQuery):
                 f"⚠️ <b>Stars yuborish kerak!</b>\n\n👤 User: {user['first_name']}\n🔗 Username: {uname}\n"
                 f"🆔 ID: <code>{user['user_id']}</code>\n⭐ Miqdor: <b>{w['stars']} ⭐</b>\n\n"
                 f"<b>Fragment.com</b> orqali qo'lda yuboring!")
+
+            # ✅ KANALGA + FOYDALANUVCHIGA POST
+            post_text = build_gift_post(
+                user=user,
+                amount=w["stars"],
+                gift_emoji=None,
+                gift_name=None,
+                is_anon=False,
+                is_stars=True,
+            )
+            await send_gift_post(w["user_id"], post_text, is_anon=False)
         else:
             ok, err = await deliver_gift(w["user_id"], g or {}, anon=bool(w.get("is_anon")), comment=w.get("comment"))
             label = f"{esc((g or {}).get('emoji', '🎁'))} <b>{esc((g or {}).get('name', 'Gift'))}</b>"
             if ok:
                 await bot.send_message(w["user_id"], T(u_lang, "gift_done", gift=label, n=w["stars"]), parse_mode="HTML")
+                post_text = build_gift_post(
+                    user=user,
+                    amount=w["stars"],
+                    gift_emoji=(g or {}).get("emoji", "🎁"),
+                    gift_name=(g or {}).get("name", "Gift"),
+                    is_anon=bool(w.get("is_anon")),
+                    is_stars=False,
+                )
+                await send_gift_post(w["user_id"], post_text, is_anon=bool(w.get("is_anon")))
             else:
                 add_stars(w["user_id"], w["stars"])
                 db_exec("UPDATE withdrawals SET status='failed', error=%s WHERE id=%s", ((err or "")[:500], w_id))
