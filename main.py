@@ -620,6 +620,9 @@ def set_setting(key, value):
                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""",
             (key, str(value)))
 
+def del_setting(key):
+    db_exec("DELETE FROM settings WHERE key=%s", (key,))
+
 def _clean_user(row):
     if not row:
         return None
@@ -2761,8 +2764,10 @@ async def a_userbot(cb: types.CallbackQuery, state: FSMContext):
     diag_lines.append(f"API_HASH: {'✅' if API_HASH else '❌'} ({'o`rnatilgan' if API_HASH else 'yo`q'})")
     diag_lines.append(f"SESSION_STRING: {'✅' if SESSION_STRING else '❌'} ({len(SESSION_STRING) if SESSION_STRING else 0} belgi)")
 
+    disabled = get_setting("userbot_disabled", "0") == "1"
+
     if not tg_client:
-        status = "❌ Ulanmagan"
+        status = "⛔ O'chirilgan" if disabled else "❌ Ulanmagan"
         bal_text = "—"
     else:
         try:
@@ -2790,7 +2795,11 @@ async def a_userbot(cb: types.CallbackQuery, state: FSMContext):
     b = InlineKeyboardBuilder()
     b.button(text="🔄 Yangilash", callback_data="a_userbot")
     if is_super_admin(cb.from_user.id):
-        b.button(text="🔑 Session almashtirish", callback_data="a_userbot_change")
+        if tg_client or SESSION_STRING:
+            b.button(text="🔑 Session almashtirish", callback_data="a_userbot_change")
+            b.button(text="🗑 Userbotni o'chirish", callback_data="a_userbot_del")
+        else:
+            b.button(text="➕ Userbot qo'shish", callback_data="a_userbot_change")
     b.button(text="🧪 Test (o'zimga gift)", callback_data="a_userbot_test")
     b.button(text="⬅️ Orqaga", callback_data="a_back")
     b.adjust(1)
@@ -2843,12 +2852,66 @@ async def a_userbot_change(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer("❌ Faqat bosh admin!", show_alert=True)
         return
     await state.clear()
+    title = "🔑 <b>Userbot sessionni almashtirish</b>" if (tg_client or SESSION_STRING) else "➕ <b>Userbot qo'shish</b>"
+    b = InlineKeyboardBuilder()
+    b.button(text="❌ Bekor qilish", callback_data="a_userbot")
+    b.adjust(1)
     await cb.message.edit_text(
-        "🔑 <b>Userbot sessionni almashtirish</b>\n\n"
+        f"{title}\n\n"
         "1️⃣ API_ID ni kiriting (my.telegram.org dan):",
+        reply_markup=b.as_markup(),
         parse_mode="HTML")
     await state.set_state(AS.userbot_api)
     await cb.answer()
+
+
+@dp.callback_query(F.data == "a_userbot_del")
+async def a_userbot_del(cb: types.CallbackQuery, state: FSMContext):
+    if not is_super_admin(cb.from_user.id):
+        await cb.answer("❌ Faqat bosh admin!", show_alert=True)
+        return
+    await state.clear()
+    b = InlineKeyboardBuilder()
+    b.button(text="✅ Ha, o'chirish", callback_data="a_userbot_del_yes")
+    b.button(text="❌ Yo'q", callback_data="a_userbot")
+    b.adjust(2)
+    await cb.message.edit_text(
+        "🗑 <b>Userbotni o'chirish</b>\n\n"
+        "Userbot uziladi va session, API_ID, API_HASH bot xotirasidan o'chiriladi.\n"
+        "Env'dagi <code>SESSION_STRING</code> ham qayta ishga tushganda ishlatilmaydi.\n\n"
+        "⚠️ Gift avtomatik yuborish to'xtaydi — yangi userbot qo'shmaguningizcha.\n\n"
+        "<b>Rostdan o'chirasizmi?</b>",
+        reply_markup=b.as_markup(),
+        parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "a_userbot_del_yes")
+async def a_userbot_del_yes(cb: types.CallbackQuery, state: FSMContext):
+    global tg_client, API_ID, API_HASH, SESSION_STRING
+    if not is_super_admin(cb.from_user.id):
+        await cb.answer("❌ Faqat bosh admin!", show_alert=True)
+        return
+    await state.clear()
+
+    old = tg_client
+    tg_client = None
+    if old:
+        try:
+            await old.disconnect()
+        except Exception as e:
+            logger.warning(f"Userbot uzishda xato: {e}")
+
+    API_ID = 0
+    API_HASH = ""
+    SESSION_STRING = ""
+
+    for k in ("userbot_api_id", "userbot_api_hash", "userbot_session"):
+        del_setting(k)
+    set_setting("userbot_disabled", "1")
+
+    logger.info(f"Userbot o'chirildi (admin {cb.from_user.id})")
+    await a_userbot(cb, state)
 
 
 @dp.message(AS.userbot_api)
@@ -2919,10 +2982,16 @@ async def userbot_session_input(message: types.Message, state: FSMContext):
         set_setting("userbot_api_id", str(api_id))
         set_setting("userbot_api_hash", api_hash)
         set_setting("userbot_session", session_str)
+        set_setting("userbot_disabled", "0")
 
         await state.clear()
+        try:
+            await message.delete()
+        except Exception:
+            pass
         await message.answer(
-            f"✅ <b>Userbot almashtirildi!</b>\n\n👤 Yangi akkaunt: <b>{esc(name)}</b>",
+            f"✅ <b>Userbot ulandi!</b>\n\n👤 Akkaunt: <b>{esc(name)}</b>\n\n"
+            f"<i>Session xabari xavfsizlik uchun o'chirildi.</i>",
             parse_mode="HTML")
         await message.answer(ADMIN_TITLE, reply_markup=admin_menu(message.from_user.id), parse_mode="HTML")
     except Exception as e:
@@ -4507,6 +4576,15 @@ async def index(request):
 # ═══════════════════════════════════════════════════════════
 async def init_userbot():
     global tg_client, API_ID, API_HASH, SESSION_STRING
+
+    # Admin paneldan "Userbotni o'chirish" bosilgan bo'lsa — env'dagi
+    # SESSION_STRING ham ishlatilmaydi (qayta ishga tushganda ham).
+    if get_setting("userbot_disabled", "0") == "1":
+        API_ID = 0
+        API_HASH = ""
+        SESSION_STRING = ""
+        logger.info("Userbot admin tomonidan o'chirilgan — ulanmaydi")
+        return
 
     db_api_id = get_setting("userbot_api_id", "")
     db_api_hash = get_setting("userbot_api_hash", "")
