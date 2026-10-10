@@ -75,7 +75,7 @@ MIN_DONATE = 1
 MAX_DONATE = 100000
 UZ_PHONE_RE = re.compile(r"^998\d{9}$")
 
-BONUS_REWARDS = [3, 5, 8, 12, 18, 25, 50]
+BONUS_REWARDS = [1, 1, 2, 2, 3, 3, 4]
 
 # ═══════════════════════════════════════════════════════════
 # CHIZIQLAR (dizayn)
