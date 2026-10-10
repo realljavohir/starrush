@@ -7,108 +7,243 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#EEF1F6; --surface:#FFFFFF; --text:#0F1420; --muted:#667085; --line:#E3E7EE;
-  --navy:#0E1A3A; --on-navy:#FFFFFF; --on-navy-muted:rgba(255,255,255,.64); --track:rgba(255,255,255,.16);
-  --gold:#F6B73C; --on-gold:#0E1A3A; --tint:#EEF2FB; --icon:#2F4A9E;
-  --danger:#C62A1E; --danger-bg:#FDECEA; --ok:#17744A; --ok-bg:#E4F4EB; --wait:#8A5A00; --wait-bg:#FFF3D6;
-  --track-d:#E3E7EE;
+  --bg:#F4F6FB; --surface:#FFFFFF; --surface-2:#FAFBFE;
+  --text:#0B1224; --muted:#6B7690; --line:#E6EAF2;
+  --navy:#0E1A3A; --navy-2:#16234A; --on-navy:#FFFFFF; --on-navy-muted:rgba(255,255,255,.66);
+  --track:rgba(255,255,255,.14);
+  --gold:#F6B73C; --gold-2:#FFCE5C; --on-gold:#0E1A3A;
+  --tint:#EEF2FB; --icon:#2F4A9E;
+  --danger:#C62A1E; --danger-bg:#FDECEA;
+  --ok:#0F7A46; --ok-bg:#E2F5EA;
+  --wait:#8A5A00; --wait-bg:#FFF3D6;
   --pink:#E23E7B; --pink-bg:#FDEDF4;
+  --purple:#7C3AED; --purple-bg:#F1EAFF;
+  --track-d:#E6EAF2;
+  --shadow-sm:0 1px 2px rgba(11,18,36,.04);
+  --shadow-md:0 8px 24px -12px rgba(11,18,36,.18);
+  --shadow-lg:0 24px 48px -24px rgba(11,18,36,.28);
   --font:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
 }
 [data-theme="dark"]{
-  --bg:#0A0F1E; --surface:#121A30; --text:#EDF0F7; --muted:#8C97B2; --line:#202A45;
-  --navy:#1B2C63; --tint:#1A2547; --icon:#8FA8F5; --danger:#FF8A80; --danger-bg:#3A1A1D;
-  --ok:#6FD3A0; --ok-bg:#12301F; --wait:#F6C96B; --wait-bg:#3A2D0E; --track-d:#202A45;
-  --pink:#FF7BA8; --pink-bg:#3A1A28;
+  --bg:#070B16; --surface:#101728; --surface-2:#131B30;
+  --text:#EEF1F8; --muted:#8A95B2; --line:#1E2740;
+  --navy:#1B2C63; --navy-2:#243A7C; --tint:#161F3C; --icon:#8FA8F5;
+  --danger:#FF8A80; --danger-bg:#341519;
+  --ok:#6FD3A0; --ok-bg:#0E2A1C;
+  --wait:#F6C96B; --wait-bg:#34270B;
+  --track-d:#1E2740;
+  --pink:#FF7BA8; --pink-bg:#341826;
+  --purple:#A78BFA; --purple-bg:#241A45;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:0 8px 24px -12px rgba(0,0,0,.5);
+  --shadow-lg:0 24px 48px -24px rgba(0,0,0,.6);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg)}
 body{font-family:var(--font);color:var(--text);min-height:100vh;
-  padding:max(16px,env(safe-area-inset-top)) 16px calc(92px + env(safe-area-inset-bottom));overflow-x:hidden;
-  -webkit-font-smoothing:antialiased}
+  padding:max(14px,env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom));
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
 .wrap{max-width:480px;margin:0 auto}
-button{font-family:inherit;border:0;cursor:pointer;color:inherit;background:none}
+button{font-family:inherit;border:0;cursor:pointer;color:inherit;background:none;letter-spacing:inherit}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 svg{display:block;flex-shrink:0}
-.top{display:flex;align-items:center;gap:12px;padding:8px 0 18px}
-.avatar{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800;font-size:18px}
+img{display:block;max-width:100%}
+
+/* TOP */
+.top{display:flex;align-items:center;gap:12px;padding:6px 2px 16px}
+.avatar{width:46px;height:46px;border-radius:16px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;display:grid;place-items:center;font-weight:800;font-size:19px;box-shadow:var(--shadow-md);position:relative;overflow:hidden}
+.avatar::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.18));pointer-events:none}
 .who{flex:1;min-width:0}
-.name{font-size:17px;font-weight:700;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.handle{font-size:13px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.icon-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--muted);background:var(--surface);border:1px solid var(--line)}
-.balance{background:var(--navy);color:var(--on-navy);border-radius:24px;padding:22px 22px 20px}
-.b-label{font-size:14px;font-weight:600;color:var(--on-navy-muted)}
-.b-value{display:flex;align-items:center;gap:10px;margin:6px 0 20px;font-size:56px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-.b-value svg{width:38px;height:38px;color:var(--gold)}
-.lvl-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;font-weight:600;margin-bottom:10px}
-.lvl-row span:last-child{color:var(--on-navy-muted);font-variant-numeric:tabular-nums;font-weight:500}
-.track{height:8px;background:var(--track);border-radius:4px;overflow:hidden}
-.fill{height:100%;width:0;background:var(--gold);border-radius:4px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
-.next{font-size:13px;color:var(--on-navy-muted);margin-top:10px;font-weight:500}
-.h2{font-size:15px;font-weight:800;margin:22px 4px 10px}
-.list{background:var(--surface);border-radius:20px;margin-top:14px;border:1px solid var(--line);overflow:hidden}
-.h2 + .list{margin-top:0}
-.row{display:flex;align-items:center;gap:14px;padding:14px 16px}
+.name{font-size:17px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.handle{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.icon-btn{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:var(--muted);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);transition:.15s}
+.icon-btn:active{transform:scale(.94)}
+
+/* HERO BALANCE */
+.balance{background:linear-gradient(150deg,var(--navy) 0%,var(--navy-2) 100%);color:var(--on-navy);border-radius:28px;padding:24px 22px 22px;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
+.balance::before{content:'';position:absolute;top:-60px;right:-40px;width:220px;height:220px;background:radial-gradient(circle,rgba(246,183,60,.22),transparent 70%);pointer-events:none}
+.balance::after{content:'';position:absolute;bottom:-80px;left:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(143,168,245,.15),transparent 70%);pointer-events:none}
+.b-label{font-size:13px;font-weight:700;color:var(--on-navy-muted);text-transform:uppercase;letter-spacing:.08em;position:relative}
+.b-value{display:flex;align-items:center;gap:12px;margin:8px 0 22px;font-size:58px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;position:relative}
+.b-value svg{width:40px;height:40px;color:var(--gold);filter:drop-shadow(0 4px 12px rgba(246,183,60,.5))}
+.lvl-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;font-weight:700;margin-bottom:10px;position:relative}
+.lvl-row span:last-child{color:var(--on-navy-muted);font-variant-numeric:tabular-nums;font-weight:600;font-size:13px}
+.track{height:8px;background:var(--track);border-radius:4px;overflow:hidden;position:relative}
+.fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-2));border-radius:4px;transition:width 1s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 12px rgba(246,183,60,.6)}
+.next{font-size:13px;color:var(--on-navy-muted);margin-top:10px;font-weight:600;position:relative}
+
+/* SECTIONS */
+.h2{font-size:15px;font-weight:800;margin:24px 4px 10px;display:flex;align-items:center;gap:8px}
+.h2 .h2-ico{width:22px;height:22px;border-radius:8px;background:var(--tint);color:var(--icon);display:grid;place-items:center}
+.h2 .h2-ico svg{width:14px;height:14px}
+.h2 .badge{margin-left:auto;font-size:11px;font-weight:800;background:var(--pink-bg);color:var(--pink);padding:3px 8px;border-radius:999px}
+
+.list{background:var(--surface);border-radius:22px;border:1px solid var(--line);overflow:hidden;box-shadow:var(--shadow-sm)}
+.row{display:flex;align-items:center;gap:14px;padding:15px 16px;transition:background .15s}
 .row + .row{border-top:1px solid var(--line)}
+.row.tap:active{background:var(--surface-2)}
 .row.me{background:var(--tint)}
-.ico{width:36px;height:36px;border-radius:10px;background:var(--tint);color:var(--icon);display:grid;place-items:center;font-size:18px}
+.ico{width:40px;height:40px;border-radius:12px;background:var(--tint);color:var(--icon);display:grid;place-items:center;font-size:20px;flex-shrink:0}
 .ico svg{width:20px;height:20px}
 .ico.pink{background:var(--pink-bg);color:var(--pink)}
+.ico.gold{background:rgba(246,183,60,.18);color:#B47800}
+.ico.ok{background:var(--ok-bg);color:var(--ok)}
+.ico.purple{background:var(--purple-bg);color:var(--purple)}
 .col{flex:1;min-width:0}
-.l{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sub{font-size:13px;color:var(--muted);margin-top:2px;font-weight:500}
+.l{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-size:13px;color:var(--muted);margin-top:2px;font-weight:600}
 .v{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-.v small{font-weight:600;color:var(--muted);font-size:13px}
-.rk{width:30px;text-align:center;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted)}
-.dots{padding:6px 16px;text-align:center;color:var(--muted);letter-spacing:4px;font-weight:700;border-top:1px solid var(--line)}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.v small{font-weight:700;color:var(--muted);font-size:12px}
+.rk{width:32px;text-align:center;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted);flex-shrink:0}
+.dots{padding:8px 16px;text-align:center;color:var(--muted);letter-spacing:6px;font-weight:800;border-top:1px solid var(--line);font-size:12px}
+
+/* CHIPS */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.01em}
 .chip svg{width:13px;height:13px}
 .c-wait{background:var(--wait-bg);color:var(--wait)}
 .c-ok{background:var(--ok-bg);color:var(--ok)}
 .c-bad{background:var(--danger-bg);color:var(--danger)}
-.c-gold{background:var(--gold);color:var(--on-gold)}
+.c-gold{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold)}
 .c-tint{background:var(--tint);color:var(--icon)}
 .c-pink{background:var(--pink-bg);color:var(--pink)}
+.c-purple{background:var(--purple-bg);color:var(--purple)}
+
+/* PROGRESS MINI */
 .mini{height:6px;background:var(--track-d);border-radius:3px;overflow:hidden;margin-top:8px}
-.mini i{display:block;height:100%;background:var(--gold);border-radius:3px}
-.sum{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;gap:16px}
-.sum > div{flex:1}
-.sum .k{font-size:13px;color:var(--muted);font-weight:600}
-.sum .n{font-size:24px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
-.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;margin:14px 0 0;gap:4px}
-.seg button{flex:1;height:40px;border-radius:10px;font-size:13px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
-.seg button.on{background:var(--navy);color:#fff}
+.mini i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-2));border-radius:3px;transition:width .6s ease}
+
+/* SUMMARY */
+.sum{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;display:flex;gap:14px;box-shadow:var(--shadow-sm)}
+.sum > div{flex:1;min-width:0}
+.sum .k{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.sum .n{font-size:26px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.1}
+
+/* SEGMENTED */
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:4px;margin:14px 0 0;gap:4px;box-shadow:var(--shadow-sm)}
+.seg button{flex:1;height:42px;border-radius:12px;font-size:13px;font-weight:800;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
+.seg button.on{background:var(--navy);color:#fff;box-shadow:var(--shadow-md)}
 [data-theme="dark"] .seg button.on{background:var(--tint);color:var(--text)}
-.seg button svg{width:16px;height:16px}
-.lv.locked{opacity:.62}
+.seg button svg{width:15px;height:15px}
+
+/* LEVELS */
+.lv.locked{opacity:.55}
 .lv .ico.done{background:var(--ok-bg);color:var(--ok)}
-.lv .ico.now{background:var(--gold);color:var(--on-gold)}
+.lv .ico.now{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);box-shadow:0 4px 12px rgba(246,183,60,.4)}
+
+/* BUTTONS */
 .btns{display:flex;gap:10px;margin-top:14px}
-.primary{flex:1;height:52px;border-radius:14px;background:var(--navy);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px}
-.primary:active{opacity:.88}
-.secondary{width:52px;height:52px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;color:var(--text)}
-.ghost{width:100%;height:48px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:700;margin-top:14px}
-.ghost.donate{background:var(--pink);color:#fff;border-color:var(--pink)}
-.nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.primary{flex:1;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:var(--shadow-md);transition:.15s}
+.primary:active{transform:scale(.98)}
+.primary svg{width:20px;height:20px}
+.secondary{width:54px;height:54px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;color:var(--text);box-shadow:var(--shadow-sm);transition:.15s}
+.secondary:active{transform:scale(.94)}
+.ghost{width:100%;height:50px;border-radius:16px;background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:800;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:var(--shadow-sm);transition:.15s}
+.ghost:active{transform:scale(.98)}
+.ghost svg{width:18px;height:18px}
+.ghost.donate{background:linear-gradient(135deg,var(--pink),#C92E67);color:#fff;border-color:transparent;box-shadow:0 8px 20px -8px rgba(226,62,123,.6)}
+.ghost.gold{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);border-color:transparent;box-shadow:0 8px 20px -8px rgba(246,183,60,.6)}
+.ghost.purple{background:linear-gradient(135deg,var(--purple),#5B21B6);color:#fff;border-color:transparent;box-shadow:0 8px 20px -8px rgba(124,58,237,.6)}
+
+/* CARDS (konkurs, bonus, vazifa, promokod) */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.card + .card{margin-top:12px}
+.card.hero{background:linear-gradient(150deg,#1E2A5C 0%,#101A3E 60%,#0B1224 100%);color:#fff;border-color:transparent}
+.card.hero::before{content:'';position:absolute;top:-40%;right:-20%;width:240px;height:240px;background:radial-gradient(circle,rgba(246,183,60,.28),transparent 65%);pointer-events:none}
+.card.hero::after{content:'';position:absolute;bottom:-60%;left:-30%;width:220px;height:220px;background:radial-gradient(circle,rgba(226,62,123,.18),transparent 65%);pointer-events:none}
+.card.hero .card-tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;background:rgba(246,183,60,.18);color:var(--gold);padding:5px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
+.card.hero .card-title{font-size:22px;font-weight:800;margin:12px 0 6px;line-height:1.2;position:relative}
+.card.hero .card-desc{font-size:14px;color:rgba(255,255,255,.7);font-weight:600;line-height:1.5;position:relative;margin-bottom:16px}
+.card.hero .card-reward{display:flex;align-items:center;gap:10px;padding:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;position:relative;backdrop-filter:blur(8px)}
+.card.hero .card-reward .rw-emoji{font-size:32px}
+.card.hero .card-reward .rw-info{flex:1}
+.card.hero .card-reward .rw-l{font-size:12px;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.card.hero .card-reward .rw-v{font-size:18px;font-weight:800;margin-top:2px}
+.card.hero .timer{display:flex;gap:6px;margin-top:14px;position:relative}
+.card.hero .timer .tbox{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 4px;text-align:center}
+.card.hero .timer .tn{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.card.hero .timer .tl{font-size:10px;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+
+/* KONKURS ROW */
+.contest-row{display:flex;align-items:center;gap:12px;padding:12px 0}
+.contest-row + .contest-row{border-top:1px solid var(--line)}
+.contest-rank{width:30px;text-align:center;font-weight:800;font-size:16px;color:var(--muted);flex-shrink:0}
+.contest-rank.top1{color:#E5A82C}
+.contest-rank.top2{color:#8892A6}
+.contest-rank.top3{color:#B47800}
+
+/* PROMOCODE */
+.promo{display:flex;gap:10px;margin-top:12px}
+.promo input{flex:1;height:52px;border-radius:14px;background:var(--surface-2);border:1.5px solid var(--line);padding:0 16px;font-family:inherit;font-size:15px;font-weight:800;color:var(--text);letter-spacing:.08em;text-transform:uppercase;outline:none;transition:.15s}
+.promo input:focus{border-color:var(--gold);background:var(--surface)}
+.promo input::placeholder{color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:none}
+.promo button{padding:0 22px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);font-weight:800;font-size:15px;box-shadow:0 8px 20px -8px rgba(246,183,60,.6);transition:.15s}
+.promo button:active{transform:scale(.96)}
+
+/* TASK */
+.task{display:flex;align-items:center;gap:12px;padding:14px 0}
+.task + .task{border-top:1px solid var(--line)}
+.task .task-ico{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:22px;flex-shrink:0;background:var(--tint)}
+.task.done .task-ico{background:var(--ok-bg)}
+.task .task-info{flex:1;min-width:0}
+.task .task-l{font-size:14px;font-weight:800;line-height:1.3}
+.task .task-sub{font-size:12px;color:var(--muted);margin-top:3px;font-weight:600}
+.task .task-go{height:38px;padding:0 16px;border-radius:11px;background:var(--navy);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px;transition:.15s}
+[data-theme="dark"] .task .task-go{background:var(--tint);color:var(--text)}
+.task .task-go:active{transform:scale(.95)}
+.task .task-go.claim{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);animation:pulse-gold 1.6s ease-in-out infinite}
+@keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(246,183,60,.5)}50%{box-shadow:0 0 0 8px rgba(246,183,60,0)}}
+
+/* NAV */
+.nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));z-index:30;box-shadow:0 -8px 24px -12px rgba(11,18,36,.12)}
 .nav-in{max-width:480px;margin:0 auto;display:flex;gap:2px}
-.tab{flex:1;min-width:0;height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:11px;font-weight:700}
+.tab{flex:1;min-width:0;height:58px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:800;transition:.15s;position:relative}
 .tab svg{width:22px;height:22px}
-.tab[aria-current="page"]{color:var(--text);background:var(--surface)}
+.tab[aria-current="page"]{color:var(--text)}
 .tab[aria-current="page"] svg{color:var(--icon)}
-.sk{background:var(--line);border-radius:12px;animation:pulse 1.3s ease-in-out infinite}
-@keyframes pulse{50%{opacity:.5}}
-.err{background:var(--danger-bg);color:var(--danger);border-radius:20px;padding:20px}
-.err b{display:block;font-size:16px;margin-bottom:4px}
-.err p{font-size:14px;line-height:1.45;margin-bottom:14px}
-.err button{height:42px;padding:0 18px;border-radius:12px;background:var(--danger);color:var(--surface);font-weight:700;font-size:14px}
-.empty{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px 20px;text-align:center}
-.empty b{display:block;font-size:16px;margin-bottom:6px}
-.empty p{font-size:14px;color:var(--muted);line-height:1.45}
-.toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translate(-50%,12px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:50}
+.tab[aria-current="page"]::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:20px;height:3px;border-radius:0 0 3px 3px;background:var(--gold)}
+
+/* SKELETON */
+.sk{background:var(--line);border-radius:16px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ERROR / EMPTY */
+.err{background:var(--danger-bg);color:var(--danger);border-radius:22px;padding:22px}
+.err b{display:block;font-size:16px;margin-bottom:6px}
+.err p{font-size:14px;line-height:1.5;margin-bottom:16px;font-weight:600;opacity:.9}
+.err button{height:44px;padding:0 20px;border-radius:12px;background:var(--danger);color:#fff;font-weight:800;font-size:14px}
+.empty{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:32px 22px;text-align:center;box-shadow:var(--shadow-sm)}
+.empty .e-ico{width:64px;height:64px;border-radius:20px;background:var(--tint);color:var(--icon);display:grid;place-items:center;margin:0 auto 14px}
+.empty .e-ico svg{width:30px;height:30px}
+.empty b{display:block;font-size:16px;margin-bottom:6px;font-weight:800}
+.empty p{font-size:14px;color:var(--muted);line-height:1.5;font-weight:600}
+
+/* TOAST */
+.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translate(-50%,16px);background:var(--text);color:var(--bg);padding:12px 18px;border-radius:14px;font-size:14px;font-weight:800;opacity:0;pointer-events:none;transition:.22s cubic-bezier(.2,.8,.2,1);z-index:50;box-shadow:var(--shadow-lg);max-width:calc(100% - 28px);text-align:center}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.err{background:var(--danger);color:#fff}
+.toast.ok{background:var(--ok);color:#fff}
+
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(7,11,22,.65);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;z-index:60;opacity:0;pointer-events:none;transition:.22s}
+.modal.on{opacity:1;pointer-events:auto}
+.modal-in{width:100%;max-width:480px;background:var(--surface);border-radius:28px 28px 0 0;padding:24px 22px calc(24px + env(safe-area-inset-bottom));transform:translateY(30px);transition:.28s cubic-bezier(.2,.8,.2,1);max-height:88vh;overflow-y:auto}
+.modal.on .modal-in{transform:translateY(0)}
+.modal-handle{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-size:19px;font-weight:800;margin-bottom:6px}
+.modal-sub{font-size:14px;color:var(--muted);font-weight:600;line-height:1.5;margin-bottom:18px}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions button{flex:1;height:50px;border-radius:14px;font-weight:800;font-size:15px}
+.modal-actions .m-cancel{background:var(--surface-2);border:1px solid var(--line);color:var(--text)}
+.modal-actions .m-ok{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;box-shadow:var(--shadow-md)}
+.modal-actions .m-ok.gold{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);box-shadow:0 8px 20px -8px rgba(246,183,60,.6)}
+
+/* CONFETTI */
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:70;overflow:hidden}
+.confetti i{position:absolute;width:10px;height:10px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
 </style>
 </head>
 <body>
@@ -120,13 +255,15 @@ svg{display:block;flex-shrink:0}
       <div class="handle" id="handle"></div>
     </div>
     <button class="icon-btn" id="refresh" aria-label="Yangilash">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
     </button>
   </header>
   <main id="content" aria-live="polite"></main>
 </div>
 <nav class="nav" aria-label="Bo'limlar"><div class="nav-in" id="nav"></div></nav>
 <div class="toast" id="toast" role="status"></div>
+<div class="modal" id="modal"><div class="modal-in" id="modalIn"></div></div>
+<div class="confetti" id="confetti"></div>
 
 <script>
 const tg = window.Telegram?.WebApp;
@@ -138,21 +275,20 @@ let refLink = '';
 let current = 'home';
 const cache = {};
 let ratingTab = 'stars';
+let contestTab = 'active';
 
 const dark = (tg?.colorScheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
 document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 if (tg) {
   tg.ready(); tg.expand();
-  const bg = dark ? '#0A0F1E' : '#EEF1F6';
+  const bg = dark ? '#070B16' : '#F4F6FB';
   try { tg.setHeaderColor(bg); tg.setBackgroundColor(bg); tg.setBottomBarColor?.(bg); } catch (e) {}
 }
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s == null ? '' : String(s);
-  return d.innerHTML;
-}
+const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
 const fmt = n => Number(n || 0).toLocaleString('ru-RU');
 const tap = () => { try { tg?.HapticFeedback?.impactOccurred('light'); } catch (e) {} };
+const hapticOk = () => { try { tg?.HapticFeedback?.notificationOccurred('success'); } catch (e) {} };
+const hapticErr = () => { try { tg?.HapticFeedback?.notificationOccurred('error'); } catch (e) {} };
 const fmtDate = iso => { if (!iso) return '—'; const [y,m,d] = String(iso).slice(0,10).split('-'); return d&&m&&y ? `${d}.${m}.${y}` : '—'; };
 const fmtTime = iso => String(iso || '').slice(11, 16);
 
@@ -173,25 +309,31 @@ const I = {
   x: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
   clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   heart: svg('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8Z"/>'),
+  fire: svg('<path d="M12 2c1 3 4 4 4 7a4 4 0 1 1-8 0c0-1 .5-2 1-3 .5 1 1.5 1.5 2 1.5C11.5 6 12 4 12 2Z"/><path d="M12 22a6 6 0 0 0 6-6c0-2-1-3.5-2-5"/>'),
+  ticket: svg('<path d="M2 9a3 3 0 0 1 0 6v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-3a3 3 0 0 1 0-6V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1Z"/><path d="M13 5v2M13 17v2M13 11v2"/>'),
+  target: svg('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>'),
+  bolt: svg('<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>'),
+  crown: svg('<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7Z"/>'),
+  sparkle: svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/>'),
 };
 
 const TABS = [
   { id: 'home',    label: 'Asosiy',  icon: I.home },
+  { id: 'contest', label: 'Konkurs', icon: I.crown },
+  { id: 'bonus',   label: 'Bonus',   icon: I.fire },
   { id: 'rating',  label: 'Reyting', icon: I.rank },
-  { id: 'donate',  label: 'Donat',   icon: I.heart },
-  { id: 'gifts',   label: 'Giftlar', icon: I.gift },
   { id: 'friends', label: "Do'stlar", icon: I.users },
-  { id: 'history', label: 'Tarix',   icon: I.hist },
 ];
 
-async function api(path) {
+async function api(path, opts = {}) {
   if (!tg?.initData) throw new Error('Ilovani Telegram ichidagi bot orqali oching.');
   let res;
   try {
-    res = await fetch(`${API_URL}${path}`, { headers: { 'X-Telegram-Init-Data': tg.initData } });
-  } catch (e) {
-    throw new Error("Internet aloqasini tekshirib, qayta urinib ko'ring.");
-  }
+    res = await fetch(`${API_URL}${path}`, {
+      ...opts,
+      headers: { 'X-Telegram-Init-Data': tg.initData, ...(opts.headers || {}) }
+    });
+  } catch (e) { throw new Error("Internet aloqasini tekshirib, qayta urinib ko'ring."); }
   let data;
   try { data = await res.json(); } catch (e) { throw new Error("Server javobini o'qib bo'lmadi."); }
   if (data.error) throw new Error(data.error);
@@ -200,26 +342,22 @@ async function api(path) {
 
 function skeleton() {
   $('content').innerHTML = `
-    <div class="sk" style="height:150px;border-radius:24px"></div>
-    <div class="sk" style="height:168px;border-radius:20px;margin-top:14px"></div>`;
+    <div class="sk" style="height:170px;border-radius:28px"></div>
+    <div class="sk" style="height:190px;border-radius:22px;margin-top:14px"></div>
+    <div class="sk" style="height:120px;border-radius:22px;margin-top:14px"></div>`;
 }
 function showError(msg) {
-  $('content').innerHTML = `
-    <div class="err">
-      <b>Ma'lumotni yuklab bo'lmadi</b>
-      <p>${esc(msg)}</p>
-      <button data-act="retry">Qayta urinish</button>
-    </div>`;
+  $('content').innerHTML = `<div class="err"><b>Ma'lumotni yuklab bo'lmadi</b><p>${esc(msg)}</p><button data-act="retry">Qayta urinish</button></div>`;
 }
 function shareButtons() {
   return `<div class="btns">
-    <button class="primary" data-act="share">${I.send.replace('<svg', '<svg width="20" height="20"')} Havolani ulashish</button>
-    <button class="secondary" data-act="copy">${I.copy.replace('<svg', '<svg width="20" height="20"')}</button>
+    <button class="primary" data-act="share">${I.send} Havolani ulashish</button>
+    <button class="secondary" data-act="copy">${I.copy}</button>
   </div>`;
 }
 function countUp(el, to) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || to < 2) { el.textContent = fmt(to); return; }
-  const t0 = performance.now(), dur = 700;
+  const t0 = performance.now(), dur = 800;
   const step = now => {
     const p = Math.min(1, (now - t0) / dur);
     el.textContent = fmt(Math.round(to * (1 - Math.pow(1 - p, 3))));
@@ -232,8 +370,35 @@ function setHeader(d) {
   $('name').textContent = d.first_name || 'User';
   $('handle').textContent = d.username ? '@' + d.username : "Username yo'q";
 }
+function toast(msg, type = '') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast on ' + type;
+  clearTimeout(toast.id);
+  toast.id = setTimeout(() => t.className = 'toast ' + type, 2200);
+}
+function confetti() {
+  const c = $('confetti');
+  const colors = ['#F6B73C','#FFCE5C','#E23E7B','#7C3AED','#2F4A9E','#0F7A46'];
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('i');
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = '-20px';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
+    p.style.animationDelay = (Math.random() * 0.4) + 's';
+    c.appendChild(p);
+    setTimeout(() => p.remove(), 3500);
+  }
+}
+function openModal(html) {
+  $('modalIn').innerHTML = `<div class="modal-handle"></div>${html}`;
+  $('modal').classList.add('on');
+}
+function closeModal() { $('modal').classList.remove('on'); }
+$('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 
-/* HOME */
+/* ==================== HOME ==================== */
 function renderHome({ profile: d, levels: lv }) {
   setHeader(d);
   const stars = Number(d.stars) || 0;
@@ -242,8 +407,7 @@ function renderHome({ profile: d, levels: lv }) {
   const pct = isMax ? 100 : span > 0 ? Math.max(0, Math.min(100, (stars - d.level_min) / span * 100)) : 100;
   const left = Math.max(0, d.level_max + 1 - stars);
   const rightLabel = isMax ? '' : `${fmt(stars)} / ${fmt(d.level_max)}`;
-  const nextLabel = isMax ? 'Siz eng yuqori darajadasiz' : `Keyingi darajagacha ${fmt(left)} stars qoldi`;
-
+  const nextLabel = isMax ? '👑 Siz eng yuqori darajadasiz' : `Keyingi darajagacha ${fmt(left)} stars qoldi`;
   refLink = `https://t.me/${BOT_USERNAME}?start=ref_${d.user_id}`;
 
   const levelRows = (lv.levels || []).map(l => {
@@ -269,80 +433,224 @@ function renderHome({ profile: d, levels: lv }) {
       <div class="next">${nextLabel}</div>
     </section>
     ${shareButtons()}
-    <section class="list">
+    <section class="list" style="margin-top:14px">
       <div class="row"><div class="ico">${I.users}</div><div class="col"><div class="l">Taklif qilgan do'stlar</div></div><div class="v">${fmt(d.referrals)}</div></div>
       <div class="row"><div class="ico">${I.week}</div><div class="col"><div class="l">Bu hafta</div></div><div class="v">+${fmt(d.week_referrals)}</div></div>
       <div class="row"><div class="ico pink">${I.heart}</div><div class="col"><div class="l">Donat qilgan</div></div><div class="v">${fmt(d.donated)} <small>⭐</small></div></div>
       <div class="row"><div class="ico">${I.rank}</div><div class="col"><div class="l">Reytingdagi o'rin</div></div><div class="v">#${fmt(d.rank)}</div></div>
     </section>
-    <h2 class="h2">Darajalar yo'li</h2>
-    <section class="list">${levelRows}</section>`;
+    <h2 class="h2"><span class="h2-ico">${I.level}</span>Darajalar yo'li</h2>
+    <section class="list">${levelRows}</section>
+    <button class="ghost gold" data-act="donate">${I.heart} Botga donat qilish</button>`;
 
   countUp($('bal'), stars);
   requestAnimationFrame(() => requestAnimationFrame(() => { const f = $('fill'); if (f) f.style.width = pct + '%'; }));
 }
 
-/* RATING (3 tab) */
+/* ==================== CONTEST ==================== */
+function renderContest(d) {
+  const seg = `<div class="seg" role="tablist">
+    <button data-ct="active" class="${contestTab==='active'?'on':''}">${I.fire} Faol</button>
+    <button data-ct="finished" class="${contestTab==='finished'?'on':''}">${I.check} Tugagan</button>
+  </div>`;
+
+  const active = d.active;
+  const finished = d.finished || [];
+
+  let body = '';
+  if (contestTab === 'active' && active) {
+    const now = Date.now();
+    const end = new Date(active.end_at).getTime();
+    const diff = Math.max(0, end - now);
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+
+    const leaderboard = (active.leaders || []).map((x, i) => {
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+      return `<div class="contest-row">
+        <div class="contest-rank ${i<3?'top'+(i+1):''}">${medal}</div>
+        <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' <span class="chip c-gold" style="font-size:10px;padding:2px 6px">siz</span>' : ''}</div>
+        <div class="sub">${fmt(x.count)} ta referal</div></div>
+        <div class="v">${x.count >= active.target ? '🎯' : ''}</div>
+      </div>`;
+    }).join('') || '<div class="row"><div class="l">Hozircha qatnashuvchilar yo\'q</div></div>';
+
+    body = `
+      <div class="card hero">
+        <span class="card-tag">${I.bolt} Sovrinli konkurs</span>
+        <div class="card-title">${esc(active.title || 'Eng ko\'p referal yig\'gan g\'olib!')}</div>
+        <div class="card-desc">${esc(active.description || 'Konkurs davomida eng ko\'p do\'st taklif qilgan foydalanuvchi sovrinni qo\'lga kiritadi.')}</div>
+        <div class="card-reward">
+          <div class="rw-emoji">${esc(active.reward_emoji || '🎁')}</div>
+          <div class="rw-info">
+            <div class="rw-l">Sovrin</div>
+            <div class="rw-v">${esc(active.reward_name || 'Telegram Gift')}</div>
+          </div>
+        </div>
+        <div class="timer">
+          <div class="tbox"><div class="tn">${days}</div><div class="tl">Kun</div></div>
+          <div class="tbox"><div class="tn">${hours}</div><div class="tl">Soat</div></div>
+          <div class="tbox"><div class="tn">${mins}</div><div class="tl">Daqiqa</div></div>
+          <div class="tbox"><div class="tn">${secs}</div><div class="tl">Soniya</div></div>
+        </div>
+      </div>
+      <h2 class="h2"><span class="h2-ico">${I.rank}</span>Leaderboard</h2>
+      <section class="list">${leaderboard}</section>
+      ${active.me && !active.leaders?.some(x => x.is_me) ? `
+        <section class="list" style="margin-top:10px">
+          <div class="row me">
+            <div class="rk">${fmt(active.me.rank)}</div>
+            <div class="col"><div class="l">${esc(active.me.name)} (siz)</div><div class="sub">${fmt(active.me.count)} ta referal</div></div>
+            <div class="v">${active.me.count >= active.target ? '🎯' : ''}</div>
+          </div>
+        </section>` : ''}
+      <button class="ghost gold" data-act="share">${I.send} Do'stlarni taklif qilish</button>`;
+  } else if (contestTab === 'finished') {
+    body = finished.length ? finished.map(c => `
+      <div class="card">
+        <span class="chip c-ok">${I.check} Tugagan</span>
+        <div style="font-size:17px;font-weight:800;margin:10px 0 4px">${esc(c.title)}</div>
+        <div class="sub" style="margin-bottom:12px">Sovrin: ${esc(c.reward_emoji || '🎁')} ${esc(c.reward_name || 'Gift')}</div>
+        <div class="row" style="padding:0;border:0">
+          <div class="ico gold">🏆</div>
+          <div class="col"><div class="l">G'olib</div><div class="sub">${fmt(c.winner_referrals)} ta referal</div></div>
+          <div class="v">${esc(c.winner_name || '—')}</div>
+        </div>
+      </div>`).join('') : '<div class="empty"><div class="e-ico">'+I.crown+'</div><b>Tugagan konkurslar yo\'q</b><p>Yaqin orada yangi sovrinli konkurslar boshlanadi.</p></div>';
+  } else {
+    body = '<div class="empty"><div class="e-ico">'+I.crown+'</div><b>Faol konkurs yo\'q</b><p>Yangi konkurs tez orada boshlanadi. Kuzatib turing!</p></div>';
+  }
+
+  $('content').innerHTML = seg + body;
+
+  // countdown timer
+  if (contestTab === 'active' && active) {
+    const end = new Date(active.end_at).getTime();
+    clearInterval(window.__ct);
+    window.__ct = setInterval(() => {
+      const diff = Math.max(0, end - Date.now());
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      const boxes = document.querySelectorAll('.timer .tn');
+      if (boxes.length === 4) {
+        boxes[0].textContent = d; boxes[1].textContent = h;
+        boxes[2].textContent = m; boxes[3].textContent = s;
+      } else clearInterval(window.__ct);
+    }, 1000);
+  }
+}
+
+/* ==================== BONUS / TASKS / PROMO ==================== */
+function renderBonus(d) {
+  const daily = d.daily || {};
+  const canClaim = daily.can_claim;
+  const streak = daily.streak || 0;
+  const reward = daily.reward || 0;
+  const nextReward = daily.next_reward || reward;
+
+  const streakDots = Array.from({length: 7}, (_, i) => {
+    const active = i < streak;
+    return `<div style="flex:1;aspect-ratio:1;border-radius:10px;display:grid;place-items:center;font-size:14px;font-weight:800;
+      background:${active ? 'linear-gradient(135deg,var(--gold),var(--gold-2))' : 'var(--surface-2)'};
+      color:${active ? 'var(--on-gold)' : 'var(--muted)'};border:1px solid ${active ? 'transparent' : 'var(--line)'}">
+      ${active ? '✓' : (i + 1)}
+    </div>`;
+  }).join('');
+
+  const tasks = (d.tasks || []).map(t => {
+    const done = t.done;
+    const claimed = t.claimed;
+    const claimable = t.claimable;
+    const action = claimed ? '' : claimable
+      ? `<button class="task-go claim" data-claim="${t.id}">+${fmt(t.reward)} ⭐</button>`
+      : `<button class="task-go" data-go="${t.id}">${t.link ? 'Bajarish' : 'Yopish'}</button>`;
+    return `<div class="task ${done ? 'done' : ''}">
+      <div class="task-ico">${done && claimed ? '✅' : esc(t.emoji || '📌')}</div>
+      <div class="task-info">
+        <div class="task-l">${esc(t.title)}</div>
+        <div class="task-sub">${claimed ? 'Mukofot olindi' : `+${fmt(t.reward)} ⭐`}</div>
+      </div>
+      ${action}
+    </div>`;
+  }).join('');
+
+  $('content').innerHTML = `
+    <div class="card hero">
+      <span class="card-tag">${I.fire} Kunlik bonus</span>
+      <div class="card-title">${canClaim ? 'Bugungi bonusingiz tayyor!' : 'Ertaga yana keling!'}</div>
+      <div class="card-desc">Har kuni kirib bonus oling. ${streak >= 7 ? 'Siz 7 kunlik seriyani tugatdingiz!' : `Ketma-ket ${streak} kun — seriya davom ettirilsa mukofot oshadi.`}</div>
+      <div style="display:flex;gap:6px;position:relative;margin-bottom:16px">${streakDots}</div>
+      <div class="card-reward">
+        <div class="rw-emoji">${STAR.replace('<svg','<svg width="32" height="32" style="color:var(--gold)"')}</div>
+        <div class="rw-info">
+          <div class="rw-l">${canClaim ? 'Bugungi mukofot' : 'Keyingi mukofot'}</div>
+          <div class="rw-v">${fmt(canClaim ? reward : nextReward)} ⭐</div>
+        </div>
+      </div>
+      ${canClaim ? `<button class="primary" data-claim="daily" style="width:100%;margin-top:16px;position:relative">${I.gift} Bonusi olish</button>`
+                 : `<button class="ghost" style="width:100%;margin-top:16px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff">${I.clock} Ertaga qaytib keling</button>`}
+    </div>
+
+    <h2 class="h2"><span class="h2-ico">${I.target}</span>Vazifalar<span class="badge">${(d.tasks||[]).filter(t=>t.claimable).length || 0} ta tayyor</span></h2>
+    <section class="list" style="padding:0 16px">${tasks || '<div class="row"><div class="l">Vazifalar yo\'q</div></div>'}</section>
+
+    <h2 class="h2"><span class="h2-ico">${I.ticket}</span>Promokod</h2>
+    <div class="card">
+      <div class="sub" style="font-weight:600;line-height:1.5">Promokodni kiriting va Stars oling. Kodlar kanalda e'lon qilinadi.</div>
+      <div class="promo">
+        <input id="promoInput" placeholder="PROMOKOD" maxlength="32" autocomplete="off" autocapitalize="characters">
+        <button data-act="promo">Aktiv</button>
+      </div>
+    </div>`;
+}
+
+/* ==================== RATING ==================== */
 function renderRating(d) {
   const medal = r => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
+  const seg = `<div class="seg" role="tablist">
+    <button data-rt="stars" class="${ratingTab==='stars'?'on':''}">${STAR.replace('<svg','<svg width="15" height="15"')} Stars</button>
+    <button data-rt="donate" class="${ratingTab==='donate'?'on':''}">${I.heart.replace('<svg','<svg width="15" height="15"')} Donat</button>
+    <button data-rt="ref" class="${ratingTab==='ref'?'on':''}">${I.users.replace('<svg','<svg width="15" height="15"')} Referal</button>
+  </div>`;
 
-  const seg = `
-    <div class="seg" role="tablist">
-      <button role="tab" data-rt="stars" class="${ratingTab==='stars'?'on':''}">${STAR.replace('<svg','<svg width="16" height="16"')} Stars</button>
-      <button role="tab" data-rt="donate" class="${ratingTab==='donate'?'on':''}">${I.heart.replace('<svg','<svg width="16" height="16"')} Donat</button>
-      <button role="tab" data-rt="ref" class="${ratingTab==='ref'?'on':''}">${I.users.replace('<svg','<svg width="16" height="16"')} Referal</button>
-    </div>`;
-
-  // Backend'dan kelgan d ni xavfsiz o'qish
   const stars = d.stars || { top: [], me: { rank: 0, name: 'User', stars: 0 } };
   const donate = d.donate || { top: [], me: { rank: 0, name: 'User', total: 0, count: 0 } };
   const ref = d.ref || { top: [], me: { rank: 0, name: 'User', count: 0 } };
 
   let body = '';
   if (ratingTab === 'stars') {
-    const rows = (stars.top || []).map(x => `
-      <div class="row ${x.is_me ? 'me' : ''}">
-        <div class="rk">${medal(x.rank)}</div>
-        <div class="col"><div class="l">${esc(x.level_emoji || '')} ${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div></div>
-        <div class="v">${fmt(x.stars)} <small>⭐</small></div>
-      </div>`).join('');
-    const meRow = (stars.top || []).some(x => x.is_me) ? '' : `
-      <div class="dots">· · ·</div>
-      <div class="row me">
-        <div class="rk">${fmt(stars.me?.rank || 0)}</div>
-        <div class="col"><div class="l">${esc(stars.me?.name || 'User')} (siz)</div></div>
-        <div class="v">${fmt(stars.me?.stars || 0)} <small>⭐</small></div>
-      </div>`;
+    const rows = (stars.top || []).map(x => `<div class="row ${x.is_me ? 'me' : ''}">
+      <div class="rk">${medal(x.rank)}</div>
+      <div class="col"><div class="l">${esc(x.level_emoji || '')} ${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div></div>
+      <div class="v">${fmt(x.stars)} <small>⭐</small></div></div>`).join('');
+    const meRow = (stars.top || []).some(x => x.is_me) ? '' : `<div class="dots">· · ·</div>
+      <div class="row me"><div class="rk">${fmt(stars.me?.rank || 0)}</div>
+      <div class="col"><div class="l">${esc(stars.me?.name || 'User')} (siz)</div></div>
+      <div class="v">${fmt(stars.me?.stars || 0)} <small>⭐</small></div></div>`;
     body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Reyting bo\'sh</div></div>'}${meRow}</section>`;
   } else if (ratingTab === 'donate') {
-    const rows = (donate.top || []).map(x => `
-      <div class="row ${x.is_me ? 'me' : ''}">
-        <div class="rk">${medal(x.rank)}</div>
-        <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div><div class="sub">${fmt(x.count || 0)} ta donat</div></div>
-        <div class="v">${fmt(x.total || 0)} <small>⭐</small></div>
-      </div>`).join('');
-    const meRow = (donate.top || []).some(x => x.is_me) ? '' : `
-      <div class="dots">· · ·</div>
-      <div class="row me">
-        <div class="rk">${fmt(donate.me?.rank || 0)}</div>
-        <div class="col"><div class="l">${esc(donate.me?.name || 'User')} (siz)</div><div class="sub">${fmt(donate.me?.count || 0)} ta donat</div></div>
-        <div class="v">${fmt(donate.me?.total || 0)} <small>⭐</small></div>
-      </div>`;
+    const rows = (donate.top || []).map(x => `<div class="row ${x.is_me ? 'me' : ''}">
+      <div class="rk">${medal(x.rank)}</div>
+      <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div><div class="sub">${fmt(x.count || 0)} ta donat</div></div>
+      <div class="v">${fmt(x.total || 0)} <small>⭐</small></div></div>`).join('');
+    const meRow = (donate.top || []).some(x => x.is_me) ? '' : `<div class="dots">· · ·</div>
+      <div class="row me"><div class="rk">${fmt(donate.me?.rank || 0)}</div>
+      <div class="col"><div class="l">${esc(donate.me?.name || 'User')} (siz)</div><div class="sub">${fmt(donate.me?.count || 0)} ta donat</div></div>
+      <div class="v">${fmt(donate.me?.total || 0)} <small>⭐</small></div></div>`;
     body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha donat yo\'q</div></div>'}${meRow}</section>`;
   } else {
-    const rows = (ref.top || []).map(x => `
-      <div class="row ${x.is_me ? 'me' : ''}">
-        <div class="rk">${medal(x.rank)}</div>
-        <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div></div>
-        <div class="v">${fmt(x.count || 0)} <small>ta</small></div>
-      </div>`).join('');
-    const meRow = (ref.top || []).some(x => x.is_me) ? '' : `
-      <div class="dots">· · ·</div>
-      <div class="row me">
-        <div class="rk">${fmt(ref.me?.rank || 0)}</div>
-        <div class="col"><div class="l">${esc(ref.me?.name || 'User')} (siz)</div></div>
-        <div class="v">${fmt(ref.me?.count || 0)} <small>ta</small></div>
-      </div>`;
+    const rows = (ref.top || []).map(x => `<div class="row ${x.is_me ? 'me' : ''}">
+      <div class="rk">${medal(x.rank)}</div>
+      <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div></div>
+      <div class="v">${fmt(x.count || 0)} <small>ta</small></div></div>`).join('');
+    const meRow = (ref.top || []).some(x => x.is_me) ? '' : `<div class="dots">· · ·</div>
+      <div class="row me"><div class="rk">${fmt(ref.me?.rank || 0)}</div>
+      <div class="col"><div class="l">${esc(ref.me?.name || 'User')} (siz)</div></div>
+      <div class="v">${fmt(ref.me?.count || 0)} <small>ta</small></div></div>`;
     body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha referal yo\'q</div></div>'}${meRow}</section>`;
   }
 
@@ -352,60 +660,13 @@ function renderRating(d) {
       <div><div class="k">Stars</div><div class="n">${fmt(stars.me?.stars || 0)}</div></div>
     </section>
     ${seg}
-    <h2 class="h2">TOP 10</h2>
+    <h2 class="h2"><span class="h2-ico">${I.rank}</span>TOP 10</h2>
     ${body}`;
 }
 
-/* DONATE */
-function renderDonate(d) {
-  const rows = (d.top || []).map(x => `
-    <div class="row ${x.is_me ? 'me' : ''}">
-      <div class="rk">${x.rank === 1 ? '🥇' : x.rank === 2 ? '🥈' : x.rank === 3 ? '🥉' : x.rank}</div>
-      <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div><div class="sub">${fmt(x.count || 0)} ta</div></div>
-      <div class="v">${fmt(x.total || 0)} <small>⭐</small></div>
-    </div>`).join('');
-
-  $('content').innerHTML = `
-    <section class="sum">
-      <div><div class="k">Siz donat qilgansiz</div><div class="n">${fmt(d.me?.total || 0)} ⭐</div></div>
-      <div><div class="k">Sizning o'rningiz</div><div class="n">#${fmt(d.me?.rank || 0)}</div></div>
-    </section>
-    <button class="ghost donate" data-act="donate">${I.heart.replace('<svg','<svg width="20" height="20"')} Bot orqali donat qilish</button>
-    <h2 class="h2">Eng ko'p donat qilganlar</h2>
-    <section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha donat yo\'q</div></div>'}</section>
-    <p class="sub" style="margin:10px 4px 0;text-align:center">Donat — botni qo'llab-quvvatlash uchun. Har bir donat reytingda ko'rinadi.</p>`;
-}
-
-/* GIFTS */
-function renderGifts(d) {
-  const rows = (d.gifts || []).map(g => {
-    const ok = d.free >= g.stars;
-    const need = g.stars - d.free;
-    const pct = Math.max(0, Math.min(100, d.free / g.stars * 100));
-    return `<div class="row">
-      <div class="ico">${esc(g.emoji)}</div>
-      <div class="col">
-        <div class="l">${esc(g.name)}</div>
-        <div class="sub">${fmt(g.stars)} ⭐</div>
-        ${ok ? '' : `<div class="mini"><i style="width:${pct.toFixed(0)}%"></i></div>`}
-      </div>
-      ${ok ? '<span class="chip c-gold">Olish mumkin</span>' : `<span class="chip c-tint">Yana ${fmt(need)} ⭐</span>`}
-    </div>`;
-  }).join('');
-  $('content').innerHTML = `
-    <section class="sum">
-      <div><div class="k">Balans</div><div class="n">${fmt(d.balance)} ⭐</div></div>
-      <div><div class="k">Bo'sh balans</div><div class="n">${fmt(d.free)} ⭐</div></div>
-    </section>
-    <h2 class="h2">Giftlar katalogi</h2>
-    <section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha giftlar yo\'q</div></div>'}</section>
-    <button class="ghost" data-act="close">Bot orqali yechib olish</button>`;
-}
-
-/* FRIENDS */
+/* ==================== FRIENDS ==================== */
 function renderFriends(d) {
-  const rows = (d.items || []).map(x => `
-    <div class="row">
+  const rows = (d.items || []).map(x => `<div class="row">
       <div class="ico">${esc((x.name || 'U').charAt(0).toUpperCase())}</div>
       <div class="col"><div class="l">${esc(x.name)}</div><div class="sub">${fmtDate(x.joined_at)}</div></div>
       <span class="chip c-ok">+${fmt(d.reward)} ⭐</span>
@@ -416,55 +677,20 @@ function renderFriends(d) {
       <div><div class="k">Bu hafta</div><div class="n">+${fmt(d.week)}</div></div>
     </section>
     ${shareButtons()}
-    <h2 class="h2">Taklif qilganlar</h2>
-    ${(d.items || []).length
-      ? `<section class="list" style="margin-top:0">${rows}</section>`
-      : `<div class="empty"><b>Hali do'st taklif qilmagansiz</b><p>Havolani ulashing — har bir tasdiqlangan do'st uchun ${fmt(d.reward)} ⭐ olasiz.</p></div>`}`;
+    <h2 class="h2"><span class="h2-ico">${I.users}</span>Taklif qilganlar</h2>
+    ${(d.items || []).length ? `<section class="list" style="margin-top:0">${rows}</section>`
+      : `<div class="empty"><div class="e-ico">${I.users}</div><b>Hali do'st taklif qilmagansiz</b><p>Havolani ulashing — har bir tasdiqlangan do'st uchun ${fmt(d.reward)} ⭐ olasiz.</p></div>`}`;
 }
 
-/* HISTORY */
-const STATUS = {
-  pending:    { cls: 'c-wait', icon: I.clock, text: 'Kutilmoqda' },
-  processing: { cls: 'c-wait', icon: I.clock, text: 'Jarayonda' },
-  approved:   { cls: 'c-ok',   icon: I.check, text: 'Tasdiqlandi' },
-  rejected:   { cls: 'c-bad',  icon: I.x,     text: 'Rad etildi' },
-  failed:     { cls: 'c-bad',  icon: I.x,     text: 'Xato' },
-};
-function renderHistory(d) {
-  if (!(d.items || []).length) {
-    $('content').innerHTML = `<div class="empty"><b>So'rovlar yo'q</b><p>Yechib olish so'rovlaringiz shu yerda ko'rinadi.</p></div>`;
-    return;
-  }
-  const rows = d.items.map(x => {
-    const st = STATUS[x.status] || STATUS.pending;
-    const isGift = x.type === 'gift';
-    const title = isGift ? `${esc(x.gift_name || 'Gift')}` : 'Stars yechib olish';
-    const emoji = isGift ? esc(x.gift_emoji || '🎁') : '⭐';
-    return `<div class="row">
-      <div class="ico">${emoji}</div>
-      <div class="col"><div class="l">${title}</div><div class="sub">${fmtDate(x.created_at)} ${fmtTime(x.created_at)} · #${x.id}</div></div>
-      <div style="text-align:right">
-        <div class="v">${fmt(x.stars)} <small>⭐</small></div>
-        <div style="margin-top:4px"><span class="chip ${st.cls}">${st.icon}${st.text}</span></div>
-      </div>
-    </div>`;
-  }).join('');
-  $('content').innerHTML = `<section class="list" style="margin-top:0">${rows}</section>
-    <p class="sub" style="margin:10px 4px 0;text-align:center">Oxirgi 20 ta so'rov</p>`;
-}
-
+/* ==================== LOADERS ==================== */
 const LOADERS = {
-  home: async () => {
-    const [profile, levels] = await Promise.all([api('/api/profile'), api('/api/levels')]);
-    return { profile, levels };
-  },
+  home:    async () => { const [profile, levels] = await Promise.all([api('/api/profile'), api('/api/levels')]); return { profile, levels }; },
+  contest: () => api('/api/contest'),
+  bonus:   () => api('/api/bonus'),
   rating:  () => api('/api/rating'),
-  donate:  () => api('/api/donations'),
-  gifts:   () => api('/api/gifts'),
   friends: () => api('/api/referrals'),
-  history: () => api('/api/withdrawals'),
 };
-const RENDERERS = { home: renderHome, rating: renderRating, donate: renderDonate, gifts: renderGifts, friends: renderFriends, history: renderHistory };
+const RENDERERS = { home: renderHome, contest: renderContest, bonus: renderBonus, rating: renderRating, friends: renderFriends };
 
 async function openTab(id, force) {
   current = id;
@@ -480,56 +706,96 @@ async function openTab(id, force) {
   }
 }
 
-function toast(msg) {
-  const t = $('toast');
-  t.textContent = msg; t.classList.add('on');
-  clearTimeout(toast.id);
-  toast.id = setTimeout(() => t.classList.remove('on'), 1800);
-}
-
 async function copyLink() {
   try { await navigator.clipboard.writeText(refLink); }
   catch (e) {
-    const ta = document.createElement('textarea');
-    ta.value = refLink; document.body.appendChild(ta); ta.select();
+    const ta = document.createElement('textarea'); ta.value = refLink;
+    document.body.appendChild(ta); ta.select();
     try { document.execCommand('copy'); } catch (_) {}
     ta.remove();
   }
-  toast('Havola nusxalandi');
+  toast('Havola nusxalandi', 'ok');
+  hapticOk();
 }
 
-document.addEventListener('click', e => {
-  const el = e.target.closest('[data-act], [data-rt]');
+/* ==================== EVENTS ==================== */
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act], [data-rt], [data-ct], [data-claim], [data-go]');
   if (!el) return;
-  if (el.dataset.rt) {
+
+  if (el.dataset.rt) { tap(); ratingTab = el.dataset.rt; if (cache.rating) renderRating(cache.rating); return; }
+  if (el.dataset.ct) { tap(); contestTab = el.dataset.ct; if (cache.contest) renderContest(cache.contest); return; }
+
+  if (el.dataset.claim) {
     tap();
-    ratingTab = el.dataset.rt;
-    if (cache.rating) renderRating(cache.rating);
+    const id = el.dataset.claim;
+    el.disabled = true; el.style.opacity = '.6';
+    try {
+      const res = await api('/api/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      hapticOk(); confetti();
+      toast(`+${fmt(res.reward)} ⭐ qo'shildi!`, 'ok');
+      cache.bonus = null; cache.home = null; cache.rating = null;
+      setTimeout(() => openTab('bonus', true), 400);
+    } catch (err) {
+      hapticErr(); toast(err.message, 'err');
+      el.disabled = false; el.style.opacity = '1';
+    }
     return;
   }
-  tap();
+
+  if (el.dataset.go) {
+    tap();
+    const id = el.dataset.go;
+    const task = (cache.bonus?.tasks || []).find(t => String(t.id) === String(id));
+    if (task?.link) {
+      if (task.link.startsWith('http')) {
+        tg ? tg.openLink(task.link) : window.open(task.link);
+      } else {
+        const url = `https://t.me/${task.link.replace('@','')}`;
+        tg ? tg.openTelegramLink(url) : window.open(url);
+      }
+      setTimeout(() => { cache.bonus = null; openTab('bonus', true); }, 1500);
+    }
+    return;
+  }
+
   const act = el.dataset.act;
   if (act === 'retry') { openTab(current, true); return; }
-  if (act === 'close') { tg ? tg.close() : null; return; }
   if (act === 'donate') {
+    tap();
     const url = `https://t.me/${BOT_USERNAME}`;
     tg ? tg.openTelegramLink(url) : window.open(url);
     return;
   }
-  if (!refLink) { toast("Avval «Asosiy» bo'limini oching"); return; }
+  if (act === 'close') { tg ? tg.close() : null; return; }
+  if (act === 'promo') {
+    tap();
+    const input = $('promoInput');
+    const code = (input?.value || '').trim().toUpperCase();
+    if (!code) { toast('Promokodni kiriting', 'err'); hapticErr(); return; }
+    el.disabled = true; el.style.opacity = '.6';
+    try {
+      const res = await api('/api/promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+      hapticOk(); confetti();
+      toast(`+${fmt(res.reward)} ⭐ qo'shildi!`, 'ok');
+      input.value = '';
+      cache.bonus = null; cache.home = null; cache.rating = null;
+    } catch (err) { hapticErr(); toast(err.message, 'err'); }
+    el.disabled = false; el.style.opacity = '1';
+    return;
+  }
+  if (!refLink) { toast("Avval «Asosiy» oching", 'err'); return; }
   if (act === 'share') {
-    const text = "Star Rush botga qo'shiling va Stars yig'ing!";
+    tap();
+    const text = "🚀 StarRush botga qo'shiling va Stars yig'ing!";
     const url = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(text)}`;
     tg ? tg.openTelegramLink(url) : window.open(url);
-  } else if (act === 'copy') {
-    copyLink();
-  }
+  } else if (act === 'copy') { tap(); copyLink(); }
 });
 
 $('refresh').onclick = () => { tap(); openTab(current, true); };
 
-$('nav').innerHTML = TABS.map(t =>
-  `<button class="tab" data-tab="${t.id}" aria-current="false">${t.icon}<span>${t.label}</span></button>`).join('');
+$('nav').innerHTML = TABS.map(t => `<button class="tab" data-tab="${t.id}" aria-current="false">${t.icon}<span>${t.label}</span></button>`).join('');
 $('nav').addEventListener('click', e => {
   const b = e.target.closest('.tab');
   if (!b) return;
@@ -537,9 +803,8 @@ $('nav').addEventListener('click', e => {
   openTab(b.dataset.tab, false);
 });
 
-if (!tg?.initData) {
-  showError('Ilovani Telegram ichidagi bot orqali oching.');
-} else {
+if (!tg?.initData) { showError('Ilovani Telegram ichidagi bot orqali oching.'); }
+else {
   const uid = tg.initDataUnsafe?.user?.id;
   if (uid) refLink = `https://t.me/${BOT_USERNAME}?start=ref_${uid}`;
   openTab('home', true);
