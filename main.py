@@ -35,6 +35,9 @@ from telethon.sessions import StringSession
 from telethon.tl.functions.contacts import ImportContactsRequest
 from telethon.tl.types import InputPhoneContact
 
+import security
+from security import adb, aio
+
 # ═══════════════════════════════════════════════════════════
 # SOZLAMALAR
 # ═══════════════════════════════════════════════════════════
@@ -425,7 +428,7 @@ _pool = None
 def _get_pool():
     global _pool
     if _pool is None:
-        _pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
+        _pool = ThreadedConnectionPool(2, 20, DATABASE_URL)
     return _pool
 
 def db_exec(query, params=(), fetch=False, fetchall=False):
@@ -969,12 +972,14 @@ async def send_human_check(target: types.Message, state: FSMContext, uid: int, l
     ]
     random.shuffle(answers)
 
+    correct_idx = next(i for i, (_, ok) in enumerate(answers) if ok)
     b = InlineKeyboardBuilder()
-    for ans, is_correct in answers:
-        b.button(text=ans, callback_data=f"ans_{q['id']}_{'1' if is_correct else '0'}")
+    for i, (ans, _) in enumerate(answers):
+        b.button(text=ans, callback_data=f"ans_{i}")
     b.adjust(1)
 
-    await state.update_data(q_id=q["id"], ref_id=user["referrer_id"] or 0)
+    await state.update_data(q_id=q["id"], ref_id=user["referrer_id"] or 0,
+                            ans_correct=correct_idx)
     await state.set_state(US.answer)
     await target.answer(
         T(lang, "bot_check", q=esc(q["question"])),
@@ -1139,8 +1144,6 @@ async def set_lang(cb: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.startswith("ans_"))
 async def check_ans(cb: types.CallbackQuery, state: FSMContext):
     parts = cb.data.split("_")
-    if len(parts) != 3:
-        return
 
     uid = cb.from_user.id
     lang = get_user_lang(uid)
@@ -1149,7 +1152,11 @@ async def check_ans(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer(T(lang, "start_first"), show_alert=True)
         return
 
-    is_correct = parts[2] == "1"
+    st = await state.get_data()
+    if len(parts) != 2 or "ans_correct" not in st:
+        await cb.answer(T(lang, "start_first"), show_alert=True)
+        return
+    is_correct = parts[1] == str(st["ans_correct"])
 
     if not is_correct:
         await cb.answer(T(lang, "wrong_answer"), show_alert=True)
@@ -1178,21 +1185,28 @@ async def check_ans(cb: types.CallbackQuery, state: FSMContext):
         if ref_id and ref_id != uid:
             ref = get_user(ref_id)
             if ref and not ref["is_banned"]:
-                reward = int(get_setting("stars_per_referral", "2"))
-                new_stars = add_stars(ref_id, reward)
-                if new_stars is not None:
-                    old_stars = new_stars - reward
-                    ref_lang = get_user_lang(ref_id)
-                    try:
-                        await bot.send_message(
-                            ref_id,
-                            T(ref_lang, "referral_reward", n=reward)
-                            + f"\n💰 {T(ref_lang, 'total')}: <b>{new_stars} ⭐</b>",
-                            parse_mode="HTML"
-                        )
-                    except Exception:
-                        pass
-                    await check_level_up(ref_id, old_stars, new_stars)
+                if not await security.referral_velocity_ok(ref_id):
+                    await notify_admins(
+                        f"⚠️ <b>Shubhali referal tezligi</b>\n\n"
+                        f"Referer: <code>{ref_id}</code>\n"
+                        f"Yangi user: <code>{uid}</code>\n"
+                        f"Mukofot berilmadi. Tekshirib, kerak bo'lsa qo'lda bering.")
+                else:
+                    reward = int(get_setting("stars_per_referral", "2"))
+                    new_stars = add_stars(ref_id, reward)
+                    if new_stars is not None:
+                        old_stars = new_stars - reward
+                        ref_lang = get_user_lang(ref_id)
+                        try:
+                            await bot.send_message(
+                                ref_id,
+                                T(ref_lang, "referral_reward", n=reward)
+                                + f"\n💰 {T(ref_lang, 'total')}: <b>{new_stars} ⭐</b>",
+                                parse_mode="HTML"
+                            )
+                        except Exception:
+                            pass
+                        await check_level_up(ref_id, old_stars, new_stars)
 
     await state.clear()
     await cb.answer(T(lang, "correct"))
@@ -2981,7 +2995,7 @@ async def userbot_session_input(message: types.Message, state: FSMContext):
 
         set_setting("userbot_api_id", str(api_id))
         set_setting("userbot_api_hash", api_hash)
-        set_setting("userbot_session", session_str)
+        set_setting("userbot_session", security.enc(session_str))
         set_setting("userbot_disabled", "0")
 
         await state.clear()
@@ -4596,7 +4610,7 @@ async def init_userbot():
         except ValueError:
             pass
         API_HASH = db_api_hash
-        SESSION_STRING = db_session
+        SESSION_STRING = security.dec(db_session)
         logger.info("Userbot sozlamalari DB'dan olindi")
 
     if not API_ID:
@@ -4631,6 +4645,10 @@ async def init_userbot():
 async def main():
     init_db()
     await init_userbot()
+    security.setup(
+        dp, db_exec=db_exec, now_uz=now_uz, T=T, LANGS=LANGS,
+        is_admin=is_admin, check_subs=check_subs, subs_kb=subs_kb,
+    )
 
     app = web.Application(middlewares=[cors_middleware])
     app.router.add_get("/", index)
