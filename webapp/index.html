@@ -3,548 +3,1455 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0B0E16">
 <title>StarRush</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════ */
 :root{
-  --bg:#F4F6FB; --surface:#FFFFFF; --surface-2:#FAFBFE;
-  --text:#0B1224; --muted:#6B7690; --line:#E6EAF2;
-  --navy:#0E1A3A; --navy-2:#16234A; --on-navy:#FFFFFF; --on-navy-muted:rgba(255,255,255,.66);
-  --track:rgba(255,255,255,.14);
-  --gold:#F6B73C; --gold-2:#FFCE5C; --on-gold:#0E1A3A;
-  --tint:#EEF2FB; --icon:#2F4A9E;
-  --danger:#C62A1E; --danger-bg:#FDECEA;
-  --ok:#0F7A46; --ok-bg:#E2F5EA;
-  --wait:#8A5A00; --wait-bg:#FFF3D6;
-  --pink:#E23E7B; --pink-bg:#FDEDF4;
-  --purple:#7C3AED; --purple-bg:#F1EAFF;
-  --track-d:#E6EAF2;
-  --shadow-sm:0 1px 2px rgba(11,18,36,.04);
-  --shadow-md:0 8px 24px -12px rgba(11,18,36,.18);
-  --shadow-lg:0 24px 48px -24px rgba(11,18,36,.28);
-  --font:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --bg:#F5F7FB;
+  --bg-2:#EEF2F9;
+  --surface:#FFFFFF;
+  --surface-2:#FAFBFE;
+  --surface-3:#F2F5FA;
+  --text:#0A0E1A;
+  --text-2:#3F4759;
+  --muted:#7A8399;
+  --line:#E8ECF3;
+  --line-2:#DFE4EE;
+
+  --brand:#0B0E16;
+  --brand-2:#1A2035;
+  --on-brand:#FFFFFF;
+  --on-brand-muted:rgba(255,255,255,.62);
+
+  --accent:#F6B93B;
+  --accent-2:#FFD26A;
+  --accent-ink:#3D2600;
+
+  --violet:#6C5CE7;
+  --violet-2:#A29BFE;
+  --violet-soft:#EFEBFF;
+
+  --mint:#00B894;
+  --mint-soft:#DFF7F0;
+
+  --rose:#E84393;
+  --rose-soft:#FDEBF4;
+
+  --sky:#0984E3;
+  --sky-soft:#E6F2FD;
+
+  --danger:#D63031;
+  --danger-soft:#FDEAEA;
+
+  --warn:#E17055;
+  --warn-soft:#FFF0EB;
+
+  --radius-xs:10px;
+  --radius-sm:14px;
+  --radius-md:18px;
+  --radius-lg:24px;
+  --radius-xl:32px;
+  --radius-full:999px;
+
+  --shadow-xs:0 1px 2px rgba(10,14,26,.04);
+  --shadow-sm:0 2px 8px -2px rgba(10,14,26,.06), 0 1px 2px rgba(10,14,26,.04);
+  --shadow-md:0 12px 32px -8px rgba(10,14,26,.12), 0 2px 6px -2px rgba(10,14,26,.06);
+  --shadow-lg:0 28px 64px -16px rgba(10,14,26,.22), 0 8px 20px -8px rgba(10,14,26,.10);
+  --shadow-glow:0 12px 32px -8px rgba(246,185,59,.4);
+
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;
+  --ease:cubic-bezier(.32,.72,0,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
 }
+
 [data-theme="dark"]{
-  --bg:#070B16; --surface:#101728; --surface-2:#131B30;
-  --text:#EEF1F8; --muted:#8A95B2; --line:#1E2740;
-  --navy:#1B2C63; --navy-2:#243A7C; --tint:#161F3C; --icon:#8FA8F5;
-  --danger:#FF8A80; --danger-bg:#341519;
-  --ok:#6FD3A0; --ok-bg:#0E2A1C;
-  --wait:#F6C96B; --wait-bg:#34270B;
-  --track-d:#1E2740;
-  --pink:#FF7BA8; --pink-bg:#341826;
-  --purple:#A78BFA; --purple-bg:#241A45;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
-  --shadow-md:0 8px 24px -12px rgba(0,0,0,.5);
-  --shadow-lg:0 24px 48px -24px rgba(0,0,0,.6);
+  --bg:#07090F;
+  --bg-2:#0A0D15;
+  --surface:#0F131C;
+  --surface-2:#141923;
+  --surface-3:#1A202C;
+  --text:#F5F7FB;
+  --text-2:#B8BFCF;
+  --muted:#7C8699;
+  --line:#1E2430;
+  --line-2:#262D3B;
+
+  --brand:#1C2233;
+  --brand-2:#2A3245;
+
+  --violet-soft:#1B1733;
+  --mint-soft:#0D2620;
+  --rose-soft:#2A1521;
+  --sky-soft:#0C1F33;
+  --danger-soft:#2A1416;
+  --warn-soft:#2A1A14;
+
+  --shadow-xs:0 1px 2px rgba(0,0,0,.3);
+  --shadow-sm:0 2px 8px -2px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:0 12px 32px -8px rgba(0,0,0,.5), 0 2px 6px -2px rgba(0,0,0,.3);
+  --shadow-lg:0 28px 64px -16px rgba(0,0,0,.6), 0 8px 20px -8px rgba(0,0,0,.4);
+  --shadow-glow:0 12px 32px -8px rgba(246,185,59,.25);
 }
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{background:var(--bg)}
-body{font-family:var(--font);color:var(--text);min-height:100vh;
-  padding:max(14px,env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom));
-  overflow-x:hidden;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
-.wrap{max-width:480px;margin:0 auto}
-button{font-family:inherit;border:0;cursor:pointer;color:inherit;background:none;letter-spacing:inherit}
-:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-svg{display:block;flex-shrink:0}
-img{display:block;max-width:100%}
 
-/* TOP */
-.top{display:flex;align-items:center;gap:12px;padding:6px 2px 16px}
-.avatar{width:46px;height:46px;border-radius:16px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;display:grid;place-items:center;font-weight:800;font-size:19px;box-shadow:var(--shadow-md);position:relative;overflow:hidden}
-.avatar::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.18));pointer-events:none}
+/* ═══════════════════════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════════════════════ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{background:var(--bg);color:var(--text)}
+body{
+  font-family:var(--font);
+  font-size:15px;
+  line-height:1.5;
+  letter-spacing:-.011em;
+  min-height:100vh;
+  padding:max(12px,env(safe-area-inset-top)) 14px calc(100px + env(safe-area-inset-bottom));
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-variant-numeric:tabular-nums;
+  transition:background-color .3s var(--ease);
+}
+button{font-family:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+input{font-family:inherit;font-size:inherit;color:inherit;background:none;border:0;outline:none;width:100%}
+img,svg{display:block;max-width:100%}
+svg{flex-shrink:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+::selection{background:var(--accent);color:var(--accent-ink)}
+
+.wrap{max-width:440px;margin:0 auto}
+
+/* ═══════════════════════════════════════════════════════════
+   TYPOGRAPHY
+   ═══════════════════════════════════════════════════════════ */
+.h1{font-size:26px;font-weight:800;letter-spacing:-.028em;line-height:1.2}
+.h2{font-size:16px;font-weight:700;letter-spacing:-.018em;line-height:1.3;margin:24px 4px 12px;display:flex;align-items:center;gap:10px}
+.h2 .h2-count{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);background:var(--surface-3);padding:3px 9px;border-radius:var(--radius-full);letter-spacing:0}
+.label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.body-sm{font-size:13.5px;font-weight:500;color:var(--text-2);line-height:1.55}
+.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ═══════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════ */
+.top{
+  display:flex;align-items:center;gap:12px;
+  padding:6px 2px 18px;
+}
+.avatar{
+  width:44px;height:44px;border-radius:14px;
+  background:linear-gradient(135deg,var(--brand),var(--brand-2));
+  color:#fff;display:grid;place-items:center;
+  font-weight:800;font-size:17px;letter-spacing:-.02em;
+  box-shadow:var(--shadow-sm);
+  position:relative;overflow:hidden;
+  flex-shrink:0;
+}
+.avatar::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.14));
+  pointer-events:none;
+}
 .who{flex:1;min-width:0}
-.name{font-size:17px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.handle{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
-.icon-btn{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:var(--muted);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);transition:.15s}
-.icon-btn:active{transform:scale(.94)}
+.name{font-size:16px;font-weight:700;letter-spacing:-.018em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.handle{font-size:12.5px;color:var(--muted);font-weight:500;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{
+  width:40px;height:40px;border-radius:13px;
+  display:grid;place-items:center;
+  color:var(--text-2);background:var(--surface);
+  border:1px solid var(--line);
+  box-shadow:var(--shadow-xs);
+  transition:transform .18s var(--ease-spring),background-color .2s var(--ease);
+  flex-shrink:0;
+}
+.icon-btn:active{transform:scale(.92);background:var(--surface-3)}
 
-/* HERO BALANCE */
-.balance{background:linear-gradient(150deg,var(--navy) 0%,var(--navy-2) 100%);color:var(--on-navy);border-radius:28px;padding:24px 22px 22px;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
-.balance::before{content:'';position:absolute;top:-60px;right:-40px;width:220px;height:220px;background:radial-gradient(circle,rgba(246,183,60,.22),transparent 70%);pointer-events:none}
-.balance::after{content:'';position:absolute;bottom:-80px;left:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(143,168,245,.15),transparent 70%);pointer-events:none}
-.b-label{font-size:13px;font-weight:700;color:var(--on-navy-muted);text-transform:uppercase;letter-spacing:.08em;position:relative}
-.b-value{display:flex;align-items:center;gap:12px;margin:8px 0 22px;font-size:58px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;position:relative}
-.b-value svg{width:40px;height:40px;color:var(--gold);filter:drop-shadow(0 4px 12px rgba(246,183,60,.5))}
-.lvl-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;font-weight:700;margin-bottom:10px;position:relative}
-.lvl-row span:last-child{color:var(--on-navy-muted);font-variant-numeric:tabular-nums;font-weight:600;font-size:13px}
-.track{height:8px;background:var(--track);border-radius:4px;overflow:hidden;position:relative}
-.fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-2));border-radius:4px;transition:width 1s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 12px rgba(246,183,60,.6)}
-.next{font-size:13px;color:var(--on-navy-muted);margin-top:10px;font-weight:600;position:relative}
+/* ═══════════════════════════════════════════════════════════
+   HERO BALANCE
+   ═══════════════════════════════════════════════════════════ */
+.balance{
+  position:relative;
+  background:linear-gradient(155deg,#0B0E16 0%,#161B2E 55%,#0F1421 100%);
+  color:var(--on-brand);
+  border-radius:var(--radius-xl);
+  padding:26px 22px 22px;
+  overflow:hidden;
+  box-shadow:var(--shadow-lg);
+  isolation:isolate;
+}
+.balance::before{
+  content:'';position:absolute;
+  top:-90px;right:-70px;width:280px;height:280px;
+  background:radial-gradient(circle,rgba(246,185,59,.28),transparent 68%);
+  pointer-events:none;
+}
+.balance::after{
+  content:'';position:absolute;
+  bottom:-100px;left:-60px;width:240px;height:240px;
+  background:radial-gradient(circle,rgba(108,92,231,.22),transparent 68%);
+  pointer-events:none;
+}
+.balance .grain{
+  position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:3px 3px;
+  pointer-events:none;
+  opacity:.5;
+}
+.b-label{
+  font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--on-brand-muted);
+  position:relative;
+}
+.b-value{
+  display:flex;align-items:center;gap:12px;
+  margin:10px 0 22px;
+  font-size:54px;font-weight:800;
+  letter-spacing:-.04em;line-height:1;
+  position:relative;
+}
+.b-value .star{
+  width:36px;height:36px;color:var(--accent);
+  filter:drop-shadow(0 6px 14px rgba(246,185,59,.5));
+}
+.b-progress{position:relative}
+.b-lvl-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  gap:12px;font-size:13.5px;font-weight:600;
+  margin-bottom:10px;
+}
+.b-lvl-row .lvl-name{display:flex;align-items:center;gap:6px}
+.b-lvl-row .lvl-range{color:var(--on-brand-muted);font-weight:600;font-size:12.5px}
+.b-track{
+  height:6px;background:rgba(255,255,255,.1);
+  border-radius:3px;overflow:hidden;position:relative;
+}
+.b-fill{
+  height:100%;width:0;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));
+  border-radius:3px;
+  transition:width 1.1s var(--ease-out);
+  box-shadow:0 0 14px rgba(246,185,59,.55);
+  position:relative;
+}
+.b-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);
+  animation:shimmer 2.4s var(--ease) infinite;
+}
+@keyframes shimmer{
+  0%{transform:translateX(-100%)}
+  100%{transform:translateX(100%)}
+}
+.b-next{
+  font-size:12.5px;font-weight:500;
+  color:var(--on-brand-muted);
+  margin-top:10px;position:relative;
+}
 
-/* SECTIONS */
-.h2{font-size:15px;font-weight:800;margin:24px 4px 10px;display:flex;align-items:center;gap:8px}
-.h2 .h2-ico{width:22px;height:22px;border-radius:8px;background:var(--tint);color:var(--icon);display:grid;place-items:center}
-.h2 .h2-ico svg{width:14px;height:14px}
-.h2 .badge{margin-left:auto;font-size:11px;font-weight:800;background:var(--pink-bg);color:var(--pink);padding:3px 8px;border-radius:999px}
-
-.list{background:var(--surface);border-radius:22px;border:1px solid var(--line);overflow:hidden;box-shadow:var(--shadow-sm)}
-.row{display:flex;align-items:center;gap:14px;padding:15px 16px;transition:background .15s}
-.row + .row{border-top:1px solid var(--line)}
-.row.tap:active{background:var(--surface-2)}
-.row.me{background:var(--tint)}
-.ico{width:40px;height:40px;border-radius:12px;background:var(--tint);color:var(--icon);display:grid;place-items:center;font-size:20px;flex-shrink:0}
-.ico svg{width:20px;height:20px}
-.ico.pink{background:var(--pink-bg);color:var(--pink)}
-.ico.gold{background:rgba(246,183,60,.18);color:#B47800}
-.ico.ok{background:var(--ok-bg);color:var(--ok)}
-.ico.purple{background:var(--purple-bg);color:var(--purple)}
-.col{flex:1;min-width:0}
-.l{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sub{font-size:13px;color:var(--muted);margin-top:2px;font-weight:600}
-.v{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-.v small{font-weight:700;color:var(--muted);font-size:12px}
-.rk{width:32px;text-align:center;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted);flex-shrink:0}
-.dots{padding:8px 16px;text-align:center;color:var(--muted);letter-spacing:6px;font-weight:800;border-top:1px solid var(--line);font-size:12px}
-
-/* CHIPS */
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.01em}
-.chip svg{width:13px;height:13px}
-.c-wait{background:var(--wait-bg);color:var(--wait)}
-.c-ok{background:var(--ok-bg);color:var(--ok)}
-.c-bad{background:var(--danger-bg);color:var(--danger)}
-.c-gold{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold)}
-.c-tint{background:var(--tint);color:var(--icon)}
-.c-pink{background:var(--pink-bg);color:var(--pink)}
-.c-purple{background:var(--purple-bg);color:var(--purple)}
-
-/* PROGRESS MINI */
-.mini{height:6px;background:var(--track-d);border-radius:3px;overflow:hidden;margin-top:8px}
-.mini i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-2));border-radius:3px;transition:width .6s ease}
-
-/* SUMMARY */
-.sum{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;display:flex;gap:14px;box-shadow:var(--shadow-sm)}
-.sum > div{flex:1;min-width:0}
-.sum .k{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.sum .n{font-size:26px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.1}
-
-/* SEGMENTED */
-.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:4px;margin:14px 0 0;gap:4px;box-shadow:var(--shadow-sm)}
-.seg button{flex:1;height:42px;border-radius:12px;font-size:13px;font-weight:800;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
-.seg button.on{background:var(--navy);color:#fff;box-shadow:var(--shadow-md)}
-[data-theme="dark"] .seg button.on{background:var(--tint);color:var(--text)}
-.seg button svg{width:15px;height:15px}
-
-/* LEVELS */
-.lv.locked{opacity:.55}
-.lv .ico.done{background:var(--ok-bg);color:var(--ok)}
-.lv .ico.now{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);box-shadow:0 4px 12px rgba(246,183,60,.4)}
-
-/* BUTTONS */
+/* ═══════════════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════════════ */
 .btns{display:flex;gap:10px;margin-top:14px}
-.primary{flex:1;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:var(--shadow-md);transition:.15s}
-.primary:active{transform:scale(.98)}
-.primary svg{width:20px;height:20px}
-.secondary{width:54px;height:54px;border-radius:16px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;color:var(--text);box-shadow:var(--shadow-sm);transition:.15s}
-.secondary:active{transform:scale(.94)}
-.ghost{width:100%;height:50px;border-radius:16px;background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:800;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:var(--shadow-sm);transition:.15s}
-.ghost:active{transform:scale(.98)}
-.ghost svg{width:18px;height:18px}
-.ghost.donate{background:linear-gradient(135deg,var(--pink),#C92E67);color:#fff;border-color:transparent;box-shadow:0 8px 20px -8px rgba(226,62,123,.6)}
-.ghost.gold{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);border-color:transparent;box-shadow:0 8px 20px -8px rgba(246,183,60,.6)}
-.ghost.purple{background:linear-gradient(135deg,var(--purple),#5B21B6);color:#fff;border-color:transparent;box-shadow:0 8px 20px -8px rgba(124,58,237,.6)}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  height:52px;border-radius:var(--radius-sm);
+  font-size:15px;font-weight:700;letter-spacing:-.01em;
+  transition:transform .18s var(--ease-spring),background-color .2s var(--ease),opacity .2s var(--ease);
+  user-select:none;
+}
+.btn:active{transform:scale(.97)}
+.btn svg{width:19px;height:19px}
+.btn-primary{
+  flex:1;
+  background:linear-gradient(155deg,var(--brand),var(--brand-2));
+  color:#fff;
+  box-shadow:var(--shadow-md);
+}
+.btn-primary:active{background:linear-gradient(155deg,#04060b,#0f1421)}
+.btn-secondary{
+  width:52px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  color:var(--text);
+  box-shadow:var(--shadow-xs);
+}
+.btn-ghost{
+  width:100%;
+  background:var(--surface);
+  border:1px solid var(--line);
+  color:var(--text);
+  box-shadow:var(--shadow-xs);
+  margin-top:12px;
+}
+.btn-gold{
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);
+  box-shadow:var(--shadow-glow);
+  border:0;
+}
+.btn-gold:active{background:linear-gradient(155deg,#e0a52d,#f2c25a)}
+.btn-violet{
+  background:linear-gradient(155deg,var(--violet),#8B7BFF);
+  color:#fff;border:0;
+  box-shadow:0 12px 32px -8px rgba(108,92,231,.45);
+}
+.btn-rose{
+  background:linear-gradient(155deg,var(--rose),#FF6FB5);
+  color:#fff;border:0;
+  box-shadow:0 12px 32px -8px rgba(232,67,147,.45);
+}
+.btn:disabled{opacity:.55;cursor:not-allowed;pointer-events:none}
 
-/* CARDS (konkurs, bonus, vazifa, promokod) */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
-.card + .card{margin-top:12px}
-.card.hero{background:linear-gradient(150deg,#1E2A5C 0%,#101A3E 60%,#0B1224 100%);color:#fff;border-color:transparent}
-.card.hero::before{content:'';position:absolute;top:-40%;right:-20%;width:240px;height:240px;background:radial-gradient(circle,rgba(246,183,60,.28),transparent 65%);pointer-events:none}
-.card.hero::after{content:'';position:absolute;bottom:-60%;left:-30%;width:220px;height:220px;background:radial-gradient(circle,rgba(226,62,123,.18),transparent 65%);pointer-events:none}
-.card.hero .card-tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;background:rgba(246,183,60,.18);color:var(--gold);padding:5px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
-.card.hero .card-title{font-size:22px;font-weight:800;margin:12px 0 6px;line-height:1.2;position:relative}
-.card.hero .card-desc{font-size:14px;color:rgba(255,255,255,.7);font-weight:600;line-height:1.5;position:relative;margin-bottom:16px}
-.card.hero .card-reward{display:flex;align-items:center;gap:10px;padding:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;position:relative;backdrop-filter:blur(8px)}
-.card.hero .card-reward .rw-emoji{font-size:32px}
-.card.hero .card-reward .rw-info{flex:1}
-.card.hero .card-reward .rw-l{font-size:12px;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.card.hero .card-reward .rw-v{font-size:18px;font-weight:800;margin-top:2px}
-.card.hero .timer{display:flex;gap:6px;margin-top:14px;position:relative}
-.card.hero .timer .tbox{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 4px;text-align:center}
-.card.hero .timer .tn{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
-.card.hero .timer .tl{font-size:10px;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+/* ═══════════════════════════════════════════════════════════
+   CARDS / LISTS
+   ═══════════════════════════════════════════════════════════ */
+.list{
+  background:var(--surface);
+  border-radius:var(--radius-lg);
+  border:1px solid var(--line);
+  overflow:hidden;
+  box-shadow:var(--shadow-xs);
+}
+.row{
+  display:flex;align-items:center;gap:14px;
+  padding:15px 16px;
+  min-height:64px;
+  transition:background-color .15s var(--ease);
+}
+.row + .row{border-top:1px solid var(--line)}
+.row.tappable{cursor:pointer}
+.row.tappable:active{background:var(--surface-3)}
+.row.highlight{background:var(--violet-soft)}
+.row.danger{background:var(--danger-soft)}
+.icon-wrap{
+  width:40px;height:40px;border-radius:12px;
+  display:grid;place-items:center;
+  font-size:19px;flex-shrink:0;
+  background:var(--surface-3);color:var(--text-2);
+}
+.icon-wrap svg{width:19px;height:19px}
+.icon-wrap.violet{background:var(--violet-soft);color:var(--violet)}
+.icon-wrap.mint{background:var(--mint-soft);color:var(--mint)}
+.icon-wrap.rose{background:var(--rose-soft);color:var(--rose)}
+.icon-wrap.sky{background:var(--sky-soft);color:var(--sky)}
+.icon-wrap.gold{background:rgba(246,185,59,.16);color:#B47800}
+.icon-wrap.danger{background:var(--danger-soft);color:var(--danger)}
+.row-body{flex:1;min-width:0}
+.row-title{
+  font-size:14.5px;font-weight:600;
+  letter-spacing:-.011em;line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.row-sub{
+  font-size:12.5px;color:var(--muted);font-weight:500;
+  margin-top:3px;line-height:1.4;
+}
+.row-value{
+  font-size:15.5px;font-weight:700;
+  letter-spacing:-.02em;white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.row-value small{font-size:11.5px;font-weight:600;color:var(--muted);margin-left:1px}
 
-/* KONKURS ROW */
-.contest-row{display:flex;align-items:center;gap:12px;padding:12px 0}
-.contest-row + .contest-row{border-top:1px solid var(--line)}
-.contest-rank{width:30px;text-align:center;font-weight:800;font-size:16px;color:var(--muted);flex-shrink:0}
-.contest-rank.top1{color:#E5A82C}
-.contest-rank.top2{color:#8892A6}
-.contest-rank.top3{color:#B47800}
+/* ═══════════════════════════════════════════════════════════
+   CHIPS / BADGES
+   ═══════════════════════════════════════════════════════════ */
+.chip{
+  display:inline-flex;align-items:center;gap:5px;
+  height:24px;padding:0 10px;
+  border-radius:var(--radius-full);
+  font-size:11.5px;font-weight:700;letter-spacing:-.005em;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.chip svg{width:12px;height:12px}
+.chip-muted{background:var(--surface-3);color:var(--text-2)}
+.chip-violet{background:var(--violet-soft);color:var(--violet)}
+.chip-mint{background:var(--mint-soft);color:var(--mint)}
+.chip-rose{background:var(--rose-soft);color:var(--rose)}
+.chip-sky{background:var(--sky-soft);color:var(--sky)}
+.chip-danger{background:var(--danger-soft);color:var(--danger)}
+.chip-warn{background:var(--warn-soft);color:var(--warn)}
+.chip-gold{
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);
+  box-shadow:0 4px 10px -2px rgba(246,185,59,.4);
+}
 
-/* PROMOCODE */
-.promo{display:flex;gap:10px;margin-top:12px}
-.promo input{flex:1;height:52px;border-radius:14px;background:var(--surface-2);border:1.5px solid var(--line);padding:0 16px;font-family:inherit;font-size:15px;font-weight:800;color:var(--text);letter-spacing:.08em;text-transform:uppercase;outline:none;transition:.15s}
-.promo input:focus{border-color:var(--gold);background:var(--surface)}
-.promo input::placeholder{color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:none}
-.promo button{padding:0 22px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);font-weight:800;font-size:15px;box-shadow:0 8px 20px -8px rgba(246,183,60,.6);transition:.15s}
-.promo button:active{transform:scale(.96)}
+/* ═══════════════════════════════════════════════════════════
+   STATS CARDS
+   ═══════════════════════════════════════════════════════════ */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.stat{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:15px 16px;
+  box-shadow:var(--shadow-xs);
+  transition:transform .18s var(--ease-spring);
+}
+.stat:active{transform:scale(.97)}
+.stat-label{
+  font-size:11px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);
+}
+.stat-value{
+  display:flex;align-items:baseline;gap:4px;
+  margin-top:6px;
+  font-size:24px;font-weight:800;
+  letter-spacing:-.03em;line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.stat-value small{font-size:13px;font-weight:700;color:var(--muted)}
 
-/* TASK */
-.task{display:flex;align-items:center;gap:12px;padding:14px 0}
+/* ═══════════════════════════════════════════════════════════
+   SEGMENTED CONTROL
+   ═══════════════════════════════════════════════════════════ */
+.seg{
+  display:flex;gap:3px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:4px;
+  margin:14px 0 0;
+  box-shadow:var(--shadow-xs);
+  position:relative;
+}
+.seg button{
+  flex:1;height:38px;
+  border-radius:10px;
+  font-size:13px;font-weight:600;
+  color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:all .25s var(--ease-out);
+  letter-spacing:-.008em;
+  position:relative;z-index:1;
+}
+.seg button.on{
+  background:linear-gradient(155deg,var(--brand),var(--brand-2));
+  color:#fff;
+  font-weight:700;
+  box-shadow:0 4px 12px -3px rgba(10,14,26,.3);
+}
+[data-theme="dark"] .seg button.on{
+  background:var(--surface-3);
+  color:var(--text);
+  box-shadow:var(--shadow-sm);
+}
+.seg button svg{width:14px;height:14px}
+
+/* ═══════════════════════════════════════════════════════════
+   HERO CARD (Konkurs, Bonus)
+   ═══════════════════════════════════════════════════════════ */
+.hero-card{
+  position:relative;
+  background:linear-gradient(155deg,#0B0E16 0%,#1A1F35 50%,#0F1421 100%);
+  color:#fff;
+  border-radius:var(--radius-xl);
+  padding:24px 22px;
+  overflow:hidden;
+  box-shadow:var(--shadow-lg);
+  isolation:isolate;
+}
+.hero-card::before{
+  content:'';position:absolute;
+  top:-120px;right:-100px;width:320px;height:320px;
+  background:radial-gradient(circle,rgba(246,185,59,.25),transparent 65%);
+  pointer-events:none;
+}
+.hero-card::after{
+  content:'';position:absolute;
+  bottom:-140px;left:-80px;width:280px;height:280px;
+  background:radial-gradient(circle,rgba(232,67,147,.18),transparent 65%);
+  pointer-events:none;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;
+  border-radius:var(--radius-full);
+  background:rgba(246,185,59,.16);
+  color:var(--accent-2);
+  font-size:11px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;
+  position:relative;
+  border:1px solid rgba(246,185,59,.2);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.hero-badge svg{width:12px;height:12px}
+.hero-title{
+  font-size:22px;font-weight:800;
+  letter-spacing:-.028em;line-height:1.2;
+  margin:14px 0 8px;
+  position:relative;
+}
+.hero-desc{
+  font-size:13.5px;font-weight:500;
+  color:rgba(255,255,255,.7);
+  line-height:1.55;
+  position:relative;
+  margin-bottom:18px;
+}
+.hero-reward{
+  display:flex;align-items:center;gap:14px;
+  padding:14px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--radius-md);
+  position:relative;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+.hero-reward-emoji{
+  width:44px;height:44px;
+  border-radius:14px;
+  display:grid;place-items:center;
+  font-size:24px;
+  background:rgba(246,185,59,.16);
+  flex-shrink:0;
+}
+.hero-reward-body{flex:1;min-width:0}
+.hero-reward-label{
+  font-size:10.5px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(255,255,255,.55);
+}
+.hero-reward-value{
+  font-size:17px;font-weight:700;
+  letter-spacing:-.018em;
+  margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hero-timer{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:8px;margin-top:16px;position:relative;
+}
+.hero-timer-box{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;
+  padding:10px 4px;
+  text-align:center;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.hero-timer-num{
+  font-size:22px;font-weight:800;
+  letter-spacing:-.03em;line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.hero-timer-lbl{
+  font-size:9.5px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(255,255,255,.55);
+  margin-top:4px;
+}
+.hero-btn{
+  width:100%;height:50px;margin-top:16px;
+  border-radius:var(--radius-sm);
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);
+  font-size:15px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  position:relative;
+  box-shadow:0 12px 28px -8px rgba(246,185,59,.5);
+  transition:transform .18s var(--ease-spring);
+  letter-spacing:-.008em;
+}
+.hero-btn:active{transform:scale(.97)}
+.hero-btn svg{width:18px;height:18px}
+.hero-btn.disabled{
+  background:rgba(255,255,255,.08);
+  color:rgba(255,255,255,.5);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:none;
+  pointer-events:none;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STREAK DOTS
+   ═══════════════════════════════════════════════════════════ */
+.streak{
+  display:flex;gap:6px;margin:0 0 18px;
+  position:relative;
+}
+.streak-dot{
+  flex:1;aspect-ratio:1;
+  border-radius:11px;
+  display:grid;place-items:center;
+  font-size:13px;font-weight:800;
+  background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.4);
+  border:1px solid rgba(255,255,255,.08);
+  transition:all .3s var(--ease-spring);
+  position:relative;
+}
+.streak-dot.done{
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);
+  border-color:transparent;
+  box-shadow:0 6px 16px -4px rgba(246,185,59,.5);
+}
+.streak-dot.current{
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);
+  border-color:transparent;
+  box-shadow:0 6px 16px -4px rgba(246,185,59,.5);
+  animation:pulse-ring 2s var(--ease-out) infinite;
+}
+@keyframes pulse-ring{
+  0%{box-shadow:0 6px 16px -4px rgba(246,185,59,.5),0 0 0 0 rgba(246,185,59,.5)}
+  70%{box-shadow:0 6px 16px -4px rgba(246,185,59,.5),0 0 0 10px rgba(246,185,59,0)}
+  100%{box-shadow:0 6px 16px -4px rgba(246,185,59,.5),0 0 0 0 rgba(246,185,59,0)}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TASKS
+   ═══════════════════════════════════════════════════════════ */
+.task{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;
+}
 .task + .task{border-top:1px solid var(--line)}
-.task .task-ico{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:22px;flex-shrink:0;background:var(--tint)}
-.task.done .task-ico{background:var(--ok-bg)}
-.task .task-info{flex:1;min-width:0}
-.task .task-l{font-size:14px;font-weight:800;line-height:1.3}
-.task .task-sub{font-size:12px;color:var(--muted);margin-top:3px;font-weight:600}
-.task .task-go{height:38px;padding:0 16px;border-radius:11px;background:var(--navy);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px;transition:.15s}
-[data-theme="dark"] .task .task-go{background:var(--tint);color:var(--text)}
-.task .task-go:active{transform:scale(.95)}
-.task .task-go.claim{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);animation:pulse-gold 1.6s ease-in-out infinite}
-@keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(246,183,60,.5)}50%{box-shadow:0 0 0 8px rgba(246,183,60,0)}}
+.task.done{background:var(--surface-2)}
+.task-icon{
+  width:42px;height:42px;
+  border-radius:13px;
+  display:grid;place-items:center;
+  font-size:20px;
+  background:var(--surface-3);
+  flex-shrink:0;
+  transition:all .3s var(--ease);
+}
+.task.done .task-icon{background:var(--mint-soft);color:var(--mint)}
+.task-body{flex:1;min-width:0}
+.task-title{
+  font-size:14px;font-weight:600;
+  letter-spacing:-.011em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.task-reward{
+  font-size:12px;font-weight:600;
+  color:var(--muted);margin-top:3px;
+  display:flex;align-items:center;gap:5px;
+}
+.task-reward .star-mini{color:var(--accent);width:11px;height:11px}
+.task-btn{
+  height:36px;padding:0 14px;
+  border-radius:11px;
+  font-size:12.5px;font-weight:700;
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface-3);
+  color:var(--text-2);
+  transition:all .2s var(--ease-spring);
+  letter-spacing:-.008em;
+}
+.task-btn:active{transform:scale(.94)}
+.task-btn.claim{
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);
+  box-shadow:0 6px 16px -4px rgba(246,185,59,.5);
+  animation:task-pulse 2s var(--ease-out) infinite;
+}
+@keyframes task-pulse{
+  0%,100%{box-shadow:0 6px 16px -4px rgba(246,185,59,.5),0 0 0 0 rgba(246,185,59,.5)}
+  50%{box-shadow:0 6px 16px -4px rgba(246,185,59,.5),0 0 0 8px rgba(246,185,59,0)}
+}
+.task-btn.claimed{
+  background:var(--mint-soft);
+  color:var(--mint);
+}
+.task-btn.done{
+  background:var(--violet-soft);
+  color:var(--violet);
+}
 
-/* NAV */
-.nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));z-index:30;box-shadow:0 -8px 24px -12px rgba(11,18,36,.12)}
-.nav-in{max-width:480px;margin:0 auto;display:flex;gap:2px}
-.tab{flex:1;min-width:0;height:58px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:800;transition:.15s;position:relative}
-.tab svg{width:22px;height:22px}
+/* ═══════════════════════════════════════════════════════════
+   PROMO INPUT
+   ═══════════════════════════════════════════════════════════ */
+.promo{
+  display:flex;gap:10px;margin-top:12px;
+}
+.promo input{
+  flex:1;height:52px;
+  border-radius:var(--radius-sm);
+  background:var(--surface-2);
+  border:1.5px solid var(--line);
+  padding:0 16px;
+  font-size:15px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text);
+  transition:all .22s var(--ease);
+  font-variant-numeric:tabular-nums;
+}
+.promo input::placeholder{
+  color:var(--muted);font-weight:500;
+  letter-spacing:.02em;text-transform:none;
+}
+.promo input:focus{
+  border-color:var(--accent);
+  background:var(--surface);
+  box-shadow:0 0 0 4px rgba(246,185,59,.12);
+}
+.promo-btn{
+  height:52px;padding:0 22px;
+  border-radius:var(--radius-sm);
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);
+  font-size:14.5px;font-weight:800;
+  letter-spacing:-.008em;
+  box-shadow:var(--shadow-glow);
+  transition:transform .18s var(--ease-spring);
+  flex-shrink:0;
+}
+.promo-btn:active{transform:scale(.95)}
+.promo-btn:disabled{opacity:.55}
+
+/* ═══════════════════════════════════════════════════════════
+   LEADERBOARD
+   ═══════════════════════════════════════════════════════════ */
+.lb-row{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 16px;
+  min-height:60px;
+}
+.lb-row + .lb-row{border-top:1px solid var(--line)}
+.lb-row.me{background:var(--violet-soft)}
+.lb-rank{
+  width:28px;text-align:center;
+  font-size:15px;font-weight:800;
+  color:var(--muted);
+  font-variant-numeric:tabular-nums;
+  flex-shrink:0;
+  letter-spacing:-.02em;
+}
+.lb-rank.top1{color:#E0A800;font-size:19px}
+.lb-rank.top2{color:#7A8499;font-size:19px}
+.lb-rank.top3{color:#B47800;font-size:19px}
+.lb-avatar{
+  width:36px;height:36px;
+  border-radius:11px;
+  background:linear-gradient(155deg,var(--brand),var(--brand-2));
+  color:#fff;
+  display:grid;place-items:center;
+  font-weight:700;font-size:14px;
+  flex-shrink:0;
+  letter-spacing:-.02em;
+}
+.lb-body{flex:1;min-width:0}
+.lb-name{
+  font-size:14px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:flex;align-items:center;gap:6px;
+}
+.lb-you{
+  font-size:10px;font-weight:800;
+  background:var(--accent);
+  color:var(--accent-ink);
+  padding:2px 6px;border-radius:5px;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+}
+.lb-sub{
+  font-size:12px;color:var(--muted);
+  font-weight:500;margin-top:2px;
+}
+.lb-value{
+  font-size:15px;font-weight:800;
+  letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.lb-value small{font-size:11px;font-weight:700;color:var(--muted);margin-left:2px}
+.dots{
+  padding:8px 16px;text-align:center;
+  color:var(--muted);
+  letter-spacing:4px;font-weight:700;
+  font-size:12px;
+  border-top:1px solid var(--line);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LEVELS
+   ═══════════════════════════════════════════════════════════ */
+.level-row{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 16px;
+}
+.level-row + .level-row{border-top:1px solid var(--line)}
+.level-row.locked{opacity:.55}
+.level-icon{
+  width:38px;height:38px;
+  border-radius:12px;
+  display:grid;place-items:center;
+  font-size:19px;
+  background:var(--surface-3);
+  flex-shrink:0;
+  transition:all .3s var(--ease);
+}
+.level-icon.now{
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);
+  box-shadow:0 8px 20px -6px rgba(246,185,59,.5);
+  transform:scale(1.05);
+}
+.level-icon.done{background:var(--mint-soft);color:var(--mint)}
+.level-body{flex:1;min-width:0}
+.level-name{font-size:14.5px;font-weight:600;letter-spacing:-.011em}
+.level-range{font-size:12px;color:var(--muted);font-weight:500;margin-top:2px}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════ */
+.empty{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  padding:36px 22px;
+  text-align:center;
+  box-shadow:var(--shadow-xs);
+}
+.empty-icon{
+  width:64px;height:64px;
+  border-radius:20px;
+  background:var(--surface-3);
+  color:var(--muted);
+  display:grid;place-items:center;
+  margin:0 auto 16px;
+  font-size:28px;
+}
+.empty-icon svg{width:30px;height:30px}
+.empty-title{
+  font-size:15.5px;font-weight:700;
+  letter-spacing:-.015em;
+  margin-bottom:6px;
+}
+.empty-desc{
+  font-size:13.5px;color:var(--muted);
+  font-weight:500;line-height:1.5;
+  max-width:280px;margin:0 auto;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ERROR
+   ═══════════════════════════════════════════════════════════ */
+.error{
+  background:var(--danger-soft);
+  border:1px solid rgba(214,48,49,.15);
+  border-radius:var(--radius-lg);
+  padding:22px;
+}
+.error-title{
+  font-size:15px;font-weight:700;
+  color:var(--danger);
+  margin-bottom:6px;
+}
+.error-desc{
+  font-size:13.5px;font-weight:500;
+  color:var(--text-2);line-height:1.5;
+  margin-bottom:16px;
+}
+.error-btn{
+  height:42px;padding:0 20px;
+  border-radius:12px;
+  background:var(--danger);
+  color:#fff;
+  font-size:14px;font-weight:700;
+  transition:transform .18s var(--ease-spring);
+}
+.error-btn:active{transform:scale(.96)}
+
+/* ═══════════════════════════════════════════════════════════
+   SKELETON
+   ═══════════════════════════════════════════════════════════ */
+.sk{
+  background:linear-gradient(90deg,var(--surface-3) 25%,var(--line) 50%,var(--surface-3) 75%);
+  background-size:200% 100%;
+  border-radius:var(--radius-lg);
+  animation:sk-shimmer 1.5s var(--ease) infinite;
+}
+@keyframes sk-shimmer{
+  0%{background-position:200% 0}
+  100%{background-position:-200% 0}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOTTOM NAV
+   ═══════════════════════════════════════════════════════════ */
+.nav{
+  position:fixed;
+  left:0;right:0;bottom:0;
+  background:var(--surface);
+  border-top:1px solid var(--line);
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  z-index:30;
+  box-shadow:0 -8px 24px -12px rgba(10,14,26,.08);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+[data-theme="dark"] .nav{background:rgba(15,19,28,.9)}
+.nav-inner{
+  max-width:440px;margin:0 auto;
+  display:flex;gap:2px;
+}
+.tab{
+  flex:1;min-width:0;
+  height:56px;
+  border-radius:14px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;
+  color:var(--muted);
+  font-size:10.5px;font-weight:700;
+  letter-spacing:-.005em;
+  transition:all .25s var(--ease-out);
+  position:relative;
+}
+.tab svg{width:21px;height:21px;transition:transform .25s var(--ease-spring)}
+.tab:active svg{transform:scale(.88)}
 .tab[aria-current="page"]{color:var(--text)}
-.tab[aria-current="page"] svg{color:var(--icon)}
-.tab[aria-current="page"]::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:20px;height:3px;border-radius:0 0 3px 3px;background:var(--gold)}
+.tab[aria-current="page"] svg{color:var(--violet)}
+.tab[aria-current="page"]::before{
+  content:'';position:absolute;
+  top:2px;left:50%;transform:translateX(-50%);
+  width:18px;height:3px;
+  border-radius:0 0 3px 3px;
+  background:var(--violet);
+  animation:tab-in .35s var(--ease-spring);
+}
+@keyframes tab-in{
+  0%{transform:translateX(-50%) scaleX(0)}
+  100%{transform:translateX(-50%) scaleX(1)}
+}
 
-/* SKELETON */
-.sk{background:var(--line);border-radius:16px;animation:pulse 1.4s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-
-/* ERROR / EMPTY */
-.err{background:var(--danger-bg);color:var(--danger);border-radius:22px;padding:22px}
-.err b{display:block;font-size:16px;margin-bottom:6px}
-.err p{font-size:14px;line-height:1.5;margin-bottom:16px;font-weight:600;opacity:.9}
-.err button{height:44px;padding:0 20px;border-radius:12px;background:var(--danger);color:#fff;font-weight:800;font-size:14px}
-.empty{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:32px 22px;text-align:center;box-shadow:var(--shadow-sm)}
-.empty .e-ico{width:64px;height:64px;border-radius:20px;background:var(--tint);color:var(--icon);display:grid;place-items:center;margin:0 auto 14px}
-.empty .e-ico svg{width:30px;height:30px}
-.empty b{display:block;font-size:16px;margin-bottom:6px;font-weight:800}
-.empty p{font-size:14px;color:var(--muted);line-height:1.5;font-weight:600}
-
-/* TOAST */
-.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translate(-50%,16px);background:var(--text);color:var(--bg);padding:12px 18px;border-radius:14px;font-size:14px;font-weight:800;opacity:0;pointer-events:none;transition:.22s cubic-bezier(.2,.8,.2,1);z-index:50;box-shadow:var(--shadow-lg);max-width:calc(100% - 28px);text-align:center}
-.toast.on{opacity:1;transform:translate(-50%,0)}
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════════════ */
+.toast{
+  position:fixed;
+  left:50%;bottom:calc(90px + env(safe-area-inset-bottom));
+  transform:translate(-50%,20px) scale(.95);
+  background:var(--text);
+  color:var(--bg);
+  padding:12px 18px;
+  border-radius:14px;
+  font-size:14px;font-weight:700;
+  letter-spacing:-.008em;
+  opacity:0;pointer-events:none;
+  transition:all .3s var(--ease-spring);
+  z-index:100;
+  box-shadow:var(--shadow-lg);
+  max-width:calc(100vw - 32px);
+  text-align:center;
+  display:flex;align-items:center;gap:8px;
+}
+.toast svg{width:18px;height:18px;flex-shrink:0}
+.toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
+.toast.ok{background:var(--mint);color:#fff}
 .toast.err{background:var(--danger);color:#fff}
-.toast.ok{background:var(--ok);color:#fff}
 
-/* MODAL */
-.modal{position:fixed;inset:0;background:rgba(7,11,22,.65);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;z-index:60;opacity:0;pointer-events:none;transition:.22s}
-.modal.on{opacity:1;pointer-events:auto}
-.modal-in{width:100%;max-width:480px;background:var(--surface);border-radius:28px 28px 0 0;padding:24px 22px calc(24px + env(safe-area-inset-bottom));transform:translateY(30px);transition:.28s cubic-bezier(.2,.8,.2,1);max-height:88vh;overflow-y:auto}
-.modal.on .modal-in{transform:translateY(0)}
-.modal-handle{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 18px}
-.modal-title{font-size:19px;font-weight:800;margin-bottom:6px}
-.modal-sub{font-size:14px;color:var(--muted);font-weight:600;line-height:1.5;margin-bottom:18px}
-.modal-actions{display:flex;gap:10px;margin-top:20px}
-.modal-actions button{flex:1;height:50px;border-radius:14px;font-weight:800;font-size:15px}
-.modal-actions .m-cancel{background:var(--surface-2);border:1px solid var(--line);color:var(--text)}
-.modal-actions .m-ok{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;box-shadow:var(--shadow-md)}
-.modal-actions .m-ok.gold{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--on-gold);box-shadow:0 8px 20px -8px rgba(246,183,60,.6)}
+/* ═══════════════════════════════════════════════════════════
+   CONFETTI
+   ═══════════════════════════════════════════════════════════ */
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:99;overflow:hidden}
+.confetti i{
+  position:absolute;
+  width:9px;height:9px;
+  border-radius:2px;
+  top:-20px;
+  animation:confetti-fall linear forwards;
+}
+@keyframes confetti-fall{
+  0%{transform:translateY(0) rotate(0);opacity:1}
+  100%{transform:translateY(105vh) rotate(720deg);opacity:0}
+}
 
-/* CONFETTI */
-.confetti{position:fixed;inset:0;pointer-events:none;z-index:70;overflow:hidden}
-.confetti i{position:absolute;width:10px;height:10px;border-radius:2px;animation:fall linear forwards}
-@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+/* ═══════════════════════════════════════════════════════════
+   FADE-IN
+   ═══════════════════════════════════════════════════════════ */
+.fade-in{animation:fade-in .4s var(--ease-out) both}
+.fade-in-delay-1{animation-delay:.05s}
+.fade-in-delay-2{animation-delay:.1s}
+.fade-in-delay-3{animation-delay:.15s}
+.fade-in-delay-4{animation-delay:.2s}
+@keyframes fade-in{
+  0%{opacity:0;transform:translateY(8px)}
+  100%{opacity:1;transform:translateY(0)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}
+
+@media (max-width:360px){
+  .b-value{font-size:46px}
+  .b-value .star{width:30px;height:30px}
+  .hero-title{font-size:20px}
+  .stat-value{font-size:22px}
+  body{padding-left:12px;padding-right:12px}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="top">
-    <div class="avatar" id="avatar" aria-hidden="true"></div>
+  <header class="top fade-in">
+    <div class="avatar" id="avatar" aria-hidden="true">U</div>
     <div class="who">
-      <div class="name" id="name"></div>
-      <div class="handle" id="handle"></div>
+      <div class="name" id="name">Yuklanmoqda...</div>
+      <div class="handle" id="handle">—</div>
     </div>
     <button class="icon-btn" id="refresh" aria-label="Yangilash">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
     </button>
   </header>
   <main id="content" aria-live="polite"></main>
 </div>
-<nav class="nav" aria-label="Bo'limlar"><div class="nav-in" id="nav"></div></nav>
+<nav class="nav" aria-label="Bo'limlar"><div class="nav-inner" id="nav"></div></nav>
 <div class="toast" id="toast" role="status"></div>
-<div class="modal" id="modal"><div class="modal-in" id="modalIn"></div></div>
-<div class="confetti" id="confetti"></div>
+<div class="confetti" id="confetti" aria-hidden="true"></div>
 
 <script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════
+   SETUP
+   ═══════════════════════════════════════════════════════════ */
 const tg = window.Telegram?.WebApp;
 const API_URL = location.origin;
 const BOT_USERNAME = 'StarRushUZBot';
 const MAX_LEVEL = 999999999;
 const $ = id => document.getElementById(id);
-let refLink = '';
-let current = 'home';
-const cache = {};
-let ratingTab = 'stars';
-let contestTab = 'active';
-
-const dark = (tg?.colorScheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
-document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-if (tg) {
-  tg.ready(); tg.expand();
-  const bg = dark ? '#070B16' : '#F4F6FB';
-  try { tg.setHeaderColor(bg); tg.setBackgroundColor(bg); tg.setBottomBarColor?.(bg); } catch (e) {}
-}
-const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
-const fmt = n => Number(n || 0).toLocaleString('ru-RU');
-const tap = () => { try { tg?.HapticFeedback?.impactOccurred('light'); } catch (e) {} };
-const hapticOk = () => { try { tg?.HapticFeedback?.notificationOccurred('success'); } catch (e) {} };
-const hapticErr = () => { try { tg?.HapticFeedback?.notificationOccurred('error'); } catch (e) {} };
-const fmtDate = iso => { if (!iso) return '—'; const [y,m,d] = String(iso).slice(0,10).split('-'); return d&&m&&y ? `${d}.${m}.${y}` : '—'; };
-const fmtTime = iso => String(iso || '').slice(11, 16);
-
-const svg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
-const STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8L12 2.5z"/></svg>';
-const I = {
-  users: svg('<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
-  rank: svg('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>'),
-  level: svg('<path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"/><path d="M8.2 13.9 7 22l5-3 5 3-1.2-8.1"/>'),
-  week: svg('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
-  home: svg('<path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/>'),
-  gift: svg('<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>'),
-  hist: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
-  send: svg('<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/>'),
-  copy: svg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
-  lock: svg('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
-  check: svg('<path d="M20 6 9 17l-5-5"/>'),
-  x: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
-  clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
-  heart: svg('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8Z"/>'),
-  fire: svg('<path d="M12 2c1 3 4 4 4 7a4 4 0 1 1-8 0c0-1 .5-2 1-3 .5 1 1.5 1.5 2 1.5C11.5 6 12 4 12 2Z"/><path d="M12 22a6 6 0 0 0 6-6c0-2-1-3.5-2-5"/>'),
-  ticket: svg('<path d="M2 9a3 3 0 0 1 0 6v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-3a3 3 0 0 1 0-6V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1Z"/><path d="M13 5v2M13 17v2M13 11v2"/>'),
-  target: svg('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>'),
-  bolt: svg('<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>'),
-  crown: svg('<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7Z"/>'),
-  sparkle: svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/>'),
+const state = {
+  refLink: '',
+  current: 'home',
+  cache: {},
+  ratingTab: 'stars',
+  contestTab: 'active',
+  loading: false
 };
 
-const TABS = [
-  { id: 'home',    label: 'Asosiy',  icon: I.home },
-  { id: 'contest', label: 'Konkurs', icon: I.crown },
-  { id: 'bonus',   label: 'Bonus',   icon: I.fire },
-  { id: 'rating',  label: 'Reyting', icon: I.rank },
-  { id: 'friends', label: "Do'stlar", icon: I.users },
-];
+const isDark = (tg?.colorScheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+if (tg) {
+  try {
+    tg.ready();
+    tg.expand();
+    const bg = isDark ? '#07090F' : '#F5F7FB';
+    tg.setHeaderColor?.(bg);
+    tg.setBackgroundColor?.(bg);
+    tg.setBottomBarColor?.(bg);
+  } catch (e) { /* noop */ }
+}
 
+/* ═══════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════ */
+const esc = s => {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+};
+const fmt = n => {
+  const v = Number(n) || 0;
+  return v.toLocaleString('ru-RU');
+};
+const tap = () => { try { tg?.HapticFeedback?.impactOccurred('light'); } catch (e) {} };
+const ok = () => { try { tg?.HapticFeedback?.notificationOccurred('success'); } catch (e) {} };
+const err = () => { try { tg?.HapticFeedback?.notificationOccurred('error'); } catch (e) {} };
+const fmtDate = iso => {
+  if (!iso) return '—';
+  const s = String(iso).slice(0, 10).split('-');
+  return s[2] && s[1] && s[0] ? `${s[2]}.${s[1]}.${s[0]}` : '—';
+};
+const fmtTime = iso => String(iso || '').slice(11, 16);
+
+const SVG = {
+  star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8L12 2.5z"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  rank: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
+  level: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"/><path d="M8.2 13.9 7 22l5-3 5 3-1.2-8.1"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/></svg>',
+  gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>',
+  send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
+  flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 3 4 4 4 7a4 4 0 1 1-8 0c0-1 .5-2 1-3 .5 1 1.5 1.5 2 1.5C11.5 6 12 4 12 2Z"/><path d="M12 22a6 6 0 0 0 6-6c0-2-1-3.5-2-5"/></svg>',
+  ticket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-3a3 3 0 0 1 0-6V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg>',
+  target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  bolt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>',
+  crown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7Z"/></svg>',
+  history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+};
+
+/* ═══════════════════════════════════════════════════════════
+   API
+   ═══════════════════════════════════════════════════════════ */
 async function api(path, opts = {}) {
-  if (!tg?.initData) throw new Error('Ilovani Telegram ichidagi bot orqali oching.');
+  if (!tg?.initData) {
+    throw new Error('Ilovani Telegram ichidagi bot orqali oching.');
+  }
   let res;
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...opts,
-      headers: { 'X-Telegram-Init-Data': tg.initData, ...(opts.headers || {}) }
+      headers: {
+        'X-Telegram-Init-Data': tg.initData,
+        ...(opts.headers || {})
+      }
     });
-  } catch (e) { throw new Error("Internet aloqasini tekshirib, qayta urinib ko'ring."); }
+  } catch (e) {
+    throw new Error("Internet aloqasini tekshirib, qayta urinib ko'ring.");
+  }
   let data;
-  try { data = await res.json(); } catch (e) { throw new Error("Server javobini o'qib bo'lmadi."); }
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error("Server javobini o'qib bo'lmadi.");
+  }
   if (data.error) throw new Error(data.error);
   return data;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   RENDERING HELPERS
+   ═══════════════════════════════════════════════════════════ */
 function skeleton() {
   $('content').innerHTML = `
-    <div class="sk" style="height:170px;border-radius:28px"></div>
-    <div class="sk" style="height:190px;border-radius:22px;margin-top:14px"></div>
-    <div class="sk" style="height:120px;border-radius:22px;margin-top:14px"></div>`;
+    <div class="sk" style="height:170px;border-radius:32px"></div>
+    <div class="sk" style="height:200px;margin-top:14px"></div>
+    <div class="sk" style="height:120px;margin-top:14px"></div>
+  `;
 }
+
 function showError(msg) {
-  $('content').innerHTML = `<div class="err"><b>Ma'lumotni yuklab bo'lmadi</b><p>${esc(msg)}</p><button data-act="retry">Qayta urinish</button></div>`;
+  $('content').innerHTML = `
+    <div class="error fade-in">
+      <div class="error-title">Xatolik yuz berdi</div>
+      <div class="error-desc">${esc(msg)}</div>
+      <button class="error-btn" data-act="retry">Qayta urinish</button>
+    </div>
+  `;
 }
+
 function shareButtons() {
-  return `<div class="btns">
-    <button class="primary" data-act="share">${I.send} Havolani ulashish</button>
-    <button class="secondary" data-act="copy">${I.copy}</button>
-  </div>`;
+  return `
+    <div class="btns">
+      <button class="btn btn-primary" data-act="share">
+        ${SVG.send.replace('<svg', '<svg width="19" height="19"')}
+        <span>Havolani ulashish</span>
+      </button>
+      <button class="btn btn-secondary" data-act="copy" aria-label="Nusxalash">
+        ${SVG.copy.replace('<svg', '<svg width="19" height="19"')}
+      </button>
+    </div>
+  `;
 }
-function countUp(el, to) {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || to < 2) { el.textContent = fmt(to); return; }
-  const t0 = performance.now(), dur = 800;
-  const step = now => {
-    const p = Math.min(1, (now - t0) / dur);
-    el.textContent = fmt(Math.round(to * (1 - Math.pow(1 - p, 3))));
-    if (p < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
+
 function setHeader(d) {
   $('avatar').textContent = (d.first_name || 'U').charAt(0).toUpperCase();
   $('name').textContent = d.first_name || 'User';
   $('handle').textContent = d.username ? '@' + d.username : "Username yo'q";
 }
+
+function countUp(el, to) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || to < 2) {
+    el.textContent = fmt(to);
+    return;
+  }
+  const t0 = performance.now();
+  const dur = 800;
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(Math.round(to * eased));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+let toastTimer;
 function toast(msg, type = '') {
   const t = $('toast');
-  t.textContent = msg;
+  const icon = type === 'ok' ? SVG.check : type === 'err' ? SVG.x : '';
+  t.innerHTML = (icon ? icon.replace('<svg', '<svg width="18" height="18"') : '') + `<span>${esc(msg)}</span>`;
   t.className = 'toast on ' + type;
-  clearTimeout(toast.id);
-  toast.id = setTimeout(() => t.className = 'toast ' + type, 2200);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast ' + type; }, 2200);
 }
-function confetti() {
+
+function confettiBurst() {
   const c = $('confetti');
-  const colors = ['#F6B73C','#FFCE5C','#E23E7B','#7C3AED','#2F4A9E','#0F7A46'];
-  for (let i = 0; i < 40; i++) {
+  const colors = ['#F6B93B','#FFD26A','#6C5CE7','#00B894','#E84393','#0984E3'];
+  for (let i = 0; i < 36; i++) {
     const p = document.createElement('i');
     p.style.left = Math.random() * 100 + '%';
-    p.style.top = '-20px';
     p.style.background = colors[Math.floor(Math.random() * colors.length)];
     p.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
-    p.style.animationDelay = (Math.random() * 0.4) + 's';
+    p.style.animationDelay = (Math.random() * 0.3) + 's';
+    p.style.transform = `rotate(${Math.random() * 360}deg)`;
     c.appendChild(p);
-    setTimeout(() => p.remove(), 3500);
+    setTimeout(() => p.remove(), 3400);
   }
 }
-function openModal(html) {
-  $('modalIn').innerHTML = `<div class="modal-handle"></div>${html}`;
-  $('modal').classList.add('on');
-}
-function closeModal() { $('modal').classList.remove('on'); }
-$('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 
-/* ==================== HOME ==================== */
+/* ═══════════════════════════════════════════════════════════
+   HOME
+   ═══════════════════════════════════════════════════════════ */
 function renderHome({ profile: d, levels: lv }) {
   setHeader(d);
   const stars = Number(d.stars) || 0;
   const isMax = Number(d.level_max) >= MAX_LEVEL;
   const span = d.level_max - d.level_min;
-  const pct = isMax ? 100 : span > 0 ? Math.max(0, Math.min(100, (stars - d.level_min) / span * 100)) : 100;
+  const pct = isMax ? 100 : span > 0 ? Math.max(0, Math.min(100, ((stars - d.level_min) / span) * 100)) : 100;
   const left = Math.max(0, d.level_max + 1 - stars);
   const rightLabel = isMax ? '' : `${fmt(stars)} / ${fmt(d.level_max)}`;
-  const nextLabel = isMax ? '👑 Siz eng yuqori darajadasiz' : `Keyingi darajagacha ${fmt(left)} stars qoldi`;
-  refLink = `https://t.me/${BOT_USERNAME}?start=ref_${d.user_id}`;
+  const nextLabel = isMax
+    ? '👑 Siz eng yuqori darajadasiz'
+    : `Keyingi darajaga <b>${fmt(left)}</b> stars qoldi`;
+
+  state.refLink = `https://t.me/${BOT_USERNAME}?start=ref_${d.user_id}`;
 
   const levelRows = (lv.levels || []).map(l => {
     const lmax = Number(l.max) >= MAX_LEVEL;
-    const state = lv.stars > l.max ? 'done' : lv.stars >= l.min ? 'now' : 'locked';
+    const lvlState = lv.stars > l.max ? 'done' : lv.stars >= l.min ? 'now' : 'locked';
     const range = lmax ? `${fmt(l.min)}+ ⭐` : `${fmt(l.min)} – ${fmt(l.max)} ⭐`;
-    const badge = state === 'now' ? '<span class="chip c-gold">Siz shu yerdasiz</span>'
-                : state === 'done' ? `<span class="chip c-ok">${I.check} O'tildi</span>`
-                : `<span class="chip c-tint">${I.lock} Yopiq</span>`;
-    return `<div class="row lv ${state === 'locked' ? 'locked' : ''}">
-      <div class="ico ${state}">${esc(l.emoji)}</div>
-      <div class="col"><div class="l">${esc(l.name)}</div><div class="sub">${range}</div></div>
-      ${badge}
-    </div>`;
+    const badge = lvlState === 'now'
+      ? '<span class="chip chip-gold">Siz shu yerdasiz</span>'
+      : lvlState === 'done'
+        ? `<span class="chip chip-mint">${SVG.check} O'tildi</span>`
+        : `<span class="chip chip-muted">${SVG.lock} Yopiq</span>`;
+    return `
+      <div class="level-row ${lvlState === 'locked' ? 'locked' : ''}">
+        <div class="level-icon ${lvlState}">${esc(l.emoji)}</div>
+        <div class="level-body">
+          <div class="level-name">${esc(l.name)}</div>
+          <div class="level-range">${range}</div>
+        </div>
+        ${badge}
+      </div>
+    `;
   }).join('');
 
   $('content').innerHTML = `
-    <section class="balance">
+    <section class="balance fade-in">
+      <div class="grain"></div>
       <div class="b-label">Balans</div>
-      <div class="b-value"><span id="bal">0</span>${STAR}</div>
-      <div class="lvl-row"><span>${esc(d.level_emoji)} ${esc(d.level_name)}</span><span>${rightLabel}</span></div>
-      <div class="track"><div class="fill" id="fill"></div></div>
-      <div class="next">${nextLabel}</div>
+      <div class="b-value">
+        <span id="bal">0</span>
+        <span class="star">${SVG.star.replace('<svg','<svg width="36" height="36"')}</span>
+      </div>
+      <div class="b-progress">
+        <div class="b-lvl-row">
+          <span class="lvl-name">${esc(d.level_emoji)} ${esc(d.level_name)}</span>
+          <span class="lvl-range">${rightLabel}</span>
+        </div>
+        <div class="b-track"><div class="b-fill" id="fill"></div></div>
+        <div class="b-next">${nextLabel}</div>
+      </div>
     </section>
-    ${shareButtons()}
-    <section class="list" style="margin-top:14px">
-      <div class="row"><div class="ico">${I.users}</div><div class="col"><div class="l">Taklif qilgan do'stlar</div></div><div class="v">${fmt(d.referrals)}</div></div>
-      <div class="row"><div class="ico">${I.week}</div><div class="col"><div class="l">Bu hafta</div></div><div class="v">+${fmt(d.week_referrals)}</div></div>
-      <div class="row"><div class="ico pink">${I.heart}</div><div class="col"><div class="l">Donat qilgan</div></div><div class="v">${fmt(d.donated)} <small>⭐</small></div></div>
-      <div class="row"><div class="ico">${I.rank}</div><div class="col"><div class="l">Reytingdagi o'rin</div></div><div class="v">#${fmt(d.rank)}</div></div>
-    </section>
-    <h2 class="h2"><span class="h2-ico">${I.level}</span>Darajalar yo'li</h2>
-    <section class="list">${levelRows}</section>
-    <button class="ghost gold" data-act="donate">${I.heart} Botga donat qilish</button>`;
+
+    <div class="fade-in fade-in-delay-1">
+      ${shareButtons()}
+    </div>
+
+    <div class="stats fade-in fade-in-delay-2">
+      <div class="stat">
+        <div class="stat-label">Do'stlar</div>
+        <div class="stat-value">${fmt(d.referrals)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Bu hafta</div>
+        <div class="stat-value">+${fmt(d.week_referrals)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Donat</div>
+        <div class="stat-value">${fmt(d.donated)}<small>⭐</small></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">O'rin</div>
+        <div class="stat-value">#${fmt(d.rank)}</div>
+      </div>
+    </div>
+
+    <h2 class="h2 fade-in fade-in-delay-3">
+      <span style="color:var(--muted);display:flex;width:18px;height:18px">${SVG.level}</span>
+      <span>Darajalar yo'li</span>
+    </h2>
+    <section class="list fade-in fade-in-delay-3">${levelRows}</section>
+
+    <button class="btn btn-ghost btn-rose fade-in fade-in-delay-4" data-act="donate">
+      ${SVG.heart.replace('<svg','<svg width="18" height="18"')}
+      <span>Botga donat qilish</span>
+    </button>
+  `;
 
   countUp($('bal'), stars);
-  requestAnimationFrame(() => requestAnimationFrame(() => { const f = $('fill'); if (f) f.style.width = pct + '%'; }));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const f = $('fill');
+    if (f) f.style.width = pct + '%';
+  }));
 }
 
-/* ==================== CONTEST ==================== */
+/* ═══════════════════════════════════════════════════════════
+   CONTEST
+   ═══════════════════════════════════════════════════════════ */
 function renderContest(d) {
-  const seg = `<div class="seg" role="tablist">
-    <button data-ct="active" class="${contestTab==='active'?'on':''}">${I.fire} Faol</button>
-    <button data-ct="finished" class="${contestTab==='finished'?'on':''}">${I.check} Tugagan</button>
-  </div>`;
+  const seg = `
+    <div class="seg fade-in" role="tablist">
+      <button data-ct="active" class="${state.contestTab === 'active' ? 'on' : ''}">
+        ${SVG.flame.replace('<svg','<svg width="14" height="14"')} Faol
+      </button>
+      <button data-ct="finished" class="${state.contestTab === 'finished' ? 'on' : ''}">
+        ${SVG.check.replace('<svg','<svg width="14" height="14"')} Tugagan
+      </button>
+    </div>
+  `;
 
   const active = d.active;
   const finished = d.finished || [];
-
   let body = '';
-  if (contestTab === 'active' && active) {
-    const now = Date.now();
+
+  if (state.contestTab === 'active' && active) {
     const end = new Date(active.end_at).getTime();
-    const diff = Math.max(0, end - now);
+    const diff = Math.max(0, end - Date.now());
     const days = Math.floor(diff / 86400000);
     const hours = Math.floor((diff % 86400000) / 3600000);
     const mins = Math.floor((diff % 3600000) / 60000);
     const secs = Math.floor((diff % 60000) / 1000);
 
-    const leaderboard = (active.leaders || []).map((x, i) => {
+    const leaders = (active.leaders || []).map((x, i) => {
+      const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
       const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-      return `<div class="contest-row">
-        <div class="contest-rank ${i<3?'top'+(i+1):''}">${medal}</div>
-        <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' <span class="chip c-gold" style="font-size:10px;padding:2px 6px">siz</span>' : ''}</div>
-        <div class="sub">${fmt(x.count)} ta referal</div></div>
-        <div class="v">${x.count >= active.target ? '🎯' : ''}</div>
-      </div>`;
-    }).join('') || '<div class="row"><div class="l">Hozircha qatnashuvchilar yo\'q</div></div>';
+      const initial = (x.name || 'U').charAt(0).toUpperCase();
+      return `
+        <div class="lb-row ${x.is_me ? 'me' : ''}">
+          <div class="lb-rank ${cls}">${medal}</div>
+          <div class="lb-avatar">${esc(initial)}</div>
+          <div class="lb-body">
+            <div class="lb-name">${esc(x.name)}${x.is_me ? '<span class="lb-you">siz</span>' : ''}</div>
+            <div class="lb-sub">${fmt(x.count)} ta referal</div>
+          </div>
+        </div>
+      `;
+    }).join('') || '<div class="lb-row"><div class="lb-body"><div class="lb-sub">Hozircha qatnashuvchilar yo\'q</div></div></div>';
+
+    const meBlock = active.me && !(active.leaders || []).some(x => x.is_me) ? `
+      <section class="list fade-in" style="margin-top:10px">
+        <div class="lb-row me">
+          <div class="lb-rank">${fmt(active.me.rank)}</div>
+          <div class="lb-avatar">${esc((active.me.name || 'U').charAt(0).toUpperCase())}</div>
+          <div class="lb-body">
+            <div class="lb-name">${esc(active.me.name)}<span class="lb-you">siz</span></div>
+            <div class="lb-sub">${fmt(active.me.count)} ta referal</div>
+          </div>
+        </div>
+      </section>
+    ` : '';
 
     body = `
-      <div class="card hero">
-        <span class="card-tag">${I.bolt} Sovrinli konkurs</span>
-        <div class="card-title">${esc(active.title || 'Eng ko\'p referal yig\'gan g\'olib!')}</div>
-        <div class="card-desc">${esc(active.description || 'Konkurs davomida eng ko\'p do\'st taklif qilgan foydalanuvchi sovrinni qo\'lga kiritadi.')}</div>
-        <div class="card-reward">
-          <div class="rw-emoji">${esc(active.reward_emoji || '🎁')}</div>
-          <div class="rw-info">
-            <div class="rw-l">Sovrin</div>
-            <div class="rw-v">${esc(active.reward_name || 'Telegram Gift')}</div>
+      <div class="hero-card fade-in">
+        <span class="hero-badge">
+          ${SVG.bolt.replace('<svg','<svg width="12" height="12"')}
+          Sovrinli konkurs
+        </span>
+        <div class="hero-title">${esc(active.title || "Eng ko'p referal yig'gan g'olib!")}</div>
+        <div class="hero-desc">${esc(active.description || "Konkurs davomida eng ko'p do'st taklif qilgan foydalanuvchi sovrinni qo'lga kiritadi.")}</div>
+        <div class="hero-reward">
+          <div class="hero-reward-emoji">${esc(active.reward_emoji || '🎁')}</div>
+          <div class="hero-reward-body">
+            <div class="hero-reward-label">Sovrin</div>
+            <div class="hero-reward-value">${esc(active.reward_name || 'Telegram Gift')}</div>
           </div>
         </div>
-        <div class="timer">
-          <div class="tbox"><div class="tn">${days}</div><div class="tl">Kun</div></div>
-          <div class="tbox"><div class="tn">${hours}</div><div class="tl">Soat</div></div>
-          <div class="tbox"><div class="tn">${mins}</div><div class="tl">Daqiqa</div></div>
-          <div class="tbox"><div class="tn">${secs}</div><div class="tl">Soniya</div></div>
+        <div class="hero-timer">
+          <div class="hero-timer-box"><div class="hero-timer-num" data-t="d">${days}</div><div class="hero-timer-lbl">Kun</div></div>
+          <div class="hero-timer-box"><div class="hero-timer-num" data-t="h">${hours}</div><div class="hero-timer-lbl">Soat</div></div>
+          <div class="hero-timer-box"><div class="hero-timer-num" data-t="m">${mins}</div><div class="hero-timer-lbl">Daqiqa</div></div>
+          <div class="hero-timer-box"><div class="hero-timer-num" data-t="s">${secs}</div><div class="hero-timer-lbl">Soniya</div></div>
         </div>
       </div>
-      <h2 class="h2"><span class="h2-ico">${I.rank}</span>Leaderboard</h2>
-      <section class="list">${leaderboard}</section>
-      ${active.me && !active.leaders?.some(x => x.is_me) ? `
-        <section class="list" style="margin-top:10px">
-          <div class="row me">
-            <div class="rk">${fmt(active.me.rank)}</div>
-            <div class="col"><div class="l">${esc(active.me.name)} (siz)</div><div class="sub">${fmt(active.me.count)} ta referal</div></div>
-            <div class="v">${active.me.count >= active.target ? '🎯' : ''}</div>
-          </div>
-        </section>` : ''}
-      <button class="ghost gold" data-act="share">${I.send} Do'stlarni taklif qilish</button>`;
-  } else if (contestTab === 'finished') {
+      <h2 class="h2 fade-in fade-in-delay-1">
+        <span style="color:var(--muted);display:flex;width:18px;height:18px">${SVG.rank}</span>
+        <span>Leaderboard</span>
+      </h2>
+      <section class="list fade-in fade-in-delay-1">${leaders}</section>
+      ${meBlock}
+      <button class="btn btn-ghost btn-gold fade-in fade-in-delay-2" data-act="share" style="margin-top:14px">
+        ${SVG.send.replace('<svg','<svg width="18" height="18"')}
+        <span>Do'stlarni taklif qilish</span>
+      </button>
+    `;
+
+    clearInterval(window.__ctTimer);
+    window.__ctTimer = setInterval(() => {
+      const boxes = document.querySelectorAll('.hero-timer-num');
+      if (boxes.length !== 4) { clearInterval(window.__ctTimer); return; }
+      const dd = Math.max(0, end - Date.now());
+      boxes[0].textContent = Math.floor(dd / 86400000);
+      boxes[1].textContent = Math.floor((dd % 86400000) / 3600000);
+      boxes[2].textContent = Math.floor((dd % 3600000) / 60000);
+      boxes[3].textContent = Math.floor((dd % 60000) / 1000);
+    }, 1000);
+
+  } else if (state.contestTab === 'finished') {
     body = finished.length ? finished.map(c => `
-      <div class="card">
-        <span class="chip c-ok">${I.check} Tugagan</span>
-        <div style="font-size:17px;font-weight:800;margin:10px 0 4px">${esc(c.title)}</div>
-        <div class="sub" style="margin-bottom:12px">Sovrin: ${esc(c.reward_emoji || '🎁')} ${esc(c.reward_name || 'Gift')}</div>
-        <div class="row" style="padding:0;border:0">
-          <div class="ico gold">🏆</div>
-          <div class="col"><div class="l">G'olib</div><div class="sub">${fmt(c.winner_referrals)} ta referal</div></div>
-          <div class="v">${esc(c.winner_name || '—')}</div>
+      <div class="list fade-in" style="margin-bottom:12px">
+        <div class="row" style="padding-bottom:8px">
+          <div class="icon-wrap mint">${SVG.check}</div>
+          <div class="row-body">
+            <div class="row-title">${esc(c.title)}</div>
+            <div class="row-sub">Sovrin: ${esc(c.reward_emoji || '🎁')} ${esc(c.reward_name || 'Gift')}</div>
+          </div>
+          <span class="chip chip-muted">Tugagan</span>
         </div>
-      </div>`).join('') : '<div class="empty"><div class="e-ico">'+I.crown+'</div><b>Tugagan konkurslar yo\'q</b><p>Yaqin orada yangi sovrinli konkurslar boshlanadi.</p></div>';
+        <div class="row" style="border-top:1px solid var(--line)">
+          <div class="icon-wrap gold">🏆</div>
+          <div class="row-body">
+            <div class="row-title">G'olib: ${esc(c.winner_name || '—')}</div>
+            <div class="row-sub">${fmt(c.winner_referrals)} ta referal</div>
+          </div>
+        </div>
+      </div>
+    `).join('') : `
+      <div class="empty fade-in">
+        <div class="empty-icon">${SVG.crown}</div>
+        <div class="empty-title">Tugagan konkurslar yo'q</div>
+        <div class="empty-desc">Yaqin orada yangi sovrinli konkurslar boshlanadi.</div>
+      </div>
+    `;
   } else {
-    body = '<div class="empty"><div class="e-ico">'+I.crown+'</div><b>Faol konkurs yo\'q</b><p>Yangi konkurs tez orada boshlanadi. Kuzatib turing!</p></div>';
+    body = `
+      <div class="empty fade-in">
+        <div class="empty-icon">${SVG.crown}</div>
+        <div class="empty-title">Faol konkurs yo'q</div>
+        <div class="empty-desc">Yangi konkurs tez orada boshlanadi. Kuzatib turing!</div>
+      </div>
+    `;
   }
 
   $('content').innerHTML = seg + body;
-
-  // countdown timer
-  if (contestTab === 'active' && active) {
-    const end = new Date(active.end_at).getTime();
-    clearInterval(window.__ct);
-    window.__ct = setInterval(() => {
-      const diff = Math.max(0, end - Date.now());
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      const boxes = document.querySelectorAll('.timer .tn');
-      if (boxes.length === 4) {
-        boxes[0].textContent = d; boxes[1].textContent = h;
-        boxes[2].textContent = m; boxes[3].textContent = s;
-      } else clearInterval(window.__ct);
-    }, 1000);
-  }
 }
 
-/* ==================== BONUS / TASKS / PROMO ==================== */
+/* ═══════════════════════════════════════════════════════════
+   BONUS / TASKS / PROMO
+   ═══════════════════════════════════════════════════════════ */
 function renderBonus(d) {
   const daily = d.daily || {};
   const canClaim = daily.can_claim;
@@ -552,193 +1459,354 @@ function renderBonus(d) {
   const reward = daily.reward || 0;
   const nextReward = daily.next_reward || reward;
 
-  const streakDots = Array.from({length: 7}, (_, i) => {
-    const active = i < streak;
-    return `<div style="flex:1;aspect-ratio:1;border-radius:10px;display:grid;place-items:center;font-size:14px;font-weight:800;
-      background:${active ? 'linear-gradient(135deg,var(--gold),var(--gold-2))' : 'var(--surface-2)'};
-      color:${active ? 'var(--on-gold)' : 'var(--muted)'};border:1px solid ${active ? 'transparent' : 'var(--line)'}">
-      ${active ? '✓' : (i + 1)}
-    </div>`;
+  const dots = Array.from({ length: 7 }, (_, i) => {
+    const isDone = i < streak;
+    const isCurrent = i === streak && canClaim;
+    const cls = isDone ? 'done' : isCurrent ? 'current' : '';
+    return `<div class="streak-dot ${cls}">${isDone ? '✓' : (i + 1)}</div>`;
   }).join('');
 
   const tasks = (d.tasks || []).map(t => {
-    const done = t.done;
-    const claimed = t.claimed;
-    const claimable = t.claimable;
-    const action = claimed ? '' : claimable
-      ? `<button class="task-go claim" data-claim="${t.id}">+${fmt(t.reward)} ⭐</button>`
-      : `<button class="task-go" data-go="${t.id}">${t.link ? 'Bajarish' : 'Yopish'}</button>`;
-    return `<div class="task ${done ? 'done' : ''}">
-      <div class="task-ico">${done && claimed ? '✅' : esc(t.emoji || '📌')}</div>
-      <div class="task-info">
-        <div class="task-l">${esc(t.title)}</div>
-        <div class="task-sub">${claimed ? 'Mukofot olindi' : `+${fmt(t.reward)} ⭐`}</div>
+    let btn;
+    if (t.claimed) {
+      btn = `<button class="task-btn claimed">${SVG.check} Olindi</button>`;
+    } else if (t.claimable) {
+      btn = `<button class="task-btn claim" data-claim="${t.id}">+${fmt(t.reward)} ⭐</button>`;
+    } else if (t.done) {
+      btn = `<button class="task-btn done">Bajarildi</button>`;
+    } else {
+      btn = `<button class="task-btn" data-go="${t.id}">Bajarish</button>`;
+    }
+    return `
+      <div class="task ${t.done ? 'done' : ''}">
+        <div class="task-icon">${t.done && t.claimed ? '✅' : esc(t.emoji || '📌')}</div>
+        <div class="task-body">
+          <div class="task-title">${esc(t.title)}</div>
+          <div class="task-reward">
+            <span class="star-mini">${SVG.star.replace('<svg','<svg width="11" height="11"')}</span>
+            <span>+${fmt(t.reward)} stars</span>
+          </div>
+        </div>
+        ${btn}
       </div>
-      ${action}
-    </div>`;
+    `;
   }).join('');
 
   $('content').innerHTML = `
-    <div class="card hero">
-      <span class="card-tag">${I.fire} Kunlik bonus</span>
-      <div class="card-title">${canClaim ? 'Bugungi bonusingiz tayyor!' : 'Ertaga yana keling!'}</div>
-      <div class="card-desc">Har kuni kirib bonus oling. ${streak >= 7 ? 'Siz 7 kunlik seriyani tugatdingiz!' : `Ketma-ket ${streak} kun — seriya davom ettirilsa mukofot oshadi.`}</div>
-      <div style="display:flex;gap:6px;position:relative;margin-bottom:16px">${streakDots}</div>
-      <div class="card-reward">
-        <div class="rw-emoji">${STAR.replace('<svg','<svg width="32" height="32" style="color:var(--gold)"')}</div>
-        <div class="rw-info">
-          <div class="rw-l">${canClaim ? 'Bugungi mukofot' : 'Keyingi mukofot'}</div>
-          <div class="rw-v">${fmt(canClaim ? reward : nextReward)} ⭐</div>
+    <div class="hero-card fade-in">
+      <span class="hero-badge">
+        ${SVG.flame.replace('<svg','<svg width="12" height="12"')}
+        Kunlik bonus
+      </span>
+      <div class="hero-title">
+        ${canClaim ? 'Bugungi bonusingiz tayyor!' : 'Ertaga yana keling!'}
+      </div>
+      <div class="hero-desc">
+        ${streak >= 7
+          ? 'Siz 7 kunlik seriyani tugatdingiz! Zo\'r natija 🔥'
+          : `Ketma-ket <b>${streak} kun</b> — seriya davom ettirilsa mukofot oshadi.`}
+      </div>
+      <div class="streak">${dots}</div>
+      <div class="hero-reward">
+        <div class="hero-reward-emoji">${SVG.star.replace('<svg','<svg width="26" height="26" style="color:var(--accent)"')}</div>
+        <div class="hero-reward-body">
+          <div class="hero-reward-label">${canClaim ? 'Bugungi mukofot' : 'Keyingi mukofot'}</div>
+          <div class="hero-reward-value">${fmt(canClaim ? reward : nextReward)} ⭐</div>
         </div>
       </div>
-      ${canClaim ? `<button class="primary" data-claim="daily" style="width:100%;margin-top:16px;position:relative">${I.gift} Bonusi olish</button>`
-                 : `<button class="ghost" style="width:100%;margin-top:16px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff">${I.clock} Ertaga qaytib keling</button>`}
+      ${canClaim
+        ? `<button class="hero-btn" data-claim="daily">
+            ${SVG.gift.replace('<svg','<svg width="18" height="18"')}
+            Bonusi olish
+          </button>`
+        : `<button class="hero-btn disabled">
+            ${SVG.clock.replace('<svg','<svg width="18" height="18"')}
+            Ertaga qaytib keling
+          </button>`}
     </div>
 
-    <h2 class="h2"><span class="h2-ico">${I.target}</span>Vazifalar<span class="badge">${(d.tasks||[]).filter(t=>t.claimable).length || 0} ta tayyor</span></h2>
-    <section class="list" style="padding:0 16px">${tasks || '<div class="row"><div class="l">Vazifalar yo\'q</div></div>'}</section>
+    <h2 class="h2 fade-in fade-in-delay-1">
+      <span style="color:var(--muted);display:flex;width:18px;height:18px">${SVG.target}</span>
+      <span>Vazifalar</span>
+      <span class="h2-count">${(d.tasks || []).filter(t => t.claimable).length} ta tayyor</span>
+    </h2>
+    <section class="list fade-in fade-in-delay-1">
+      ${tasks || '<div class="task"><div class="task-body"><div class="task-sub">Vazifalar yo\'q</div></div></div>'}
+    </section>
 
-    <h2 class="h2"><span class="h2-ico">${I.ticket}</span>Promokod</h2>
-    <div class="card">
-      <div class="sub" style="font-weight:600;line-height:1.5">Promokodni kiriting va Stars oling. Kodlar kanalda e'lon qilinadi.</div>
+    <h2 class="h2 fade-in fade-in-delay-2">
+      <span style="color:var(--muted);display:flex;width:18px;height:18px">${SVG.ticket}</span>
+      <span>Promokod</span>
+    </h2>
+    <div class="list fade-in fade-in-delay-2" style="padding:18px">
+      <div class="body-sm" style="margin-bottom:12px">Promokodni kiriting va Stars oling. Kodlar kanalda e'lon qilinadi.</div>
       <div class="promo">
-        <input id="promoInput" placeholder="PROMOKOD" maxlength="32" autocomplete="off" autocapitalize="characters">
-        <button data-act="promo">Aktiv</button>
+        <input id="promoInput" placeholder="PROMOKOD" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button class="promo-btn" data-act="promo">Aktiv</button>
       </div>
-    </div>`;
+    </div>
+  `;
 }
 
-/* ==================== RATING ==================== */
+/* ═══════════════════════════════════════════════════════════
+   RATING
+   ═══════════════════════════════════════════════════════════ */
 function renderRating(d) {
   const medal = r => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
-  const seg = `<div class="seg" role="tablist">
-    <button data-rt="stars" class="${ratingTab==='stars'?'on':''}">${STAR.replace('<svg','<svg width="15" height="15"')} Stars</button>
-    <button data-rt="donate" class="${ratingTab==='donate'?'on':''}">${I.heart.replace('<svg','<svg width="15" height="15"')} Donat</button>
-    <button data-rt="ref" class="${ratingTab==='ref'?'on':''}">${I.users.replace('<svg','<svg width="15" height="15"')} Referal</button>
-  </div>`;
+  const rankCls = r => r === 1 ? 'top1' : r === 2 ? 'top2' : r === 3 ? 'top3' : '';
+
+  const seg = `
+    <div class="seg fade-in" role="tablist">
+      <button data-rt="stars" class="${state.ratingTab === 'stars' ? 'on' : ''}">
+        ${SVG.star.replace('<svg','<svg width="14" height="14"')} Stars
+      </button>
+      <button data-rt="donate" class="${state.ratingTab === 'donate' ? 'on' : ''}">
+        ${SVG.heart.replace('<svg','<svg width="14" height="14"')} Donat
+      </button>
+      <button data-rt="ref" class="${state.ratingTab === 'ref' ? 'on' : ''}">
+        ${SVG.users.replace('<svg','<svg width="14" height="14"')} Referal
+      </button>
+    </div>
+  `;
 
   const stars = d.stars || { top: [], me: { rank: 0, name: 'User', stars: 0 } };
   const donate = d.donate || { top: [], me: { rank: 0, name: 'User', total: 0, count: 0 } };
   const ref = d.ref || { top: [], me: { rank: 0, name: 'User', count: 0 } };
 
   let body = '';
-  if (ratingTab === 'stars') {
-    const rows = (stars.top || []).map(x => `<div class="row ${x.is_me ? 'me' : ''}">
-      <div class="rk">${medal(x.rank)}</div>
-      <div class="col"><div class="l">${esc(x.level_emoji || '')} ${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div></div>
-      <div class="v">${fmt(x.stars)} <small>⭐</small></div></div>`).join('');
-    const meRow = (stars.top || []).some(x => x.is_me) ? '' : `<div class="dots">· · ·</div>
-      <div class="row me"><div class="rk">${fmt(stars.me?.rank || 0)}</div>
-      <div class="col"><div class="l">${esc(stars.me?.name || 'User')} (siz)</div></div>
-      <div class="v">${fmt(stars.me?.stars || 0)} <small>⭐</small></div></div>`;
-    body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Reyting bo\'sh</div></div>'}${meRow}</section>`;
-  } else if (ratingTab === 'donate') {
-    const rows = (donate.top || []).map(x => `<div class="row ${x.is_me ? 'me' : ''}">
-      <div class="rk">${medal(x.rank)}</div>
-      <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div><div class="sub">${fmt(x.count || 0)} ta donat</div></div>
-      <div class="v">${fmt(x.total || 0)} <small>⭐</small></div></div>`).join('');
-    const meRow = (donate.top || []).some(x => x.is_me) ? '' : `<div class="dots">· · ·</div>
-      <div class="row me"><div class="rk">${fmt(donate.me?.rank || 0)}</div>
-      <div class="col"><div class="l">${esc(donate.me?.name || 'User')} (siz)</div><div class="sub">${fmt(donate.me?.count || 0)} ta donat</div></div>
-      <div class="v">${fmt(donate.me?.total || 0)} <small>⭐</small></div></div>`;
-    body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha donat yo\'q</div></div>'}${meRow}</section>`;
+  if (state.ratingTab === 'stars') {
+    const rows = (stars.top || []).map(x => `
+      <div class="lb-row ${x.is_me ? 'me' : ''}">
+        <div class="lb-rank ${rankCls(x.rank)}">${medal(x.rank)}</div>
+        <div class="lb-avatar">${esc((x.name || 'U').charAt(0).toUpperCase())}</div>
+        <div class="lb-body">
+          <div class="lb-name">${esc(x.level_emoji || '')} ${esc(x.name)}${x.is_me ? '<span class="lb-you">siz</span>' : ''}</div>
+        </div>
+        <div class="lb-value">${fmt(x.stars)}<small>⭐</small></div>
+      </div>
+    `).join('');
+    const meRow = (stars.top || []).some(x => x.is_me) ? '' : `
+      <div class="dots">· · ·</div>
+      <div class="lb-row me">
+        <div class="lb-rank">${fmt(stars.me?.rank || 0)}</div>
+        <div class="lb-avatar">${esc((stars.me?.name || 'U').charAt(0).toUpperCase())}</div>
+        <div class="lb-body"><div class="lb-name">${esc(stars.me?.name)}<span class="lb-you">siz</span></div></div>
+        <div class="lb-value">${fmt(stars.me?.stars || 0)}<small>⭐</small></div>
+      </div>
+    `;
+    body = `<section class="list fade-in fade-in-delay-1" style="margin-top:0">${rows || '<div class="lb-row"><div class="lb-body"><div class="lb-sub">Reyting bo\'sh</div></div></div>'}${meRow}</section>`;
+  } else if (state.ratingTab === 'donate') {
+    const rows = (donate.top || []).map(x => `
+      <div class="lb-row ${x.is_me ? 'me' : ''}">
+        <div class="lb-rank ${rankCls(x.rank)}">${medal(x.rank)}</div>
+        <div class="lb-avatar">${esc((x.name || 'U').charAt(0).toUpperCase())}</div>
+        <div class="lb-body">
+          <div class="lb-name">${esc(x.name)}${x.is_me ? '<span class="lb-you">siz</span>' : ''}</div>
+          <div class="lb-sub">${fmt(x.count || 0)} ta donat</div>
+        </div>
+        <div class="lb-value">${fmt(x.total || 0)}<small>⭐</small></div>
+      </div>
+    `).join('');
+    const meRow = (donate.top || []).some(x => x.is_me) ? '' : `
+      <div class="dots">· · ·</div>
+      <div class="lb-row me">
+        <div class="lb-rank">${fmt(donate.me?.rank || 0)}</div>
+        <div class="lb-avatar">${esc((donate.me?.name || 'U').charAt(0).toUpperCase())}</div>
+        <div class="lb-body"><div class="lb-name">${esc(donate.me?.name)}<span class="lb-you">siz</span></div><div class="lb-sub">${fmt(donate.me?.count || 0)} ta donat</div></div>
+        <div class="lb-value">${fmt(donate.me?.total || 0)}<small>⭐</small></div>
+      </div>
+    `;
+    body = `<section class="list fade-in fade-in-delay-1" style="margin-top:0">${rows || '<div class="lb-row"><div class="lb-body"><div class="lb-sub">Hozircha donat yo\'q</div></div></div>'}${meRow}</section>`;
   } else {
-    const rows = (ref.top || []).map(x => `<div class="row ${x.is_me ? 'me' : ''}">
-      <div class="rk">${medal(x.rank)}</div>
-      <div class="col"><div class="l">${esc(x.name || 'User')}${x.is_me ? ' (siz)' : ''}</div></div>
-      <div class="v">${fmt(x.count || 0)} <small>ta</small></div></div>`).join('');
-    const meRow = (ref.top || []).some(x => x.is_me) ? '' : `<div class="dots">· · ·</div>
-      <div class="row me"><div class="rk">${fmt(ref.me?.rank || 0)}</div>
-      <div class="col"><div class="l">${esc(ref.me?.name || 'User')} (siz)</div></div>
-      <div class="v">${fmt(ref.me?.count || 0)} <small>ta</small></div></div>`;
-    body = `<section class="list" style="margin-top:0">${rows || '<div class="row"><div class="l">Hozircha referal yo\'q</div></div>'}${meRow}</section>`;
+    const rows = (ref.top || []).map(x => `
+      <div class="lb-row ${x.is_me ? 'me' : ''}">
+        <div class="lb-rank ${rankCls(x.rank)}">${medal(x.rank)}</div>
+        <div class="lb-avatar">${esc((x.name || 'U').charAt(0).toUpperCase())}</div>
+        <div class="lb-body">
+          <div class="lb-name">${esc(x.name)}${x.is_me ? '<span class="lb-you">siz</span>' : ''}</div>
+        </div>
+        <div class="lb-value">${fmt(x.count || 0)}<small>ta</small></div>
+      </div>
+    `).join('');
+    const meRow = (ref.top || []).some(x => x.is_me) ? '' : `
+      <div class="dots">· · ·</div>
+      <div class="lb-row me">
+        <div class="lb-rank">${fmt(ref.me?.rank || 0)}</div>
+        <div class="lb-avatar">${esc((ref.me?.name || 'U').charAt(0).toUpperCase())}</div>
+        <div class="lb-body"><div class="lb-name">${esc(ref.me?.name)}<span class="lb-you">siz</span></div></div>
+        <div class="lb-value">${fmt(ref.me?.count || 0)}<small>ta</small></div>
+      </div>
+    `;
+    body = `<section class="list fade-in fade-in-delay-1" style="margin-top:0">${rows || '<div class="lb-row"><div class="lb-body"><div class="lb-sub">Hozircha referal yo\'q</div></div></div>'}${meRow}</section>`;
   }
 
   $('content').innerHTML = `
-    <section class="sum">
-      <div><div class="k">Sizning o'rningiz</div><div class="n">#${fmt(stars.me?.rank || 0)}</div></div>
-      <div><div class="k">Stars</div><div class="n">${fmt(stars.me?.stars || 0)}</div></div>
-    </section>
+    <div class="stats fade-in" style="margin-top:0">
+      <div class="stat">
+        <div class="stat-label">Sizning o'rningiz</div>
+        <div class="stat-value">#${fmt(stars.me?.rank || 0)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Stars</div>
+        <div class="stat-value">${fmt(stars.me?.stars || 0)}</div>
+      </div>
+    </div>
     ${seg}
-    <h2 class="h2"><span class="h2-ico">${I.rank}</span>TOP 10</h2>
-    ${body}`;
+    <h2 class="h2 fade-in fade-in-delay-1">
+      <span style="color:var(--muted);display:flex;width:18px;height:18px">${SVG.rank}</span>
+      <span>TOP 10</span>
+    </h2>
+    ${body}
+  `;
 }
 
-/* ==================== FRIENDS ==================== */
+/* ═══════════════════════════════════════════════════════════
+   FRIENDS
+   ═══════════════════════════════════════════════════════════ */
 function renderFriends(d) {
-  const rows = (d.items || []).map(x => `<div class="row">
-      <div class="ico">${esc((x.name || 'U').charAt(0).toUpperCase())}</div>
-      <div class="col"><div class="l">${esc(x.name)}</div><div class="sub">${fmtDate(x.joined_at)}</div></div>
-      <span class="chip c-ok">+${fmt(d.reward)} ⭐</span>
-    </div>`).join('');
+  const rows = (d.items || []).map(x => `
+    <div class="lb-row">
+      <div class="lb-avatar">${esc((x.name || 'U').charAt(0).toUpperCase())}</div>
+      <div class="lb-body">
+        <div class="lb-name">${esc(x.name)}</div>
+        <div class="lb-sub">${fmtDate(x.joined_at)}</div>
+      </div>
+      <span class="chip chip-mint">+${fmt(d.reward)} ⭐</span>
+    </div>
+  `).join('');
+
   $('content').innerHTML = `
-    <section class="sum">
-      <div><div class="k">Jami</div><div class="n">${fmt(d.total)}</div></div>
-      <div><div class="k">Bu hafta</div><div class="n">+${fmt(d.week)}</div></div>
-    </section>
-    ${shareButtons()}
-    <h2 class="h2"><span class="h2-ico">${I.users}</span>Taklif qilganlar</h2>
-    ${(d.items || []).length ? `<section class="list" style="margin-top:0">${rows}</section>`
-      : `<div class="empty"><div class="e-ico">${I.users}</div><b>Hali do'st taklif qilmagansiz</b><p>Havolani ulashing — har bir tasdiqlangan do'st uchun ${fmt(d.reward)} ⭐ olasiz.</p></div>`}`;
+    <div class="stats fade-in" style="margin-top:0">
+      <div class="stat">
+        <div class="stat-label">Jami do'stlar</div>
+        <div class="stat-value">${fmt(d.total)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Bu hafta</div>
+        <div class="stat-value">+${fmt(d.week)}</div>
+      </div>
+    </div>
+    <div class="fade-in fade-in-delay-1">${shareButtons()}</div>
+    <h2 class="h2 fade-in fade-in-delay-2">
+      <span style="color:var(--muted);display:flex;width:18px;height:18px">${SVG.users}</span>
+      <span>Taklif qilganlar</span>
+    </h2>
+    ${(d.items || []).length
+      ? `<section class="list fade-in fade-in-delay-2" style="margin-top:0">${rows}</section>`
+      : `<div class="empty fade-in fade-in-delay-2">
+          <div class="empty-icon">${SVG.users}</div>
+          <div class="empty-title">Hali do'st taklif qilmagansiz</div>
+          <div class="empty-desc">Havolani ulashing — har bir tasdiqlangan do'st uchun ${fmt(d.reward)} ⭐ olasiz.</div>
+        </div>`}
+  `;
 }
 
-/* ==================== LOADERS ==================== */
+/* ═══════════════════════════════════════════════════════════
+   LOADERS / NAV
+   ═══════════════════════════════════════════════════════════ */
 const LOADERS = {
-  home:    async () => { const [profile, levels] = await Promise.all([api('/api/profile'), api('/api/levels')]); return { profile, levels }; },
+  home: async () => {
+    const [profile, levels] = await Promise.all([api('/api/profile'), api('/api/levels')]);
+    return { profile, levels };
+  },
   contest: () => api('/api/contest'),
-  bonus:   () => api('/api/bonus'),
-  rating:  () => api('/api/rating'),
-  friends: () => api('/api/referrals'),
+  bonus: () => api('/api/bonus'),
+  rating: () => api('/api/rating'),
+  friends: () => api('/api/referrals')
 };
-const RENDERERS = { home: renderHome, contest: renderContest, bonus: renderBonus, rating: renderRating, friends: renderFriends };
+const RENDERERS = {
+  home: renderHome,
+  contest: renderContest,
+  bonus: renderBonus,
+  rating: renderRating,
+  friends: renderFriends
+};
 
-async function openTab(id, force) {
-  current = id;
-  document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-current', b.dataset.tab === id ? 'page' : 'false'));
-  if (cache[id] && !force) { RENDERERS[id](cache[id]); return; }
+async function openTab(id, force = false) {
+  if (state.loading) return;
+  state.current = id;
+  document.querySelectorAll('.tab').forEach(b => {
+    b.setAttribute('aria-current', b.dataset.tab === id ? 'page' : 'false');
+  });
+  if (state.cache[id] && !force) {
+    RENDERERS[id](state.cache[id]);
+    return;
+  }
+  state.loading = true;
   skeleton();
   try {
     const data = await LOADERS[id]();
-    cache[id] = data;
-    if (current === id) RENDERERS[id](data);
+    state.cache[id] = data;
+    if (state.current === id) RENDERERS[id](data);
   } catch (e) {
-    if (current === id) showError(e.message);
+    if (state.current === id) showError(e.message);
+  } finally {
+    state.loading = false;
   }
 }
 
 async function copyLink() {
-  try { await navigator.clipboard.writeText(refLink); }
-  catch (e) {
-    const ta = document.createElement('textarea'); ta.value = refLink;
-    document.body.appendChild(ta); ta.select();
+  if (!state.refLink) { toast("Avval «Asosiy» bo'limini oching", 'err'); return; }
+  try {
+    await navigator.clipboard.writeText(state.refLink);
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = state.refLink;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
     try { document.execCommand('copy'); } catch (_) {}
     ta.remove();
   }
   toast('Havola nusxalandi', 'ok');
-  hapticOk();
+  ok();
 }
 
-/* ==================== EVENTS ==================== */
+/* ═══════════════════════════════════════════════════════════
+   EVENTS
+   ═══════════════════════════════════════════════════════════ */
 document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act], [data-rt], [data-ct], [data-claim], [data-go]');
   if (!el) return;
 
-  if (el.dataset.rt) { tap(); ratingTab = el.dataset.rt; if (cache.rating) renderRating(cache.rating); return; }
-  if (el.dataset.ct) { tap(); contestTab = el.dataset.ct; if (cache.contest) renderContest(cache.contest); return; }
+  if (el.dataset.rt) {
+    tap();
+    state.ratingTab = el.dataset.rt;
+    if (state.cache.rating) renderRating(state.cache.rating);
+    return;
+  }
+
+  if (el.dataset.ct) {
+    tap();
+    state.contestTab = el.dataset.ct;
+    if (state.cache.contest) renderContest(state.cache.contest);
+    return;
+  }
 
   if (el.dataset.claim) {
     tap();
     const id = el.dataset.claim;
-    el.disabled = true; el.style.opacity = '.6';
+    el.disabled = true;
+    el.style.opacity = '.6';
     try {
-      const res = await api('/api/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-      hapticOk(); confetti();
+      const res = await api('/api/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      ok();
+      confettiBurst();
       toast(`+${fmt(res.reward)} ⭐ qo'shildi!`, 'ok');
-      cache.bonus = null; cache.home = null; cache.rating = null;
+      state.cache.bonus = null;
+      state.cache.home = null;
+      state.cache.rating = null;
       setTimeout(() => openTab('bonus', true), 400);
-    } catch (err) {
-      hapticErr(); toast(err.message, 'err');
-      el.disabled = false; el.style.opacity = '1';
+    } catch (err2) {
+      err();
+      toast(err2.message, 'err');
+      el.disabled = false;
+      el.style.opacity = '1';
     }
     return;
   }
@@ -746,56 +1814,96 @@ document.addEventListener('click', async e => {
   if (el.dataset.go) {
     tap();
     const id = el.dataset.go;
-    const task = (cache.bonus?.tasks || []).find(t => String(t.id) === String(id));
+    const task = (state.cache.bonus?.tasks || []).find(t => String(t.id) === String(id));
     if (task?.link) {
+      const url = task.link.startsWith('http')
+        ? task.link
+        : `https://t.me/${task.link.replace('@','')}`;
       if (task.link.startsWith('http')) {
-        tg ? tg.openLink(task.link) : window.open(task.link);
+        tg ? tg.openLink(url) : window.open(url, '_blank');
       } else {
-        const url = `https://t.me/${task.link.replace('@','')}`;
-        tg ? tg.openTelegramLink(url) : window.open(url);
+        tg ? tg.openTelegramLink(url) : window.open(url, '_blank');
       }
-      setTimeout(() => { cache.bonus = null; openTab('bonus', true); }, 1500);
+      setTimeout(() => {
+        state.cache.bonus = null;
+        openTab('bonus', true);
+      }, 1500);
+    } else {
+      toast('Vazifa tez orada qo\'shiladi', '');
     }
     return;
   }
 
   const act = el.dataset.act;
-  if (act === 'retry') { openTab(current, true); return; }
+  if (act === 'retry') { openTab(state.current, true); return; }
   if (act === 'donate') {
     tap();
     const url = `https://t.me/${BOT_USERNAME}`;
-    tg ? tg.openTelegramLink(url) : window.open(url);
+    tg ? tg.openTelegramLink(url) : window.open(url, '_blank');
     return;
   }
-  if (act === 'close') { tg ? tg.close() : null; return; }
   if (act === 'promo') {
     tap();
     const input = $('promoInput');
     const code = (input?.value || '').trim().toUpperCase();
-    if (!code) { toast('Promokodni kiriting', 'err'); hapticErr(); return; }
-    el.disabled = true; el.style.opacity = '.6';
+    if (!code) { toast('Promokodni kiriting', 'err'); err(); return; }
+    el.disabled = true;
+    el.style.opacity = '.6';
     try {
-      const res = await api('/api/promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
-      hapticOk(); confetti();
+      const res = await api('/api/promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      ok();
+      confettiBurst();
       toast(`+${fmt(res.reward)} ⭐ qo'shildi!`, 'ok');
-      input.value = '';
-      cache.bonus = null; cache.home = null; cache.rating = null;
-    } catch (err) { hapticErr(); toast(err.message, 'err'); }
-    el.disabled = false; el.style.opacity = '1';
+      if (input) input.value = '';
+      state.cache.bonus = null;
+      state.cache.home = null;
+      state.cache.rating = null;
+    } catch (err2) {
+      err();
+      toast(err2.message, 'err');
+    }
+    el.disabled = false;
+    el.style.opacity = '1';
     return;
   }
-  if (!refLink) { toast("Avval «Asosiy» oching", 'err'); return; }
   if (act === 'share') {
     tap();
+    if (!state.refLink) { toast("Avval «Asosiy» oching", 'err'); return; }
     const text = "🚀 StarRush botga qo'shiling va Stars yig'ing!";
-    const url = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(text)}`;
-    tg ? tg.openTelegramLink(url) : window.open(url);
-  } else if (act === 'copy') { tap(); copyLink(); }
+    const url = `https://t.me/share/url?url=${encodeURIComponent(state.refLink)}&text=${encodeURIComponent(text)}`;
+    tg ? tg.openTelegramLink(url) : window.open(url, '_blank');
+    return;
+  }
+  if (act === 'copy') { tap(); copyLink(); return; }
 });
 
-$('refresh').onclick = () => { tap(); openTab(current, true); };
+$('refresh').addEventListener('click', () => {
+  tap();
+  openTab(state.current, true);
+});
 
-$('nav').innerHTML = TABS.map(t => `<button class="tab" data-tab="${t.id}" aria-current="false">${t.icon}<span>${t.label}</span></button>`).join('');
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+const TABS = [
+  { id: 'home',    label: 'Asosiy',   icon: SVG.home },
+  { id: 'contest', label: 'Konkurs',  icon: SVG.crown },
+  { id: 'bonus',   label: 'Bonus',    icon: SVG.flame },
+  { id: 'rating',  label: 'Reyting',  icon: SVG.rank },
+  { id: 'friends', label: "Do'stlar", icon: SVG.users }
+];
+
+$('nav').innerHTML = TABS.map(t => `
+  <button class="tab" data-tab="${t.id}" aria-current="false">
+    ${t.icon}
+    <span>${t.label}</span>
+  </button>
+`).join('');
+
 $('nav').addEventListener('click', e => {
   const b = e.target.closest('.tab');
   if (!b) return;
@@ -803,10 +1911,11 @@ $('nav').addEventListener('click', e => {
   openTab(b.dataset.tab, false);
 });
 
-if (!tg?.initData) { showError('Ilovani Telegram ichidagi bot orqali oching.'); }
-else {
+if (!tg?.initData) {
+  showError('Ilovani Telegram ichidagi bot orqali oching.');
+} else {
   const uid = tg.initDataUnsafe?.user?.id;
-  if (uid) refLink = `https://t.me/${BOT_USERNAME}?start=ref_${uid}`;
+  if (uid) state.refLink = `https://t.me/${BOT_USERNAME}?start=ref_${uid}`;
   openTab('home', true);
 }
 </script>
