@@ -75,6 +75,9 @@ MIN_DONATE = 1
 MAX_DONATE = 100000
 UZ_PHONE_RE = re.compile(r"^998\d{9}$")
 
+# Bonus streak mukofotlari (0-kun, 1-kun, 2-kun, ..., 6+ kun)
+BONUS_REWARDS = [3, 5, 8, 12, 18, 25, 50]
+
 # ═══════════════════════════════════════════════════════════
 # DARAJALAR
 # ═══════════════════════════════════════════════════════════
@@ -205,6 +208,30 @@ LANGS = {
         "rating_stars": "⭐ Eng ko'p stars egalari",
         "rating_donate": "💝 Eng ko'p donat qilganlar",
         "rating_ref": "👥 Eng ko'p referal yig'ganlar",
+        # YANGI
+        "bonus_menu": "🔥 Kunlik bonus",
+        "contest_menu": "🏆 Konkurs",
+        "promo_menu": "🎟 Promokod",
+        "tasks_menu": "📌 Vazifalar",
+        "bonus_title": "🔥 <b>Kunlik bonus</b>",
+        "bonus_available": "🎁 Bugungi mukofot: <b>{reward} ⭐</b>\n🔥 Seriya: <b>{streak} kun</b>\n\nKeyingi kun: <b>{next} ⭐</b>",
+        "bonus_claimed": "✅ Bugun olindi!\n🔥 Seriya: <b>{streak} kun</b>\n\n⏰ Ertaga yana keling — <b>{next} ⭐</b>",
+        "bonus_btn": "🎁 {n} ⭐ olish",
+        "bonus_ok": "🎉 <b>+{n} ⭐</b> bonus olindi!\n🔥 Seriya: <b>{streak} kun</b>",
+        "bonus_already": "⏰ Bugun allaqachon olgansiz. Ertaga qaytib keling!",
+        "promo_title": "🎟 <b>Promokod</b>\n\nKodni kiriting va stars oling:",
+        "promo_ok": "🎉 <b>+{n} ⭐</b> promokod orqali qo'shildi!",
+        "promo_not_found": "❌ Promokod topilmadi.",
+        "promo_used": "❌ Siz bu kodni ishlatgansiz.",
+        "promo_empty": "❌ Promokod tugagan.",
+        "tasks_title": "📌 <b>Vazifalar</b>\n\nVazifalarni bajaring va stars oling:",
+        "task_done": "✅ Bajarildi",
+        "task_claim": "🎁 +{n} ⭐ olish",
+        "task_claimed": "✅ Mukofot olindi",
+        "task_not_done": "⏳ Bajarilmagan",
+        "task_ok": "🎉 <b>+{n} ⭐</b> vazifa mukofoti!",
+        "contest_title": "🏆 <b>Faol konkurs</b>",
+        "contest_none": "🏆 Hozircha faol konkurs yo'q.\n\nTez orada yangi konkurs boshlanadi!",
     },
 
     "ru": {
@@ -307,6 +334,29 @@ LANGS = {
         "rating_stars": "⭐ Больше всего Stars",
         "rating_donate": "💝 Больше всего донатов",
         "rating_ref": "👥 Больше всего рефералов",
+        "bonus_menu": "🔥 Ежедневный бонус",
+        "contest_menu": "🏆 Конкурс",
+        "promo_menu": "🎟 Промокод",
+        "tasks_menu": "📌 Задания",
+        "bonus_title": "🔥 <b>Ежедневный бонус</b>",
+        "bonus_available": "🎁 Сегодняшний бонус: <b>{reward} ⭐</b>\n🔥 Серия: <b>{streak} дн.</b>\n\nСледующий день: <b>{next} ⭐</b>",
+        "bonus_claimed": "✅ Сегодня получен!\n🔥 Серия: <b>{streak} дн.</b>\n\n⏰ Возвращайтесь завтра — <b>{next} ⭐</b>",
+        "bonus_btn": "🎁 Получить {n} ⭐",
+        "bonus_ok": "🎉 <b>+{n} ⭐</b> бонус получен!\n🔥 Серия: <b>{streak} дн.</b>",
+        "bonus_already": "⏰ Сегодня уже получен. Возвращайтесь завтра!",
+        "promo_title": "🎟 <b>Промокод</b>\n\nВведите код и получите stars:",
+        "promo_ok": "🎉 <b>+{n} ⭐</b> добавлено через промокод!",
+        "promo_not_found": "❌ Промокод не найден.",
+        "promo_used": "❌ Вы уже использовали этот код.",
+        "promo_empty": "❌ Промокод закончился.",
+        "tasks_title": "📌 <b>Задания</b>\n\nВыполняйте задания и получайте stars:",
+        "task_done": "✅ Выполнено",
+        "task_claim": "🎁 Получить +{n} ⭐",
+        "task_claimed": "✅ Получено",
+        "task_not_done": "⏳ Не выполнено",
+        "task_ok": "🎉 <b>+{n} ⭐</b> за задание!",
+        "contest_title": "🏆 <b>Активный конкурс</b>",
+        "contest_none": "🏆 Пока нет активного конкурса.\n\nСкоро начнётся новый!",
     },
 
     "en": {
@@ -409,6 +459,29 @@ LANGS = {
         "rating_stars": "⭐ Most Stars",
         "rating_donate": "💝 Most Donations",
         "rating_ref": "👥 Most Referrals",
+        "bonus_menu": "🔥 Daily bonus",
+        "contest_menu": "🏆 Contest",
+        "promo_menu": "🎟 Promocode",
+        "tasks_menu": "📌 Tasks",
+        "bonus_title": "🔥 <b>Daily bonus</b>",
+        "bonus_available": "🎁 Today's reward: <b>{reward} ⭐</b>\n🔥 Streak: <b>{streak} days</b>\n\nNext day: <b>{next} ⭐</b>",
+        "bonus_claimed": "✅ Claimed today!\n🔥 Streak: <b>{streak} days</b>\n\n⏰ Come back tomorrow — <b>{next} ⭐</b>",
+        "bonus_btn": "🎁 Claim {n} ⭐",
+        "bonus_ok": "🎉 <b>+{n} ⭐</b> bonus claimed!\n🔥 Streak: <b>{streak} days</b>",
+        "bonus_already": "⏰ Already claimed today. Come back tomorrow!",
+        "promo_title": "🎟 <b>Promocode</b>\n\nEnter the code to get stars:",
+        "promo_ok": "🎉 <b>+{n} ⭐</b> added via promocode!",
+        "promo_not_found": "❌ Promocode not found.",
+        "promo_used": "❌ You already used this code.",
+        "promo_empty": "❌ Promocode expired.",
+        "tasks_title": "📌 <b>Tasks</b>\n\nComplete tasks and earn stars:",
+        "task_done": "✅ Done",
+        "task_claim": "🎁 Claim +{n} ⭐",
+        "task_claimed": "✅ Claimed",
+        "task_not_done": "⏳ Not done",
+        "task_ok": "🎉 <b>+{n} ⭐</b> for task!",
+        "contest_title": "🏆 <b>Active contest</b>",
+        "contest_none": "🏆 No active contest yet.\n\nA new one starts soon!",
     },
 }
 
@@ -541,7 +614,6 @@ def init_db():
         min_stars INTEGER,
         max_stars INTEGER
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS donations (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
@@ -550,6 +622,64 @@ def init_db():
         payload TEXT,
         status TEXT DEFAULT 'received',
         created_at TEXT
+    )""")
+
+    # ═══ KONKURS ═══
+    c.execute("""CREATE TABLE IF NOT EXISTS contests (
+        id SERIAL PRIMARY KEY,
+        title TEXT,
+        description TEXT,
+        reward_emoji TEXT DEFAULT '🎁',
+        reward_name TEXT DEFAULT 'Telegram Gift',
+        target INTEGER DEFAULT 0,
+        start_at TEXT,
+        end_at TEXT,
+        status TEXT DEFAULT 'active',
+        winner_id BIGINT DEFAULT 0,
+        winner_referrals INTEGER DEFAULT 0,
+        created_at TEXT
+    )""")
+
+    # ═══ KUNLIK BONUS ═══
+    c.execute("""CREATE TABLE IF NOT EXISTS daily_bonus (
+        user_id BIGINT PRIMARY KEY,
+        last_claim TEXT,
+        streak INTEGER DEFAULT 0,
+        total_claimed INTEGER DEFAULT 0
+    )""")
+
+    # ═══ VAZIFALAR ═══
+    c.execute("""CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        title TEXT,
+        emoji TEXT DEFAULT '📌',
+        reward INTEGER DEFAULT 5,
+        link TEXT,
+        action TEXT DEFAULT 'manual',
+        is_active INTEGER DEFAULT 1,
+        once INTEGER DEFAULT 1
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS user_tasks (
+        user_id BIGINT,
+        task_id INTEGER,
+        done INTEGER DEFAULT 0,
+        claimed INTEGER DEFAULT 0,
+        updated_at TEXT,
+        PRIMARY KEY (user_id, task_id)
+    )""")
+
+    # ═══ PROMOKODLAR ═══
+    c.execute("""CREATE TABLE IF NOT EXISTS promocodes (
+        code TEXT PRIMARY KEY,
+        reward INTEGER,
+        uses_left INTEGER DEFAULT 100,
+        created_at TEXT
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS promo_uses (
+        user_id BIGINT,
+        code TEXT,
+        used_at TEXT,
+        PRIMARY KEY (user_id, code)
     )""")
 
     defaults = {
@@ -606,6 +736,18 @@ def init_db():
         for q, correct, w1, w2 in default_qs:
             c.execute("""INSERT INTO questions (question, correct_answer, wrong1, wrong2)
                         VALUES (%s, %s, %s, %s)""", (q, correct, w1, w2))
+
+    c.execute("SELECT COUNT(*) FROM tasks")
+    if c.fetchone()[0] == 0:
+        defaults_tasks = [
+            ("Do'stni taklif qilish",  "👥", 5,  None,          "ref",     1, 0),
+            ("Kanalga obuna bo'lish",  "📢", 10, "@StarRushUZ",  "sub",     1, 1),
+            ("Mini App'ga kirish",     "🚀", 3,  None,          "webapp",  1, 0),
+            ("Profilni to'ldirish",    "✅", 5,  None,          "profile", 1, 0),
+        ]
+        for t in defaults_tasks:
+            c.execute("""INSERT INTO tasks (title, emoji, reward, link, action, is_active, once)
+                         VALUES (%s,%s,%s,%s,%s,%s,%s)""", t)
 
     c.close()
     conn.close()
@@ -795,6 +937,130 @@ def get_chat_users():
 def esc(s):
     return html.escape(str(s)) if s is not None else ""
 
+
+# ═══════════════════════════════════════════════════════════
+# BONUS / VAZIFA / PROMOKOD / KONKURS
+# ═══════════════════════════════════════════════════════════
+def get_bonus_reward(streak):
+    return BONUS_REWARDS[min(streak, len(BONUS_REWARDS) - 1)]
+
+def check_daily_bonus(user_id):
+    today = now_uz().strftime("%Y-%m-%d")
+    row = db_exec("SELECT * FROM daily_bonus WHERE user_id=%s", (user_id,), fetch=True)
+    if not row:
+        return {"can_claim": True, "streak": 0, "reward": BONUS_REWARDS[0],
+                "next_reward": BONUS_REWARDS[1]}
+    last = (row.get("last_claim") or "")[:10]
+    streak = int(row.get("streak") or 0)
+    can_claim = last != today
+    if last and last != today:
+        yest = (now_uz() - timedelta(days=1)).strftime("%Y-%m-%d")
+        if last != yest:
+            streak = 0
+    reward = get_bonus_reward(streak)
+    next_reward = get_bonus_reward(streak + 1)
+    return {"can_claim": can_claim, "streak": streak,
+            "reward": reward, "next_reward": next_reward}
+
+def claim_daily_bonus(user_id):
+    info = check_daily_bonus(user_id)
+    if not info["can_claim"]:
+        return None
+    reward = info["reward"]
+    new_streak = info["streak"] + 1
+    db_exec("""INSERT INTO daily_bonus (user_id, last_claim, streak, total_claimed)
+               VALUES (%s, %s, %s, %s)
+               ON CONFLICT (user_id) DO UPDATE SET
+                 last_claim = EXCLUDED.last_claim,
+                 streak = EXCLUDED.streak,
+                 total_claimed = daily_bonus.total_claimed + %s""",
+            (user_id, now_uz().isoformat(), new_streak, reward, reward))
+    add_stars(user_id, reward)
+    return {"reward": reward, "streak": new_streak}
+
+def get_user_tasks(user_id):
+    tasks_db = db_exec("SELECT * FROM tasks WHERE is_active=1 ORDER BY id", fetchall=True) or []
+    result = []
+    for t in tasks_db:
+        ut = db_exec("SELECT done, claimed FROM user_tasks WHERE user_id=%s AND task_id=%s",
+                     (user_id, t["id"]), fetch=True) or {"done": 0, "claimed": 0}
+        done = bool(ut["done"])
+        claimed = bool(ut["claimed"])
+        result.append({
+            "id": t["id"], "title": t["title"], "emoji": t["emoji"],
+            "reward": t["reward"], "link": t["link"], "action": t["action"],
+            "done": done, "claimed": claimed, "claimable": done and not claimed,
+        })
+    return result
+
+def mark_task_done(user_id, task_id, done=True):
+    db_exec("""INSERT INTO user_tasks (user_id, task_id, done, updated_at)
+               VALUES (%s, %s, %s, %s)
+               ON CONFLICT (user_id, task_id) DO UPDATE SET
+                 done = EXCLUDED.done, updated_at = EXCLUDED.updated_at""",
+            (user_id, task_id, 1 if done else 0, now_uz().isoformat()))
+
+def claim_task_reward(user_id, task_id):
+    t = db_exec("SELECT * FROM tasks WHERE id=%s AND is_active=1", (task_id,), fetch=True)
+    if not t:
+        return None
+    ut = db_exec("SELECT done, claimed FROM user_tasks WHERE user_id=%s AND task_id=%s",
+                 (user_id, task_id), fetch=True) or {"done": 0, "claimed": 0}
+    if not ut["done"] or ut["claimed"]:
+        return None
+    db_exec("UPDATE user_tasks SET claimed=1, updated_at=%s WHERE user_id=%s AND task_id=%s",
+            (now_uz().isoformat(), user_id, task_id))
+    add_stars(user_id, t["reward"])
+    return t["reward"]
+
+def use_promocode(user_id, code):
+    code = code.strip().upper()
+    if not code:
+        return None, "promo_not_found"
+    p = db_exec("SELECT * FROM promocodes WHERE code=%s", (code,), fetch=True)
+    if not p:
+        return None, "promo_not_found"
+    if int(p["uses_left"]) <= 0:
+        return None, "promo_empty"
+    if db_exec("SELECT 1 FROM promo_uses WHERE user_id=%s AND code=%s", (user_id, code), fetch=True):
+        return None, "promo_used"
+    db_exec("UPDATE promocodes SET uses_left = uses_left - 1 WHERE code=%s", (code,))
+    db_exec("INSERT INTO promo_uses (user_id, code, used_at) VALUES (%s, %s, %s)",
+            (user_id, code, now_uz().isoformat()))
+    add_stars(user_id, p["reward"])
+    return p["reward"], None
+
+def get_active_contest():
+    row = db_exec("SELECT * FROM contests WHERE status='active' ORDER BY id DESC LIMIT 1", fetch=True)
+    return dict(row) if row else None
+
+def get_contest_leaderboard(contest, uid, limit=20):
+    leaders = db_exec(
+        "SELECT u.user_id, u.first_name AS name, COUNT(r.user_id) AS count "
+        "FROM users r JOIN users u ON r.referrer_id = u.user_id "
+        "WHERE r.is_verified=1 AND r.joined_at >= %s "
+        "GROUP BY u.user_id, u.first_name ORDER BY count DESC LIMIT %s",
+        (contest["start_at"], limit), fetchall=True) or []
+    my = db_exec(
+        "SELECT COUNT(*) AS count FROM users "
+        "WHERE referrer_id=%s AND is_verified=1 AND joined_at >= %s",
+        (uid, contest["start_at"]), fetch=True) or {"count": 0}
+    my_rank = db_exec(
+        "SELECT COUNT(*) + 1 AS rank FROM ("
+        "  SELECT referrer_id, COUNT(*) AS cnt FROM users "
+        "  WHERE is_verified=1 AND joined_at >= %s AND referrer_id <> 0 "
+        "  GROUP BY referrer_id HAVING COUNT(*) > %s"
+        ") t",
+        (contest["start_at"], my["count"]), fetch=True)
+    u = get_user(uid) or {}
+    return {
+        "leaders": [{"name": r["name"] or "User", "count": int(r["count"]),
+                     "is_me": r["user_id"] == uid} for r in leaders],
+        "me": {"rank": my_rank["rank"] if my_rank else 0,
+               "name": u.get("first_name", "User"), "count": int(my["count"])},
+    }
+
+
 # ═══════════════════════════════════════════════════════════
 # BOT
 # ═══════════════════════════════════════════════════════════
@@ -811,6 +1077,7 @@ class US(StatesGroup):
     review_text = State()
     gift_comment = State()
     donate_amount = State()
+    promo_code = State()
 
 class AS(StatesGroup):
     channel = State()
@@ -840,6 +1107,20 @@ class AS(StatesGroup):
     userbot_api = State()
     userbot_hash = State()
     userbot_session = State()
+    # YANGI
+    contest_title = State()
+    contest_desc = State()
+    contest_reward_name = State()
+    contest_reward_emoji = State()
+    contest_days = State()
+    task_title = State()
+    task_emoji = State()
+    task_reward = State()
+    task_link = State()
+    task_action = State()
+    promo_code_admin = State()
+    promo_reward = State()
+    promo_uses = State()
 
 # ═══════════════════════════════════════════════════════════
 # KLAVIATURALAR
@@ -849,6 +1130,10 @@ def main_menu(uid):
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "profile"), callback_data="m_profile")
     b.button(text=T(lang, "stats"), callback_data="m_stats")
+    b.button(text="🔥 " + T(lang, "bonus_menu"), callback_data="m_bonus")
+    b.button(text="🏆 " + T(lang, "contest_menu"), callback_data="m_contest")
+    b.button(text="📌 " + T(lang, "tasks_menu"), callback_data="m_tasks")
+    b.button(text="🎟 " + T(lang, "promo_menu"), callback_data="m_promo")
     b.button(text=T(lang, "banner"), callback_data="m_banner")
     b.button(text=T(lang, "ref_link"), callback_data="m_reflink")
     b.button(text=T(lang, "rating"), callback_data="m_rating")
@@ -864,7 +1149,7 @@ def main_menu(uid):
     b.button(text="🌐 Til / Язык / Lang", callback_data="m_lang")
     if is_admin(uid):
         b.button(text=T(lang, "admin"), callback_data="m_admin")
-    b.adjust(2, 2, 2, 2, 2, 1)
+    b.adjust(2, 2, 2, 2, 2, 2, 2, 2)
     return b.as_markup()
 
 
@@ -883,6 +1168,9 @@ def admin_menu(uid):
     b.button(text="🏅 Darajalar", callback_data="a_levels")
     b.button(text="🤖 Userbot", callback_data="a_userbot")
     b.button(text="💝 Donatlar", callback_data="a_donations")
+    b.button(text="🏆 Konkurslar", callback_data="a_contests")
+    b.button(text="📌 Vazifalar", callback_data="a_tasks")
+    b.button(text="🎟 Promokodlar", callback_data="a_promocodes")
     if is_super_admin(uid):
         b.button(text="👑 Adminlar", callback_data="a_admins")
     b.button(text="🏠 Asosiy menyu", callback_data="m_menu")
@@ -1207,6 +1495,15 @@ async def check_ans(cb: types.CallbackQuery, state: FSMContext):
                         except Exception:
                             pass
                         await check_level_up(ref_id, old_stars, new_stars)
+                        # REFERAL VAZIFASINI BAJARILGAN DEB BELGILASH
+                        try:
+                            ref_tasks = db_exec(
+                                "SELECT id FROM tasks WHERE action='ref' AND is_active=1",
+                                fetchall=True) or []
+                            for rt in ref_tasks:
+                                mark_task_done(ref_id, rt["id"])
+                        except Exception as e:
+                            logger.warning(f"Task mark xato: {e}")
 
     await state.clear()
     await cb.answer(T(lang, "correct"))
@@ -1416,6 +1713,205 @@ async def cb_stats(cb: types.CallbackQuery, state: FSMContext):
     except Exception:
         await cb.message.answer(text, parse_mode="HTML", reply_markup=b.as_markup())
     await cb.answer()
+
+# ═══════════════════════════════════════════════════════════
+# BONUS
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "m_bonus")
+async def cb_bonus(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    info = check_daily_bonus(uid)
+
+    if info["can_claim"]:
+        text = (f"🔥 <b>{T(lang, 'bonus_title')}</b>\n\n" +
+                T(lang, "bonus_available", reward=info["reward"],
+                  streak=info["streak"], next=info["next_reward"]))
+        b = InlineKeyboardBuilder()
+        b.button(text=T(lang, "bonus_btn", n=info["reward"]), callback_data="claim_daily")
+        b.button(text=T(lang, "menu"), callback_data="m_menu")
+        b.adjust(1)
+    else:
+        text = (f"🔥 <b>{T(lang, 'bonus_title')}</b>\n\n" +
+                T(lang, "bonus_claimed", streak=info["streak"], next=info["next_reward"]))
+        b = InlineKeyboardBuilder()
+        b.button(text=T(lang, "menu"), callback_data="m_menu")
+        b.adjust(1)
+    try:
+        await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    except Exception:
+        await cb.message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "claim_daily")
+async def claim_daily_cb(cb: types.CallbackQuery):
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    res = claim_daily_bonus(uid)
+    if res is None:
+        await cb.answer(T(lang, "bonus_already"), show_alert=True)
+        return
+    await cb.answer(T(lang, "bonus_ok", n=res["reward"], streak=res["streak"]), show_alert=True)
+    # Yangilash
+    await cb_bonus(cb, FSMContext.__new__(FSMContext))
+
+# ═══════════════════════════════════════════════════════════
+# KONKURS (USER)
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "m_contest")
+async def cb_contest(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    contest = get_active_contest()
+
+    if not contest:
+        b = InlineKeyboardBuilder()
+        b.button(text=T(lang, "menu"), callback_data="m_menu")
+        b.adjust(1)
+        try:
+            await cb.message.edit_text(T(lang, "contest_none"), reply_markup=b.as_markup(), parse_mode="HTML")
+        except Exception:
+            await cb.message.answer(T(lang, "contest_none"), reply_markup=b.as_markup(), parse_mode="HTML")
+        await cb.answer()
+        return
+
+    lb = get_contest_leaderboard(contest, uid, limit=10)
+    try:
+        end = datetime.fromisoformat(contest["end_at"])
+    except Exception:
+        end = now_uz()
+    diff = (end - now_uz()).total_seconds()
+    days = int(diff // 86400)
+    hours = int((diff % 86400) // 3600)
+
+    text = (f"🏆 <b>{esc(contest['title'])}</b>\n\n"
+            f"{esc(contest['description'])}\n\n"
+            f"🎁 <b>Sovrin:</b> {esc(contest['reward_emoji'])} <b>{esc(contest['reward_name'])}</b>\n"
+            f"⏰ <b>Qoldi:</b> {days} kun {hours} soat\n\n"
+            f"📊 <b>Leaderboard:</b>\n")
+    for i, l in enumerate(lb["leaders"], 1):
+        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+        me_tag = " ⬅️" if l["is_me"] else ""
+        text += f"{medal} {esc(l['name'])} — <b>{l['count']}</b> ta{me_tag}\n"
+    if not lb["leaders"]:
+        text += "— Hozircha qatnashuvchi yo'q\n"
+    text += (f"\n👤 <b>Siz:</b> #{lb['me']['rank']} — <b>{lb['me']['count']}</b> ta referal")
+
+    b = InlineKeyboardBuilder()
+    b.button(text=T(lang, "share"), callback_data="m_reflink")
+    b.button(text=T(lang, "menu"), callback_data="m_menu")
+    b.adjust(1)
+    try:
+        await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    except Exception:
+        await cb.message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+# ═══════════════════════════════════════════════════════════
+# VAZIFALAR (USER)
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "m_tasks")
+async def cb_tasks(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    tasks = get_user_tasks(uid)
+
+    text = f"📌 <b>{T(lang, 'tasks_title')}</b>\n\n"
+    b = InlineKeyboardBuilder()
+    for t in tasks:
+        if t["claimed"]:
+            status = f"✅ {t['reward']} ⭐ olindi"
+        elif t["claimable"]:
+            status = "🎁 Mukofot tayyor!"
+        elif t["done"]:
+            status = "✅ Bajarildi"
+        else:
+            status = "⏳ Bajarilmagan"
+        text += f"{esc(t['emoji'])} <b>{esc(t['title'])}</b> — +{t['reward']} ⭐\n   {status}\n\n"
+
+        if t["claimable"]:
+            b.button(text=f"🎁 {t['title'][:25]} → +{t['reward']}", callback_data=f"claimtask_{t['id']}")
+    if not tasks:
+        text += "— Vazifalar yo'q\n"
+    b.button(text=T(lang, "menu"), callback_data="m_menu")
+    b.adjust(1)
+    try:
+        await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    except Exception:
+        await cb.message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data.startswith("claimtask_"))
+async def claim_task_cb(cb: types.CallbackQuery):
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    task_id = int(cb.data.replace("claimtask_", ""))
+    reward = claim_task_reward(uid, task_id)
+    if reward is None:
+        await cb.answer("❌ Mukofot olish mumkin emas", show_alert=True)
+        return
+    await cb.answer(T(lang, "task_ok", n=reward), show_alert=True)
+    try:
+        await bot.send_message(
+            uid,
+            T(lang, "stars_added", n=reward, reason="Vazifa mukofoti",
+              total=(get_user(uid) or {}).get("stars", 0)),
+            parse_mode="HTML")
+    except Exception:
+        pass
+    # Ro'yxatni yangilash
+    state = FSMContext.__new__(FSMContext)
+    await cb_tasks(cb, state)
+
+# ═══════════════════════════════════════════════════════════
+# PROMOKOD (USER)
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "m_promo")
+async def cb_promo(cb: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    uid = cb.from_user.id
+    lang = get_user_lang(uid)
+    b = InlineKeyboardBuilder()
+    b.button(text=T(lang, "cancel"), callback_data="m_menu")
+    b.adjust(1)
+    try:
+        await cb.message.edit_text(T(lang, "promo_title"), reply_markup=b.as_markup(), parse_mode="HTML")
+    except Exception:
+        await cb.message.answer(T(lang, "promo_title"), reply_markup=b.as_markup(), parse_mode="HTML")
+    await state.set_state(US.promo_code)
+    await cb.answer()
+
+
+@dp.message(US.promo_code)
+async def promo_code_input(message: types.Message, state: FSMContext):
+    uid = message.from_user.id
+    lang = get_user_lang(uid)
+    code = (message.text or "").strip().upper()
+    if not code:
+        await message.answer(T(lang, "promo_not_found"))
+        return
+
+    reward, err = use_promocode(uid, code)
+    await state.clear()
+    if err:
+        await message.answer(T(lang, err), parse_mode="HTML")
+        return
+
+    await message.answer(T(lang, "promo_ok", n=reward), parse_mode="HTML")
+    try:
+        await bot.send_message(
+            uid,
+            T(lang, "stars_added", n=reward, reason=f"Promokod: {code}",
+              total=(get_user(uid) or {}).get("stars", 0)),
+            parse_mode="HTML")
+    except Exception:
+        pass
+    await message.answer(T(lang, "menu_title"), reply_markup=main_menu(uid), parse_mode="HTML")
 
 # ═══════════════════════════════════════════════════════════
 # BANNER
@@ -2115,7 +2611,6 @@ async def notify_admins(text, kb=None):
 # POST YASASH VA YUBORISH
 # ═══════════════════════════════════════════════════════════
 def build_gift_post(user, amount, gift_emoji=None, gift_name=None, is_anon=False, is_stars=False):
-    """Gift yoki Stars olganda post matnini yasaydi."""
     if is_stars:
         title = "🎉 <b>YANGI STARS OLINDI!</b>"
         item_line = "🎁 <b>Stars</b>"
@@ -2147,7 +2642,6 @@ def build_gift_post(user, amount, gift_emoji=None, gift_name=None, is_anon=False
 
 
 async def send_gift_post(uid, post_text, is_anon=False):
-    """Postni KANALGA va FOYDALANUVCHIGA yuboradi."""
     channel = get_setting("gift_channel", "")
     if channel:
         try:
@@ -3558,6 +4052,10 @@ async def a_stats(cb: types.CallbackQuery):
     total_stars = db_exec("SELECT COALESCE(SUM(stars), 0) AS s FROM users", fetch=True)["s"]
     total_don = db_exec("SELECT COALESCE(SUM(stars), 0) AS s FROM donations", fetch=True)["s"]
     open_chats = q("SELECT COUNT(*) AS c FROM support_chats WHERE status='open'")
+    active_contests = q("SELECT COUNT(*) AS c FROM contests WHERE status='active'")
+    total_tasks = q("SELECT COUNT(*) AS c FROM tasks WHERE is_active=1")
+    total_promos = q("SELECT COUNT(*) AS c FROM promocodes WHERE uses_left > 0")
+
     text = (
         f"╭━━━〔 📊 <b>STATISTIKA</b> 〕━━━╮\n\n"
         f"👥 <b>Jami:</b> {total}\n"
@@ -3568,7 +4066,10 @@ async def a_stats(cb: types.CallbackQuery):
         f"⚠️ <b>Xato giftlar:</b> {gifts_fail}\n"
         f"⭐ <b>Jami stars:</b> {total_stars}\n"
         f"💝 <b>Jami donat:</b> {total_don}\n"
-        f"💬 <b>Faol suhbatlar:</b> {open_chats}\n\n"
+        f"💬 <b>Faol suhbatlar:</b> {open_chats}\n"
+        f"🏆 <b>Faol konkurslar:</b> {active_contests}\n"
+        f"📌 <b>Faol vazifalar:</b> {total_tasks}\n"
+        f"🎟 <b>Faol promokodlar:</b> {total_promos}\n\n"
         f"╰━━━━━━━━━━━━━━━━━╯"
     )
     b = InlineKeyboardBuilder()
@@ -3743,7 +4244,6 @@ async def approve_w(cb: types.CallbackQuery):
                 f"🆔 ID: <code>{user['user_id']}</code>\n⭐ Miqdor: <b>{w['stars']} ⭐</b>\n\n"
                 f"<b>Fragment.com</b> orqali qo'lda yuboring!")
 
-            # ✅ KANALGA + FOYDALANUVCHIGA POST
             post_text = build_gift_post(
                 user=user,
                 amount=w["stars"],
@@ -4298,6 +4798,413 @@ async def del_admin_do(cb: types.CallbackQuery):
     await a_admins(cb)
 
 # ═══════════════════════════════════════════════════════════
+# ADMIN: KONKURSLAR
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "a_contests")
+async def a_contests(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    rows = db_exec("SELECT * FROM contests ORDER BY id DESC LIMIT 10", fetchall=True) or []
+    text = "╭━━━〔 🏆 <b>KONKURSLAR</b> 〕━━━╮\n\n"
+    if rows:
+        for c in rows:
+            icon = "🟢" if c["status"] == "active" else "🔴"
+            text += (f"{icon} <b>#{c['id']}</b> {esc(c['title'])}\n"
+                     f"   🎁 {esc(c['reward_name'])} | "
+                     f"{(c['start_at'] or '')[:10]} → {(c['end_at'] or '')[:10]}\n\n")
+    else:
+        text += "— Konkurslar yo'q\n"
+    text += "\n╰━━━━━━━━━━━━━━━━━╯"
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ Yangi konkurs", callback_data="add_contest")
+    b.button(text="🏁 Tugatish", callback_data="finish_contest_list")
+    b.button(text="🗑 O'chirish", callback_data="del_contest_list")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(2, 1, 1)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "add_contest")
+async def add_contest_start(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        return
+    await cb.message.edit_text("🏆 <b>Konkurs nomi:</b>", parse_mode="HTML")
+    await state.set_state(AS.contest_title)
+    await cb.answer()
+
+
+@dp.message(AS.contest_title)
+async def contest_title_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    await state.update_data(c_title=message.text.strip())
+    await message.answer("📝 <b>Tavsif:</b>", parse_mode="HTML")
+    await state.set_state(AS.contest_desc)
+
+
+@dp.message(AS.contest_desc)
+async def contest_desc_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    await state.update_data(c_desc=message.text.strip())
+    await message.answer("🎁 <b>Sovrin nomi</b> (masalan: <i>Yulduzli Gift</i>):", parse_mode="HTML")
+    await state.set_state(AS.contest_reward_name)
+
+
+@dp.message(AS.contest_reward_name)
+async def contest_reward_name_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    await state.update_data(c_reward_name=message.text.strip())
+    await message.answer("😀 <b>Sovrin emoji:</b>", parse_mode="HTML")
+    await state.set_state(AS.contest_reward_emoji)
+
+
+@dp.message(AS.contest_reward_emoji)
+async def contest_reward_emoji_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    await state.update_data(c_reward_emoji=message.text.strip())
+    await message.answer("📅 <b>Necha kun davom etadi?</b> (raqam):", parse_mode="HTML")
+    await state.set_state(AS.contest_days)
+
+
+@dp.message(AS.contest_days)
+async def contest_days_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    try:
+        days = int((message.text or "").strip())
+        if days < 1 or days > 365:
+            raise ValueError
+    except ValueError:
+        await message.answer("❌ 1-365 oralig'ida raqam.")
+        return
+    data = await state.get_data()
+    now = now_uz()
+    end = now + timedelta(days=days)
+    db_exec("""INSERT INTO contests
+        (title, description, reward_emoji, reward_name, start_at, end_at, status, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, 'active', %s)""",
+        (data["c_title"], data["c_desc"], data["c_reward_emoji"],
+         data["c_reward_name"], now.isoformat(), end.isoformat(), now.isoformat()))
+    await state.clear()
+    await message.answer(f"✅ <b>Konkurs boshlandi!</b>\n\n🏆 {esc(data['c_title'])}\n"
+                         f"📅 {days} kun", parse_mode="HTML")
+    await notify_admins(
+        f"🏆 <b>YANGI KONKURS!</b>\n\n"
+        f"🎯 {esc(data['c_title'])}\n"
+        f"{esc(data['c_desc'])}\n\n"
+        f"🎁 Sovrin: {esc(data['c_reward_emoji'])} <b>{esc(data['c_reward_name'])}</b>\n"
+        f"📅 {days} kun davomida\n\n"
+        f"👉 Eng ko'p do'st taklif qilgan yutadi!")
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
+
+@dp.callback_query(F.data == "finish_contest_list")
+async def finish_contest_list(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    rows = db_exec("SELECT * FROM contests WHERE status='active'", fetchall=True) or []
+    if not rows:
+        await cb.answer("— Faol konkurs yo'q", show_alert=True)
+        return
+    b = InlineKeyboardBuilder()
+    for c in rows:
+        b.button(text=f"🏁 #{c['id']} {c['title']}", callback_data=f"fincontest_{c['id']}")
+    b.button(text="⬅️ Orqaga", callback_data="a_contests")
+    b.adjust(1)
+    await cb.message.edit_text("🏁 <b>Tugatish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data.startswith("fincontest_"))
+async def finish_contest_do(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    cid = int(cb.data.replace("fincontest_", ""))
+    c = db_exec("SELECT * FROM contests WHERE id=%s", (cid,), fetch=True)
+    if not c:
+        await cb.answer("—", show_alert=True)
+        return
+    winner = db_exec(
+        "SELECT u.user_id, u.first_name, COUNT(r.user_id) AS cnt "
+        "FROM users r JOIN users u ON r.referrer_id = u.user_id "
+        "WHERE r.is_verified=1 AND r.joined_at >= %s "
+        "GROUP BY u.user_id, u.first_name ORDER BY cnt DESC LIMIT 1",
+        (c["start_at"],), fetch=True)
+    if not winner:
+        await cb.answer("— Qatnashuvchi yo'q", show_alert=True)
+        return
+    db_exec("UPDATE contests SET status='finished', winner_id=%s, winner_referrals=%s WHERE id=%s",
+            (winner["user_id"], winner["cnt"], cid))
+    await notify_admins(
+        f"🏁 <b>KONKURS TUGADI!</b>\n\n"
+        f"🏆 {esc(c['title'])}\n\n"
+        f"🥇 <b>G'olib:</b> {esc(winner['first_name'])}\n"
+        f"🆔 <code>{winner['user_id']}</code>\n"
+        f"👥 {winner['cnt']} ta referal\n\n"
+        f"🎁 Sovrin: {esc(c['reward_emoji'])} {esc(c['reward_name'])}")
+    try:
+        await bot.send_message(
+            winner["user_id"],
+            f"🎉 <b>TABRIKLAYMIZ!</b>\n\n"
+            f"Siz <b>{esc(c['title'])}</b> konkursida g'olib bo'ldingiz!\n\n"
+            f"🏆 {winner['cnt']} ta referal\n"
+            f"🎁 Sovrin: {esc(c['reward_emoji'])} {esc(c['reward_name'])}\n\n"
+            f"Admin tez orada bog'lanadi!", parse_mode="HTML")
+    except Exception:
+        pass
+    await cb.answer("✅")
+    await a_contests(cb)
+
+
+@dp.callback_query(F.data == "del_contest_list")
+async def del_contest_list(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    rows = db_exec("SELECT * FROM contests ORDER BY id DESC LIMIT 20", fetchall=True) or []
+    if not rows:
+        await cb.answer("—", show_alert=True)
+        return
+    b = InlineKeyboardBuilder()
+    for c in rows:
+        b.button(text=f"❌ #{c['id']} {c['title'][:30]}", callback_data=f"delcontest_{c['id']}")
+    b.button(text="⬅️ Orqaga", callback_data="a_contests")
+    b.adjust(1)
+    await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data.startswith("delcontest_"))
+async def del_contest_do(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    db_exec("DELETE FROM contests WHERE id=%s", (int(cb.data.replace("delcontest_", "")),))
+    await cb.answer("✅")
+    await a_contests(cb)
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN: VAZIFALAR
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "a_tasks")
+async def a_tasks(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    rows = db_exec("SELECT * FROM tasks ORDER BY id", fetchall=True) or []
+    text = "╭━━━〔 📌 <b>VAZIFALAR</b> 〕━━━╮\n\n"
+    for t in rows:
+        icon = "🟢" if t["is_active"] else "🔴"
+        text += (f"{icon} <b>#{t['id']}</b> {esc(t['emoji'])} {esc(t['title'])}\n"
+                 f"   +{t['reward']} ⭐ | action: {esc(t['action'])}\n\n")
+    if not rows:
+        text += "— Vazifalar yo'q\n"
+    text += "\n╰━━━━━━━━━━━━━━━━━╯"
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ Qo'shish", callback_data="add_task")
+    b.button(text="🗑 O'chirish", callback_data="del_task_list")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(2, 1)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "add_task")
+async def add_task_start(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        return
+    await cb.message.edit_text("📌 <b>Vazifa nomi:</b>", parse_mode="HTML")
+    await state.set_state(AS.task_title)
+    await cb.answer()
+
+
+@dp.message(AS.task_title)
+async def task_title_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    await state.update_data(t_title=message.text.strip())
+    await message.answer("😀 <b>Emoji:</b>")
+    await state.set_state(AS.task_emoji)
+
+
+@dp.message(AS.task_emoji)
+async def task_emoji_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    await state.update_data(t_emoji=message.text.strip())
+    await message.answer("⭐ <b>Mukofot (stars):</b>")
+    await state.set_state(AS.task_reward)
+
+
+@dp.message(AS.task_reward)
+async def task_reward_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    try:
+        val = int((message.text or "").strip())
+    except ValueError:
+        await message.answer("❌ Raqam.")
+        return
+    await state.update_data(t_reward=val)
+    await message.answer("🔗 <b>Link</b> (yoki /skip):")
+    await state.set_state(AS.task_link)
+
+
+@dp.message(AS.task_link)
+async def task_link_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    txt = (message.text or "").strip()
+    await state.update_data(t_link=None if txt == "/skip" else txt)
+    await message.answer(
+        "⚙️ <b>Action:</b> <code>ref</code> / <code>sub</code> / <code>webapp</code> / <code>profile</code> / <code>manual</code>")
+    await state.set_state(AS.task_action)
+
+
+@dp.message(AS.task_action)
+async def task_action_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    action = message.text.strip().lower()
+    if action not in ("ref", "sub", "webapp", "profile", "manual"):
+        await message.answer("❌ Noto'g'ri action.")
+        return
+    data = await state.get_data()
+    db_exec("""INSERT INTO tasks (title, emoji, reward, link, action, is_active)
+               VALUES (%s, %s, %s, %s, %s, 1)""",
+            (data["t_title"], data["t_emoji"], data["t_reward"], data["t_link"], action))
+    await state.clear()
+    await message.answer("✅ <b>Vazifa qo'shildi!</b>", parse_mode="HTML")
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
+
+@dp.callback_query(F.data == "del_task_list")
+async def del_task_list(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    rows = db_exec("SELECT * FROM tasks ORDER BY id", fetchall=True) or []
+    b = InlineKeyboardBuilder()
+    for t in rows:
+        b.button(text=f"❌ #{t['id']} {t['title'][:30]}", callback_data=f"deltask_{t['id']}")
+    b.button(text="⬅️ Orqaga", callback_data="a_tasks")
+    b.adjust(1)
+    await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data.startswith("deltask_"))
+async def del_task_do(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    db_exec("DELETE FROM tasks WHERE id=%s", (int(cb.data.replace("deltask_", "")),))
+    await cb.answer("✅")
+    await a_tasks(cb)
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN: PROMOKODLAR
+# ═══════════════════════════════════════════════════════════
+@dp.callback_query(F.data == "a_promocodes")
+async def a_promocodes(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    rows = db_exec("SELECT * FROM promocodes ORDER BY created_at DESC LIMIT 20", fetchall=True) or []
+    text = "╭━━━〔 🎟 <b>PROMOKODLAR</b> 〕━━━╮\n\n"
+    for p in rows:
+        text += f"• <code>{esc(p['code'])}</code> — {p['reward']} ⭐ (qoldi: {p['uses_left']})\n"
+    if not rows:
+        text += "— Promokodlar yo'q\n"
+    text += "\n╰━━━━━━━━━━━━━━━━━╯"
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ Yaratish", callback_data="add_promo")
+    b.button(text="🗑 O'chirish", callback_data="del_promo_list")
+    b.button(text="⬅️ Orqaga", callback_data="a_back")
+    b.adjust(2, 1)
+    await cb.message.edit_text(text, reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data == "add_promo")
+async def add_promo_start(cb: types.CallbackQuery, state: FSMContext):
+    if not is_admin(cb.from_user.id):
+        return
+    await cb.message.edit_text("🎟 <b>Promokod matni:</b> (masalan: STAR2025)", parse_mode="HTML")
+    await state.set_state(AS.promo_code_admin)
+    await cb.answer()
+
+
+@dp.message(AS.promo_code_admin)
+async def promo_code_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id) or not message.text:
+        return
+    code = message.text.strip().upper()
+    if db_exec("SELECT 1 FROM promocodes WHERE code=%s", (code,), fetch=True):
+        await message.answer("❌ Bu kod bor.")
+        return
+    await state.update_data(p_code=code)
+    await message.answer("⭐ <b>Mukofot (stars):</b>")
+    await state.set_state(AS.promo_reward)
+
+
+@dp.message(AS.promo_reward)
+async def promo_reward_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    try:
+        val = int((message.text or "").strip())
+    except ValueError:
+        await message.answer("❌ Raqam.")
+        return
+    await state.update_data(p_reward=val)
+    await message.answer("👥 <b>Necha kishi ishlata oladi?</b>")
+    await state.set_state(AS.promo_uses)
+
+
+@dp.message(AS.promo_uses)
+async def promo_uses_input(message: types.Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    try:
+        uses = int((message.text or "").strip())
+    except ValueError:
+        await message.answer("❌ Raqam.")
+        return
+    data = await state.get_data()
+    db_exec("""INSERT INTO promocodes (code, reward, uses_left, created_at)
+               VALUES (%s, %s, %s, %s)""",
+            (data["p_code"], data["p_reward"], uses, now_uz().isoformat()))
+    await state.clear()
+    await message.answer(
+        f"✅ <b>Promokod yaratildi!</b>\n\n"
+        f"🎟 <code>{esc(data['p_code'])}</code>\n"
+        f"⭐ +{data['p_reward']} stars\n"
+        f"👥 {uses} kishi", parse_mode="HTML")
+    await message.answer("🛠 Admin Panel", reply_markup=admin_menu(message.from_user.id))
+
+
+@dp.callback_query(F.data == "del_promo_list")
+async def del_promo_list(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    rows = db_exec("SELECT * FROM promocodes ORDER BY created_at DESC LIMIT 20", fetchall=True) or []
+    b = InlineKeyboardBuilder()
+    for p in rows:
+        b.button(text=f"❌ {p['code']}", callback_data=f"delpromo_{p['code']}")
+    b.button(text="⬅️ Orqaga", callback_data="a_promocodes")
+    b.adjust(1)
+    await cb.message.edit_text("🗑 <b>O'chirish:</b>", reply_markup=b.as_markup(), parse_mode="HTML")
+    await cb.answer()
+
+
+@dp.callback_query(F.data.startswith("delpromo_"))
+async def del_promo_do(cb: types.CallbackQuery):
+    if not is_admin(cb.from_user.id):
+        return
+    db_exec("DELETE FROM promocodes WHERE code=%s", (cb.data.replace("delpromo_", ""),))
+    await cb.answer("✅")
+    await a_promocodes(cb)
+
+# ═══════════════════════════════════════════════════════════
 # MINI APP API
 # ═══════════════════════════════════════════════════════════
 def validate_init_data(init_data, max_age=86400):
@@ -4545,10 +5452,45 @@ def build_levels(uid):
     }
 
 
+def build_contest_api(uid):
+    active_row = get_active_contest()
+    active = None
+    if active_row:
+        lb = get_contest_leaderboard(active_row, uid)
+        active = {
+            "title": active_row["title"],
+            "description": active_row["description"],
+            "reward_emoji": active_row["reward_emoji"],
+            "reward_name": active_row["reward_name"],
+            "target": active_row["target"],
+            "end_at": active_row["end_at"],
+            "leaders": lb["leaders"],
+            "me": lb["me"],
+        }
+    finished_rows = db_exec(
+        "SELECT c.*, u.first_name AS winner_name FROM contests c "
+        "LEFT JOIN users u ON c.winner_id = u.user_id "
+        "WHERE c.status='finished' ORDER BY c.id DESC LIMIT 5", fetchall=True) or []
+    finished = [{
+        "title": r["title"],
+        "reward_emoji": r["reward_emoji"],
+        "reward_name": r["reward_name"],
+        "winner_name": r["winner_name"],
+        "winner_referrals": r["winner_referrals"],
+    } for r in finished_rows]
+    return {"active": active, "finished": finished}
+
+
+def build_bonus_api(uid):
+    daily = check_daily_bonus(uid)
+    tasks = get_user_tasks(uid)
+    return {"daily": daily, "tasks": tasks}
+
+
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Init-Data",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 }
 
 
@@ -4585,14 +5527,82 @@ async def index(request):
         return web.FileResponse(p)
     return web.Response(text=BOT_NAME)
 
+
+async def api_claim(request):
+    tg_user = validate_init_data(request.headers.get("X-Telegram-Init-Data", ""))
+    if not tg_user or "id" not in tg_user:
+        return web.json_response({"error": "Ruxsat yo'q"}, status=401)
+    uid = int(tg_user["id"])
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Xato so'rov"}, status=400)
+    cid = str(body.get("id", ""))
+    lang = get_user_lang(uid)
+
+    if cid == "daily":
+        res = await asyncio.to_thread(claim_daily_bonus, uid)
+        if res is None:
+            return web.json_response({"error": T(lang, "bonus_already")}, status=400)
+        try:
+            await bot.send_message(
+                uid,
+                T(lang, "stars_added", n=res["reward"], reason="Kunlik bonus",
+                  total=(get_user(uid) or {}).get("stars", 0)),
+                parse_mode="HTML")
+        except Exception:
+            pass
+        return web.json_response({"reward": res["reward"], "streak": res["streak"]})
+
+    if cid.isdigit():
+        reward = await asyncio.to_thread(claim_task_reward, uid, int(cid))
+        if reward is None:
+            return web.json_response({"error": "Mukofot olish mumkin emas"}, status=400)
+        try:
+            await bot.send_message(
+                uid,
+                T(lang, "stars_added", n=reward, reason="Vazifa mukofoti",
+                  total=(get_user(uid) or {}).get("stars", 0)),
+                parse_mode="HTML")
+        except Exception:
+            pass
+        return web.json_response({"reward": reward})
+
+    return web.json_response({"error": "Noma'lum amal"}, status=400)
+
+
+async def api_promo(request):
+    tg_user = validate_init_data(request.headers.get("X-Telegram-Init-Data", ""))
+    if not tg_user or "id" not in tg_user:
+        return web.json_response({"error": "Ruxsat yo'q"}, status=401)
+    uid = int(tg_user["id"])
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Xato so'rov"}, status=400)
+    code = str(body.get("code", "")).strip().upper()
+    lang = get_user_lang(uid)
+
+    reward, err = await asyncio.to_thread(use_promocode, uid, code)
+    if err:
+        return web.json_response({"error": T(lang, err)}, status=400)
+    try:
+        await bot.send_message(
+            uid,
+            T(lang, "stars_added", n=reward, reason=f"Promokod: {code}",
+              total=(get_user(uid) or {}).get("stars", 0)),
+            parse_mode="HTML")
+    except Exception:
+        pass
+    return web.json_response({"reward": reward})
+
+
 # ═══════════════════════════════════════════════════════════
 # USERBOT ULANISH
 # ═══════════════════════════════════════════════════════════
 async def init_userbot():
     global tg_client, API_ID, API_HASH, SESSION_STRING
 
-    # Admin paneldan "Userbotni o'chirish" bosilgan bo'lsa — env'dagi
-    # SESSION_STRING ham ishlatilmaydi (qayta ishga tushganda ham).
     if get_setting("userbot_disabled", "0") == "1":
         API_ID = 0
         API_HASH = ""
@@ -4661,8 +5671,13 @@ async def main():
         ("/api/gifts", build_gifts),
         ("/api/referrals", build_referrals),
         ("/api/levels", build_levels),
+        ("/api/contest", build_contest_api),
+        ("/api/bonus", build_bonus_api),
     ):
         app.router.add_get(path, make_api(builder))
+    app.router.add_post("/api/claim", api_claim)
+    app.router.add_post("/api/promo", api_promo)
+
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", PORT).start()
