@@ -1,9 +1,13 @@
 """
 security.py - StarRush Bot himoya moduli.
 """
-import asyncio, logging, os, time
+import asyncio
+import logging
+import os
+import time
 from collections import defaultdict, deque
 from datetime import timedelta
+
 from aiogram import BaseMiddleware, types
 
 logger = logging.getLogger(__name__)
@@ -22,11 +26,14 @@ SUB_CACHE_TTL = 60
 REF_HOURLY_LIMIT = 15
 REF_DAILY_LIMIT = 60
 
+
 async def adb(query, params=(), fetch=False, fetchall=False):
     return await asyncio.to_thread(_db_exec, query, params, fetch, fetchall)
 
+
 async def aio(fn, *args, **kwargs):
     return await asyncio.to_thread(fn, *args, **kwargs)
+
 
 try:
     from cryptography.fernet import Fernet, InvalidToken
@@ -39,31 +46,41 @@ _fernet = Fernet(_SECRET_KEY.encode()) if (Fernet and _SECRET_KEY) else None
 if not _fernet:
     logger.warning("SECRET_KEY yo'q - session shifrlanmaydi!")
 
+
 def enc(value):
-    if not value or not _fernet: return value
+    if not value or not _fernet:
+        return value
     return "enc:" + _fernet.encrypt(value.encode()).decode()
 
+
 def dec(value):
-    if not value or not value.startswith("enc:"): return value
-    if not _fernet: raise RuntimeError("SECRET_KEY yo'q")
+    if not value or not value.startswith("enc:"):
+        return value
+    if not _fernet:
+        raise RuntimeError("SECRET_KEY yo'q")
     try:
         return _fernet.decrypt(value[4:].encode()).decode()
     except InvalidToken:
         raise RuntimeError("SECRET_KEY noto'g'ri")
+
 
 async def referral_velocity_ok(referrer_id):
     now = _now_uz()
     h = (now - timedelta(hours=1)).isoformat()
     d = (now - timedelta(hours=24)).isoformat()
     row = await adb(
-        "SELECT COUNT(*) FILTER (WHERE joined_at >= %s) AS h, "
-        "COUNT(*) FILTER (WHERE joined_at >= %s) AS d "
+        "SELECT "
+        " COUNT(*) FILTER (WHERE joined_at >= %s) AS h, "
+        " COUNT(*) FILTER (WHERE joined_at >= %s) AS d "
         "FROM users WHERE referrer_id=%s AND is_verified=1",
         (h, d, referrer_id), fetch=True)
-    if not row: return True
+    if not row:
+        return True
     return int(row["h"]) <= REF_HOURLY_LIMIT and int(row["d"]) <= REF_DAILY_LIMIT
 
+
 _UNVERIFIED_CB_OK = ("lang_", "ans_", "check_sub")
+
 
 class Guard(BaseMiddleware):
     def __init__(self):
@@ -74,7 +91,8 @@ class Guard(BaseMiddleware):
         now = time.monotonic()
         q = self.hits[uid]
         q.append(now)
-        if len(self.hits) > 50000: self.hits.clear()
+        if len(self.hits) > 50000:
+            self.hits.clear()
         return len(q) == FLOOD_LIMIT and now - q[0] < FLOOD_WINDOW
 
     async def _subscribed(self, uid):
@@ -83,7 +101,8 @@ class Guard(BaseMiddleware):
             return ts_ok[1]
         ok = await _check_subs(uid)
         self.sub_cache[uid] = (time.monotonic(), ok)
-        if len(self.sub_cache) > 50000: self.sub_cache.clear()
+        if len(self.sub_cache) > 50000:
+            self.sub_cache.clear()
         return ok
 
     @staticmethod
@@ -101,34 +120,44 @@ class Guard(BaseMiddleware):
     @staticmethod
     def _unverified_allowed(event, data):
         raw = data.get("raw_state") or ""
-        if raw.startswith("US:phone") or raw.startswith("US:answer"): return True
+        if raw.startswith("US:phone") or raw.startswith("US:answer"):
+            return True
         if isinstance(event, types.CallbackQuery):
             return (event.data or "").startswith(_UNVERIFIED_CB_OK)
         if isinstance(event, types.Message):
-            if event.contact: return True
+            if event.contact:
+                return True
             return (event.text or "").startswith("/start")
         return False
 
     async def __call__(self, handler, event, data):
         u = data.get("event_from_user")
-        if u is None or u.is_bot: return await handler(event, data)
+        if u is None or u.is_bot:
+            return await handler(event, data)
         uid = u.id
         if await asyncio.to_thread(_is_admin, uid):
             return await handler(event, data)
         if self._flooded(uid):
             if isinstance(event, types.CallbackQuery):
-                try: await event.answer("⏳", show_alert=False)
-                except Exception: pass
+                try:
+                    await event.answer("⏳", show_alert=False)
+                except Exception:
+                    pass
             return
-        row = await adb("SELECT is_banned, is_verified, language FROM users WHERE user_id=%s",
-                        (uid,), fetch=True)
-        if row is None: return await handler(event, data)
+        row = await adb(
+            "SELECT is_banned, is_verified, language FROM users WHERE user_id=%s",
+            (uid,), fetch=True)
+        if row is None:
+            return await handler(event, data)
         lang = row["language"] if row.get("language") in _LANGS else "uz"
         if row["is_banned"]:
-            await self._reply(event, _T(lang, "banned")); return
+            await self._reply(event, _T(lang, "banned"))
+            return
         if not row["is_verified"]:
-            if self._unverified_allowed(event, data): return await handler(event, data)
-            await self._reply(event, _T(lang, "start_first")); return
+            if self._unverified_allowed(event, data):
+                return await handler(event, data)
+            await self._reply(event, _T(lang, "start_first"))
+            return
         is_start = isinstance(event, types.Message) and (event.text or "").startswith("/start")
         is_sub_cb = isinstance(event, types.CallbackQuery) and (event.data or "") == "check_sub"
         is_lang_cb = isinstance(event, types.CallbackQuery) and (event.data or "").startswith("lang_")
@@ -136,8 +165,10 @@ class Guard(BaseMiddleware):
             if not await self._subscribed(uid):
                 self.sub_cache.pop(uid, None)
                 kb = await _subs_kb(uid)
-                await self._reply(event, _T(lang, "subscribe"), kb); return
+                await self._reply(event, _T(lang, "subscribe"), kb)
+                return
         return await handler(event, data)
+
 
 def setup(dp, *, db_exec, now_uz, T, LANGS, is_admin, check_subs, subs_kb):
     global _db_exec, _now_uz, _T, _LANGS, _is_admin, _check_subs, _subs_kb
