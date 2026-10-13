@@ -1,5 +1,6 @@
 """
-main.py - StarRush Bot (to'liq)
+main.py - StarRush Bot (to'liq, Python 3.12+ mos)
+Qism 1/2
 """
 import os
 import io
@@ -151,13 +152,14 @@ def _next_level(stars):
             return l
     return None
 
+
 # ═══════════════════════════════════════════════════════════
 # TILLAR
 # ═══════════════════════════════════════════════════════════
 LANGS = {
     "uz": {
         "flag": "🇺🇿", "name": "O'zbekcha",
-        "choose_lang": f"🌐 <b>TILNI TANLANG</b>\n{DIV}\nIltimos, o'zingizga qulay tilni tanlang 👇",
+        "choose_lang": "🌐 <b>TILNI TANLANG</b>\n" + DIV + "\nIltimos, o'zingizga qulay tilni tanlang 👇",
         "lang_set": "✅ <b>Til muvaffaqiyatli o'zgartirildi!</b>",
         "welcome": (
             "✨ <b>Xush kelibsiz, {name}!</b>\n" + DIV + "\n"
@@ -168,7 +170,7 @@ LANGS = {
             "🏆  Reytingda birinchi bo'ling\n" + DIV + "\n"
             "Kerakli bo'limni tanlang 👇"
         ),
-        "menu_title": f"🏠 <b>ASOSIY MENYU</b>\n{DIV}\n👇 Kerakli bo'limni tanlang:",
+        "menu_title": "🏠 <b>ASOSIY MENYU</b>\n" + DIV + "\n👇 Kerakli bo'limni tanlang:",
         "profile": "👤 Profilim", "stats": "📊 Statistika", "banner": "🎨 Banner",
         "webapp": "🚀 Mini App", "ref_link": "🔗 Referal linkim", "rating": "🏆 Reyting",
         "withdraw": "💰 Yechib olish", "donate": "💝 Donat qilish",
@@ -177,16 +179,16 @@ LANGS = {
         "share": "📤 Havolani ulashish", "back": "⬅️ Orqaga", "menu": "🏠 Asosiy menyu",
         "cancel": "❌ Bekor qilish", "close_chat": "🔚 Suhbatni tugatish",
         "more_btn": "⚙️ Ko'proq",
-        "more_title": f"⚙️ <b>KO'PROQ</b>\n{DIV}\nQo'shimcha bo'limlar 👇",
+        "more_title": "⚙️ <b>KO'PROQ</b>\n" + DIV + "\nQo'shimcha bo'limlar 👇",
         "history": "📜 So'rovlarim",
         "remind_on": "🔔 Eslatma: yoqilgan", "remind_off": "🔕 Eslatma: o'chiq",
-        "banned": f"🚫 <b>SIZ BANLANGANSIZ!</b>\n{DIV}\nAdmin bilan bog'laning.",
-        "subscribe": f"📢 <b>KANALLARGA OBUNA BO'LING</b>\n{DIV}\nBotdan foydalanish uchun kanallarga obuna bo'ling.\n\nObuna bo'lgach «✅ Tekshirish» tugmasini bosing 👇",
+        "banned": "🚫 <b>SIZ BANLANGANSIZ!</b>\n" + DIV + "\nAdmin bilan bog'laning.",
+        "subscribe": "📢 <b>KANALLARGA OBUNA BO'LING</b>\n" + DIV + "\nBotdan foydalanish uchun kanallarga obuna bo'ling.\n\nObuna bo'lgach «✅ Tekshirish» tugmasini bosing 👇",
         "check": "✅ Tekshirish",
-        "bot_check": f"🤖 <b>BOT EMASLIGINGIZNI TASDIQLANG</b>\n{DIV}\n❓ <b>Savol:</b> {{q}}\n\n👇 To'g'ri javobni tanlang:",
+        "bot_check": "🤖 <b>BOT EMASLIGINGIZNI TASDIQLANG</b>\n" + DIV + "\n❓ <b>Savol:</b> {q}\n\n👇 To'g'ri javobni tanlang:",
         "wrong_answer": "❌ Noto'g'ri javob!",
         "correct": "✅ Tasdiqlandi!",
-        "wrong_ans_retry": f"❌ <b>NOTO'G'RI JAVOB!</b>\n{DIV}\nQaytadan: /start",
+        "wrong_ans_retry": "❌ <b>NOTO'G'RI JAVOB!</b>\n" + DIV + "\nQaytadan: /start",
         "start_first": "ℹ️ Iltimos, /start buyrug'ini bosing.",
         "not_enough": "❌ <b>YETARLI EMAS!</b>",
         "min_withdraw": "❌ Minimal: <b>{n} ⭐</b>",
@@ -194,91 +196,91 @@ LANGS = {
         "enter_number": "❌ Faqat raqam kiriting.",
         "choose_reward": "🎁 <b>Mukofot turini tanlang:</b>",
         "stars_withdraw": "⭐ To'liq Stars olish", "gift_withdraw": "🎁 Telegram Gift olish",
-        "sent_to_admin": f"✅ <b>SO'ROV YUBORILDI!</b>\n{DIV}\n⭐ <b>Miqdor:</b> {{n}} ⭐\n⏳ <i>Admin tasdiqlashini kuting...</i>",
-        "gift_processing": f"⏳ <b>GIFT YUBORILMOQDA...</b>\n{DIV}\n{{gift}}\n⭐ <b>Narx:</b> {{n}} ⭐",
-        "gift_done": f"🎉 <b>GIFT YUBORILDI!</b>\n{DIV}\n{{gift}}\n⭐ <b>Narx:</b> {{n}} ⭐\n\n🎁 Telegram profilingizni tekshiring!",
-        "gift_failed": f"⚠️ <b>GIFTNI YUBORIB BO'LMADI</b>\n{DIV}\n{{gift}}\n\n💰 <b>{{n}} ⭐</b> balansingizga qaytarildi.",
-        "gift_ask_anon": f"🎁 <b>GIFT TANLANDI</b>\n{DIV}\n{{gift}}\n⭐ <b>Narx:</b> {{n}} ⭐\n\n🕶 Gift <b>anonim</b> yuborilsinmi?",
+        "sent_to_admin": "✅ <b>SO'ROV YUBORILDI!</b>\n" + DIV + "\n⭐ <b>Miqdor:</b> {n} ⭐\n⏳ <i>Admin tasdiqlashini kuting...</i>",
+        "gift_processing": "⏳ <b>GIFT YUBORILMOQDA...</b>\n" + DIV + "\n{gift}\n⭐ <b>Narx:</b> {n} ⭐",
+        "gift_done": "🎉 <b>GIFT YUBORILDI!</b>\n" + DIV + "\n{gift}\n⭐ <b>Narx:</b> {n} ⭐\n\n🎁 Telegram profilingizni tekshiring!",
+        "gift_failed": "⚠️ <b>GIFTNI YUBORIB BO'LMADI</b>\n" + DIV + "\n{gift}\n\n💰 <b>{n} ⭐</b> balansingizga qaytarildi.",
+        "gift_ask_anon": "🎁 <b>GIFT TANLANDI</b>\n" + DIV + "\n{gift}\n⭐ <b>Narx:</b> {n} ⭐\n\n🕶 Gift <b>anonim</b> yuborilsinmi?",
         "gift_anon_yes": "🕶 Anonim", "gift_anon_no": "👤 Ismim ko'rinsin",
-        "gift_ask_comment": f"💬 <b>GIFT OSTIGA IZOH</b>\n{DIV}\nMatn yuboring (maks. 120 belgi)\nyoki «Izohsiz» ni bosing 👇",
+        "gift_ask_comment": "💬 <b>GIFT OSTIGA IZOH</b>\n" + DIV + "\nMatn yuboring (maks. 120 belgi)\nyoki «Izohsiz» ni bosing 👇",
         "gift_no_comment": "➡️ Izohsiz",
         "approved": "✅ <b>So'rovingiz tasdiqlandi!</b>",
         "rejected": "❌ <b>So'rovingiz rad etildi.</b>",
-        "referral_reward": f"🎉 <b>YANGI REFERAL!</b>\n{DIV}\n➕ <b>+{{n}} ⭐</b> qo'shildi",
+        "referral_reward": "🎉 <b>YANGI REFERAL!</b>\n" + DIV + "\n➕ <b>+{n} ⭐</b> qo'shildi",
         "total": "Jami", "balance": "Sizda", "need": "Kerak",
-        "stars_added": f"🎁 <b>STARS QO'SHILDI!</b>\n{DIV}\n➕ <b>Miqdor:</b> +{{n}} ⭐\n📝 <b>Sabab:</b> <i>{{reason}}</i>\n\n💰 <b>Jami:</b> {{total}} ⭐",
-        "stars_removed": f"⚠️ <b>STARS AYIRILDI!</b>\n{DIV}\n➖ <b>Miqdor:</b> {{n}} ⭐\n📝 <b>Sabab:</b> <i>{{reason}}</i>\n\n💰 <b>Jami:</b> {{total}} ⭐",
-        "support_title": f"💬 <b>ADMIN BILAN ALOQA</b>\n{DIV}\nSavolingizni yozing — admin tez orada javob beradi.",
+        "stars_added": "🎁 <b>STARS QO'SHILDI!</b>\n" + DIV + "\n➕ <b>Miqdor:</b> +{n} ⭐\n📝 <b>Sabab:</b> <i>{reason}</i>\n\n💰 <b>Jami:</b> {total} ⭐",
+        "stars_removed": "⚠️ <b>STARS AYIRILDI!</b>\n" + DIV + "\n➖ <b>Miqdor:</b> {n} ⭐\n📝 <b>Sabab:</b> <i>{reason}</i>\n\n💰 <b>Jami:</b> {total} ⭐",
+        "support_title": "💬 <b>ADMIN BILAN ALOQA</b>\n" + DIV + "\nSavolingizni yozing — admin tez orada javob beradi.",
         "support_sent": "✅ <b>Savolingiz adminga yuborildi!</b>",
         "support_new_msg": "📩 <b>YANGI MUROJAAT!</b>\n\n👤 <b>User:</b> {name}\n🔗 <b>Username:</b> {username}\n🆔 <b>ID:</b> <code>{uid}</code>\n📅 <b>Vaqt:</b> {time}",
         "reply_sent": "✅ <b>Javob yuborildi!</b>",
-        "chat_active": f"💬 <b>SUHBAT FAOLL</b>\n{DIV}\nXabaringizni yozing:",
+        "chat_active": "💬 <b>SUHBAT FAOLL</b>\n" + DIV + "\nXabaringizni yozing:",
         "chat_closed_by_admin": "🔚 <b>Admin suhbatni tugatdi.</b>",
         "admin_reply": "📬 <b>ADMINDAN JAVOB:</b>",
         "user_msg": "📩 <b>FOYDALANUVCHIDAN XABAR:</b>",
-        "gift_stars_title": f"🎁 <b>STARS SOVG'A QILISH</b>\n{DIV}\n💰 <b>Sizda:</b> {{bal}} ⭐\n\nFoydalanuvchi <b>username</b> yoki <b>ID</b> sini kiriting:",
-        "gift_stars_amount": f"👤 <b>Qabul qiluvchi:</b> {{name}}\n{DIV}\nNechta stars sovg'a qilasiz?",
-        "gift_stars_confirm": f"🎁 <b>TASDIQLANG</b>\n{DIV}\n👤 <b>Kimga:</b> {{name}}\n⭐ <b>Miqdor:</b> {{n}} ⭐",
+        "gift_stars_title": "🎁 <b>STARS SOVG'A QILISH</b>\n" + DIV + "\n💰 <b>Sizda:</b> {bal} ⭐\n\nFoydalanuvchi <b>username</b> yoki <b>ID</b> sini kiriting:",
+        "gift_stars_amount": "👤 <b>Qabul qiluvchi:</b> {name}\n" + DIV + "\nNechta stars sovg'a qilasiz?",
+        "gift_stars_confirm": "🎁 <b>TASDIQLANG</b>\n" + DIV + "\n👤 <b>Kimga:</b> {name}\n⭐ <b>Miqdor:</b> {n} ⭐",
         "gift_stars_sent": "✅ <b>{n} ⭐ {name} ga yuborildi!</b>",
-        "gift_stars_received": f"🎁 <b>SIZGA STARS SOVG'A QILINDI!</b>\n{DIV}\n👤 <b>Kimdan:</b> {{name}}\n⭐ <b>Miqdor:</b> +{{n}} ⭐\n\n💰 <b>Jami:</b> {{total}} ⭐",
+        "gift_stars_received": "🎁 <b>SIZGA STARS SOVG'A QILINDI!</b>\n" + DIV + "\n👤 <b>Kimdan:</b> {name}\n⭐ <b>Miqdor:</b> +{n} ⭐\n\n💰 <b>Jami:</b> {total} ⭐",
         "gift_stars_not_found": "❌ Foydalanuvchi topilmadi.",
         "gift_stars_self": "❌ O'zingizga sovg'a qila olmaysiz.",
-        "review_title": f"⭐ <b>SHARH QOLDIRISH</b>\n{DIV}\nBot haqida fikringizni yozing:",
+        "review_title": "⭐ <b>SHARH QOLDIRISH</b>\n" + DIV + "\nBot haqida fikringizni yozing:",
         "review_sent": "✅ <b>Sharhingiz yuborildi!</b>",
         "review_approved": "✅ <b>Sharhingiz tasdiqlandi!</b>",
         "review_rejected": "❌ <b>Sharhingiz rad etildi.</b>",
         "level": "Daraja",
-        "stars_will_send": f"✅ <b>SO'ROVINGIZ TASDIQLANDI!</b>\n{DIV}\n⭐ <b>Miqdor:</b> {{n}} ⭐",
-        "level_up": f"🎉 <b>TABRIKLAYMIZ!</b>\n{DIV}\nSiz {{emoji}} <b>{{name}}</b> darajasiga chiqdingiz!\n\n⬆️ <b>Keyingi:</b> {{next_emoji}} <b>{{next_name}}</b>\n📊 <b>Kerak:</b> {{need}} ⭐",
+        "stars_will_send": "✅ <b>SO'ROVINGIZ TASDIQLANDI!</b>\n" + DIV + "\n⭐ <b>Miqdor:</b> {n} ⭐",
+        "level_up": "🎉 <b>TABRIKLAYMIZ!</b>\n" + DIV + "\nSiz {emoji} <b>{name}</b> darajasiga chiqdingiz!\n\n⬆️ <b>Keyingi:</b> {next_emoji} <b>{next_name}</b>\n📊 <b>Kerak:</b> {need} ⭐",
         "banner_caption": "🎨 <b>Sizning shaxsiy baneringiz</b>",
-        "ask_phone": f"📱 <b>TELEFON RAQAMNI TASDIQLANG</b>\n{DIV}\nFaqat 🇺🇿 <b>+998</b> raqamlari qabul qilinadi.\n\n👇 Quyidagi tugmani bosing:",
+        "ask_phone": "📱 <b>TELEFON RAQAMNI TASDIQLANG</b>\n" + DIV + "\nFaqat 🇺🇿 <b>+998</b> raqamlari qabul qilinadi.\n\n👇 Quyidagi tugmani bosing:",
         "share_phone": "📱 Raqamni yuborish",
         "phone_not_own": "❌ Faqat o'zingizning raqamingizni yuboring.",
         "phone_only_uz": "❌ Faqat O'zbekiston raqamlari.",
         "phone_used": "❌ Bu raqam boshqa akkauntga bog'langan.",
         "phone_use_button": "ℹ️ «📱 Raqamni yuborish» tugmasidan foydalaning.",
-        "donate_title": f"💝 <b>DONAT QILISH</b>\n{DIV}\nDonat — botni qo'llab-quvvatlash.\nSiz <b>Telegram Stars</b> yordamida stars yuborasiz.\n\n⭐ <b>Necha Stars yubormoqchisiz?</b>",
-        "donate_ok": f"💝 <b>RAHMAT!</b>\n{DIV}\nSiz <b>{{n}} ⭐</b> donat qildingiz!\n\n🏆 Donat reytingida ko'rinasiz!",
+        "donate_title": "💝 <b>DONAT QILISH</b>\n" + DIV + "\nDonat — botni qo'llab-quvvatlash.\nSiz <b>Telegram Stars</b> yordamida stars yuborasiz.\n\n⭐ <b>Necha Stars yubormoqchisiz?</b>",
+        "donate_ok": "💝 <b>RAHMAT!</b>\n" + DIV + "\nSiz <b>{n} ⭐</b> donat qildingiz!\n\n🏆 Donat reytingida ko'rinasiz!",
         "donate_invoice_title": "Botga donat",
         "donate_invoice_desc": "Botni qo'llab-quvvatlash uchun {n} Stars",
         "donate_invoice_btn": "⭐ {n} Stars to'lash",
-        "rating_choose": f"🏆 <b>REYTING</b>\n{DIV}\nQaysi reytingni ko'rmoqchisiz?",
+        "rating_choose": "🏆 <b>REYTING</b>\n" + DIV + "\nQaysi reytingni ko'rmoqchisiz?",
         "rating_stars": "⭐ Eng ko'p stars egalari",
         "rating_donate": "💝 Eng ko'p donat qilganlar",
         "rating_ref": "👥 Eng ko'p referal yig'ganlar",
         "bonus_menu": "Kunlik bonus", "contest_menu": "Konkurs",
         "promo_menu": "Promokod", "tasks_menu": "Vazifalar",
         "bonus_title": "KUNLIK BONUS",
-        "bonus_available": f"🔥 <b>KUNLIK BONUS</b>\n{DIV}\n🎁 <b>Bugungi mukofot:</b> {{reward}} ⭐\n🔥 <b>Seriya:</b> {{streak}} kun\n\n⏭ <b>Keyingi kun:</b> {{next}} ⭐",
-        "bonus_claimed": f"✅ <b>BUGUN OLINDI!</b>\n{DIV}\n🔥 <b>Seriya:</b> {{streak}} kun\n\n⏰ Ertaga: <b>{{next}} ⭐</b>",
+        "bonus_available": "🔥 <b>KUNLIK BONUS</b>\n" + DIV + "\n🎁 <b>Bugungi mukofot:</b> {reward} ⭐\n🔥 <b>Seriya:</b> {streak} kun\n\n⏭ <b>Keyingi kun:</b> {next} ⭐",
+        "bonus_claimed": "✅ <b>BUGUN OLINDI!</b>\n" + DIV + "\n🔥 <b>Seriya:</b> {streak} kun\n\n⏰ Ertaga: <b>{next} ⭐</b>",
         "bonus_btn": "🎁 {n} ⭐ olish",
-        "bonus_ok": f"🎉 <b>+{{n}} ⭐ BONUS OLINDI!</b>\n\n🔥 <b>Seriya:</b> {{streak}} kun",
+        "bonus_ok": "🎉 <b>+{n} ⭐ BONUS OLINDI!</b>\n\n🔥 <b>Seriya:</b> {streak} kun",
         "bonus_already": "⏰ Bugun allaqachon olgansiz. Ertaga qaytib keling!",
-        "promo_title": f"🎟 <b>PROMOKOD</b>\n{DIV}\nKodni kiriting va stars oling:",
+        "promo_title": "🎟 <b>PROMOKOD</b>\n" + DIV + "\nKodni kiriting va stars oling:",
         "promo_ok": "🎉 <b>+{n} ⭐</b> promokod orqali qo'shildi!",
         "promo_not_found": "❌ Promokod topilmadi.",
         "promo_used": "❌ Siz bu kodni ishlatgansiz.",
         "promo_empty": "❌ Promokod tugagan.",
         "tasks_title": "VAZIFALAR", "contest_title": "FAOL KONKURS",
-        "contest_none": f"🏆 <b>FAOL KONKURS YO'Q</b>\n{DIV}\nTez orada yangi konkurs boshlanadi! 🔥",
+        "contest_none": "🏆 <b>FAOL KONKURS YO'Q</b>\n" + DIV + "\nTez orada yangi konkurs boshlanadi! 🔥",
         "hist_title": "📜 SO'ROVLARIM",
         "hist_empty": "<i>Hozircha so'rovlar yo'q</i>",
         "st_pending": "Kutilmoqda", "st_processing": "Jarayonda",
         "st_approved": "Bajarildi", "st_rejected": "Rad etildi",
         "st_failed": "Xato (qaytarildi)",
         "advertise": "📢 Reklama xizmati",
-        "advertise_title": f"📢 <b>REKLAMA XIZMATLARI</b>\n{DIV}\nKanal/guruhingizni reklama qiling!\n\n👇 Tarifni tanlang:",
+        "advertise_title": "📢 <b>REKLAMA XIZMATLARI</b>\n" + DIV + "\nKanal/guruhingizni reklama qiling!\n\n👇 Tarifni tanlang:",
         "advertise_buy": "💳 Sotib olish",
         "advertise_sent": "✅ <b>So'rov yuborildi!</b>\n\nAdmin tez orada siz bilan bog'lanadi.",
-        "advertise_none": f"📢 <b>REKLAMA TARIFLARI YO'Q</b>\n{DIV}\nHozircha xizmat mavjud emas.",
+        "advertise_none": "📢 <b>REKLAMA TARIFLARI YO'Q</b>\n" + DIV + "\nHozircha xizmat mavjud emas.",
         "more": "⚙️ Ko'proq",
     },
     "ru": {
         "flag": "🇷🇺", "name": "Русский",
-        "choose_lang": f"🌐 <b>ВЫБЕРИТЕ ЯЗЫК</b>\n{DIV}\nПожалуйста, выберите удобный язык 👇",
+        "choose_lang": "🌐 <b>ВЫБЕРИТЕ ЯЗЫК</b>\n" + DIV + "\nПожалуйста, выберите удобный язык 👇",
         "lang_set": "✅ <b>Язык успешно изменён!</b>",
         "welcome": "✨ <b>Добро пожаловать, {name}!</b>\n" + DIV + "\n🚀 <b>StarRush</b> — платформа для сбора Stars\n\n👥  Приглашайте друзей\n🎁  Копите Stars и получайте Gift\n🔥  Ежедневный бонус и задания\n🏆  Станьте первым в рейтинге\n" + DIV + "\nВыберите раздел 👇",
-        "menu_title": f"🏠 <b>ГЛАВНОЕ МЕНЮ</b>\n{DIV}\n👇 Выберите раздел:",
+        "menu_title": "🏠 <b>ГЛАВНОЕ МЕНЮ</b>\n" + DIV + "\n👇 Выберите раздел:",
         "profile": "👤 Профиль", "stats": "📊 Статистика", "banner": "🎨 Баннер",
         "webapp": "🚀 Mini App", "ref_link": "🔗 Реф. ссылка", "rating": "🏆 Рейтинг",
         "withdraw": "💰 Вывод", "donate": "💝 Донат",
@@ -287,94 +289,94 @@ LANGS = {
         "share": "📤 Поделиться", "back": "⬅️ Назад", "menu": "🏠 Главное меню",
         "cancel": "❌ Отмена", "close_chat": "🔚 Завершить чат",
         "more_btn": "⚙️ Ещё",
-        "more_title": f"⚙️ <b>ЕЩЁ</b>\n{DIV}\nДополнительные разделы 👇",
+        "more_title": "⚙️ <b>ЕЩЁ</b>\n" + DIV + "\nДополнительные разделы 👇",
         "history": "📜 Мои заявки",
         "remind_on": "🔔 Напоминания: вкл", "remind_off": "🔕 Напоминания: выкл",
-        "banned": f"🚫 <b>ВЫ ЗАБАНЕНЫ!</b>\n{DIV}\nСвяжитесь с админом.",
-        "subscribe": f"📢 <b>ПОДПИШИТЕСЬ НА КАНАЛЫ</b>\n{DIV}\nДля использования бота подпишитесь на каналы.\n\nПосле подписки «✅ Проверить» 👇",
+        "banned": "🚫 <b>ВЫ ЗАБАНЕНЫ!</b>\n" + DIV + "\nСвяжитесь с админом.",
+        "subscribe": "📢 <b>ПОДПИШИТЕСЬ НА КАНАЛЫ</b>\n" + DIV + "\nДля использования бота подпишитесь на каналы.\n\nПосле подписки «✅ Проверить» 👇",
         "check": "✅ Проверить",
-        "bot_check": f"🤖 <b>ПОДТВЕРДИТЕ, ЧТО ВЫ НЕ БОТ</b>\n{DIV}\n❓ <b>Вопрос:</b> {{q}}\n\n👇 Выберите ответ:",
+        "bot_check": "🤖 <b>ПОДТВЕРДИТЕ, ЧТО ВЫ НЕ БОТ</b>\n" + DIV + "\n❓ <b>Вопрос:</b> {q}\n\n👇 Выберите ответ:",
         "wrong_answer": "❌ Неправильный ответ!", "correct": "✅ Подтверждено!",
-        "wrong_ans_retry": f"❌ <b>НЕПРАВИЛЬНЫЙ ОТВЕТ!</b>\n{DIV}\nПопробуйте: /start",
+        "wrong_ans_retry": "❌ <b>НЕПРАВИЛЬНЫЙ ОТВЕТ!</b>\n" + DIV + "\nПопробуйте: /start",
         "start_first": "ℹ️ Пожалуйста, /start",
         "not_enough": "❌ <b>НЕДОСТАТОЧНО!</b>",
         "min_withdraw": "❌ Минимум: <b>{n} ⭐</b>", "max_withdraw": "❌ Максимум: <b>{n} ⭐</b>",
         "enter_number": "❌ Введите число.", "choose_reward": "🎁 <b>Выберите награду:</b>",
         "stars_withdraw": "⭐ Получить Stars", "gift_withdraw": "🎁 Получить Gift",
-        "sent_to_admin": f"✅ <b>ЗАПРОС ОТПРАВЛЕН!</b>\n{DIV}\n⭐ <b>Сумма:</b> {{n}} ⭐\n⏳ <i>Ожидайте...</i>",
-        "gift_processing": f"⏳ <b>ОТПРАВЛЯЕМ GIFT...</b>\n{DIV}\n{{gift}}\n⭐ <b>Цена:</b> {{n}} ⭐",
-        "gift_done": f"🎉 <b>GIFT ОТПРАВЛЕН!</b>\n{DIV}\n{{gift}}\n⭐ <b>Цена:</b> {{n}} ⭐",
-        "gift_failed": f"⚠️ <b>НЕ УДАЛОСЬ ОТПРАВИТЬ</b>\n{DIV}\n{{gift}}\n\n💰 <b>{{n}} ⭐</b> возвращены.",
-        "gift_ask_anon": f"🎁 <b>GIFT ВЫБРАН</b>\n{DIV}\n{{gift}}\n⭐ <b>Цена:</b> {{n}} ⭐\n\n🕶 Анонимно?",
+        "sent_to_admin": "✅ <b>ЗАПРОС ОТПРАВЛЕН!</b>\n" + DIV + "\n⭐ <b>Сумма:</b> {n} ⭐\n⏳ <i>Ожидайте...</i>",
+        "gift_processing": "⏳ <b>ОТПРАВЛЯЕМ GIFT...</b>\n" + DIV + "\n{gift}\n⭐ <b>Цена:</b> {n} ⭐",
+        "gift_done": "🎉 <b>GIFT ОТПРАВЛЕН!</b>\n" + DIV + "\n{gift}\n⭐ <b>Цена:</b> {n} ⭐",
+        "gift_failed": "⚠️ <b>НЕ УДАЛОСЬ ОТПРАВИТЬ</b>\n" + DIV + "\n{gift}\n\n💰 <b>{n} ⭐</b> возвращены.",
+        "gift_ask_anon": "🎁 <b>GIFT ВЫБРАН</b>\n" + DIV + "\n{gift}\n⭐ <b>Цена:</b> {n} ⭐\n\n🕶 Анонимно?",
         "gift_anon_yes": "🕶 Анонимно", "gift_anon_no": "👤 Показать имя",
-        "gift_ask_comment": f"💬 <b>КОММЕНТАРИЙ</b>\n{DIV}\nТекст (макс. 120) или «Без комментария» 👇",
+        "gift_ask_comment": "💬 <b>КОММЕНТАРИЙ</b>\n" + DIV + "\nТекст (макс. 120) или «Без комментария» 👇",
         "gift_no_comment": "➡️ Без комментария",
         "approved": "✅ <b>Запрос одобрен!</b>", "rejected": "❌ <b>Запрос отклонён.</b>",
-        "referral_reward": f"🎉 <b>НОВЫЙ РЕФЕРАЛ!</b>\n{DIV}\n➕ <b>+{{n}} ⭐</b>",
+        "referral_reward": "🎉 <b>НОВЫЙ РЕФЕРАЛ!</b>\n" + DIV + "\n➕ <b>+{n} ⭐</b>",
         "total": "Всего", "balance": "У вас", "need": "Нужно",
-        "stars_added": f"🎁 <b>STARS ДОБАВЛЕНЫ!</b>\n{DIV}\n➕ <b>{{n}} ⭐</b>\n📝 <i>{{reason}}</i>\n💰 <b>{{total}} ⭐</b>",
-        "stars_removed": f"⚠️ <b>STARS СПИСАНЫ!</b>\n{DIV}\n➖ <b>{{n}} ⭐</b>\n📝 <i>{{reason}}</i>\n💰 <b>{{total}} ⭐</b>",
-        "support_title": f"💬 <b>СВЯЗЬ С АДМИНОМ</b>\n{DIV}\nНапишите вопрос — админ ответит.",
+        "stars_added": "🎁 <b>STARS ДОБАВЛЕНЫ!</b>\n" + DIV + "\n➕ <b>{n} ⭐</b>\n📝 <i>{reason}</i>\n💰 <b>{total} ⭐</b>",
+        "stars_removed": "⚠️ <b>STARS СПИСАНЫ!</b>\n" + DIV + "\n➖ <b>{n} ⭐</b>\n📝 <i>{reason}</i>\n💰 <b>{total} ⭐</b>",
+        "support_title": "💬 <b>СВЯЗЬ С АДМИНОМ</b>\n" + DIV + "\nНапишите вопрос — админ ответит.",
         "support_sent": "✅ <b>Вопрос отправлен!</b>",
         "support_new_msg": "📩 <b>НОВОЕ ОБРАЩЕНИЕ!</b>\n\n👤 {name}\n🔗 {username}\n🆔 <code>{uid}</code>\n📅 {time}",
         "reply_sent": "✅ <b>Ответ отправлен!</b>",
-        "chat_active": f"💬 <b>ЧАТ АКТИВЕН</b>\n{DIV}\nНапишите сообщение:",
+        "chat_active": "💬 <b>ЧАТ АКТИВЕН</b>\n" + DIV + "\nНапишите сообщение:",
         "chat_closed_by_admin": "🔚 <b>Админ завершил чат.</b>",
         "admin_reply": "📬 <b>ОТВЕТ ОТ АДМИНА:</b>",
         "user_msg": "📩 <b>ОТ ПОЛЬЗОВАТЕЛЯ:</b>",
-        "gift_stars_title": f"🎁 <b>ПОДАРИТЬ STARS</b>\n{DIV}\n💰 <b>У вас:</b> {{bal}} ⭐\n\nВведите username или ID:",
-        "gift_stars_amount": f"👤 <b>Получатель:</b> {{name}}\n{DIV}\nСколько stars?",
-        "gift_stars_confirm": f"🎁 <b>ПОДТВЕРДИТЕ</b>\n{DIV}\n👤 {{name}}\n⭐ {{n}} ⭐",
+        "gift_stars_title": "🎁 <b>ПОДАРИТЬ STARS</b>\n" + DIV + "\n💰 <b>У вас:</b> {bal} ⭐\n\nВведите username или ID:",
+        "gift_stars_amount": "👤 <b>Получатель:</b> {name}\n" + DIV + "\nСколько stars?",
+        "gift_stars_confirm": "🎁 <b>ПОДТВЕРДИТЕ</b>\n" + DIV + "\n👤 {name}\n⭐ {n} ⭐",
         "gift_stars_sent": "✅ <b>{n} ⭐ → {name}!</b>",
-        "gift_stars_received": f"🎁 <b>ВАМ ПОДАРИЛИ STARS!</b>\n{DIV}\n👤 {{name}}\n⭐ +{{n}} ⭐\n💰 {{total}} ⭐",
+        "gift_stars_received": "🎁 <b>ВАМ ПОДАРИЛИ STARS!</b>\n" + DIV + "\n👤 {name}\n⭐ +{n} ⭐\n💰 {total} ⭐",
         "gift_stars_not_found": "❌ Пользователь не найден.",
         "gift_stars_self": "❌ Нельзя себе.",
-        "review_title": f"⭐ <b>ОСТАВИТЬ ОТЗЫВ</b>\n{DIV}\nНапишите отзыв о боте:",
+        "review_title": "⭐ <b>ОСТАВИТЬ ОТЗЫВ</b>\n" + DIV + "\nНапишите отзыв о боте:",
         "review_sent": "✅ <b>Отзыв отправлен!</b>",
         "review_approved": "✅ <b>Отзыв одобрен!</b>",
         "review_rejected": "❌ <b>Отзыв отклонён.</b>",
         "level": "Уровень",
-        "stars_will_send": f"✅ <b>ОДОБРЕНО!</b>\n{DIV}\n⭐ <b>{{n}} ⭐</b>",
-        "level_up": f"🎉 <b>ПОЗДРАВЛЯЕМ!</b>\n{DIV}\nВы достигли {{emoji}} <b>{{name}}</b>!\n⬆️ {{next_emoji}} <b>{{next_name}}</b> — {{need}} ⭐",
+        "stars_will_send": "✅ <b>ОДОБРЕНО!</b>\n" + DIV + "\n⭐ <b>{n} ⭐</b>",
+        "level_up": "🎉 <b>ПОЗДРАВЛЯЕМ!</b>\n" + DIV + "\nВы достигли {emoji} <b>{name}</b>!\n⬆️ {next_emoji} <b>{next_name}</b> — {need} ⭐",
         "banner_caption": "🎨 <b>Ваш баннер</b>",
-        "ask_phone": f"📱 <b>ПОДТВЕРДИТЕ НОМЕР</b>\n{DIV}\nТолько 🇺🇿 <b>+998</b>.\n👇 Кнопка ниже:",
+        "ask_phone": "📱 <b>ПОДТВЕРДИТЕ НОМЕР</b>\n" + DIV + "\nТолько 🇺🇿 <b>+998</b>.\n👇 Кнопка ниже:",
         "share_phone": "📱 Отправить номер",
         "phone_not_own": "❌ Только свой номер.",
         "phone_only_uz": "❌ Только Узбекистан.",
         "phone_used": "❌ Номер привязан.",
         "phone_use_button": "ℹ️ Используйте кнопку.",
-        "donate_title": f"💝 <b>ДОНАТ</b>\n{DIV}\nПоддержка бота через <b>Telegram Stars</b>.\n\n⭐ <b>Сколько Stars?</b>",
-        "donate_ok": f"💝 <b>СПАСИБО!</b>\n{DIV}\nВы отправили <b>{{n}} ⭐</b>!",
+        "donate_title": "💝 <b>ДОНАТ</b>\n" + DIV + "\nПоддержка бота через <b>Telegram Stars</b>.\n\n⭐ <b>Сколько Stars?</b>",
+        "donate_ok": "💝 <b>СПАСИБО!</b>\n" + DIV + "\nВы отправили <b>{n} ⭐</b>!",
         "donate_invoice_title": "Донат", "donate_invoice_desc": "Донат {n} Stars", "donate_invoice_btn": "⭐ {n} Stars",
-        "rating_choose": f"🏆 <b>РЕЙТИНГ</b>\n{DIV}\nКакой?",
+        "rating_choose": "🏆 <b>РЕЙТИНГ</b>\n" + DIV + "\nКакой?",
         "rating_stars": "⭐ Больше Stars", "rating_donate": "💝 Больше донатов", "rating_ref": "👥 Больше рефералов",
         "bonus_menu": "Ежедневный бонус", "contest_menu": "Конкурс", "promo_menu": "Промокод", "tasks_menu": "Задания",
         "bonus_title": "БОНУС",
-        "bonus_available": f"🔥 <b>БОНУС</b>\n{DIV}\n🎁 {{reward}} ⭐\n🔥 {{streak}} дн.\n⏭ {{next}} ⭐",
-        "bonus_claimed": f"✅ <b>ПОЛУЧЕН!</b>\n{DIV}\n🔥 {{streak}} дн.\n⏰ Завтра: {{next}} ⭐",
-        "bonus_btn": "🎁 {n} ⭐", "bonus_ok": f"🎉 <b>+{{n}} ⭐!</b>\n🔥 {{streak}} дн.",
+        "bonus_available": "🔥 <b>БОНУС</b>\n" + DIV + "\n🎁 {reward} ⭐\n🔥 {streak} дн.\n⏭ {next} ⭐",
+        "bonus_claimed": "✅ <b>ПОЛУЧЕН!</b>\n" + DIV + "\n🔥 {streak} дн.\n⏰ Завтра: {next} ⭐",
+        "bonus_btn": "🎁 {n} ⭐", "bonus_ok": "🎉 <b>+{n} ⭐!</b>\n🔥 {streak} дн.",
         "bonus_already": "⏰ Уже получен. Завтра!",
-        "promo_title": f"🎟 <b>ПРОМОКОД</b>\n{DIV}\nВведите код:",
+        "promo_title": "🎟 <b>ПРОМОКОД</b>\n" + DIV + "\nВведите код:",
         "promo_ok": "🎉 <b>+{n} ⭐</b>!",
         "promo_not_found": "❌ Не найден.", "promo_used": "❌ Уже использован.", "promo_empty": "❌ Закончился.",
         "tasks_title": "ЗАДАНИЯ", "contest_title": "КОНКУРС",
-        "contest_none": f"🏆 <b>НЕТ КОНКУРСА</b>\n{DIV}\nСкоро! 🔥",
+        "contest_none": "🏆 <b>НЕТ КОНКУРСА</b>\n" + DIV + "\nСкоро! 🔥",
         "hist_title": "📜 МОИ ЗАЯВКИ", "hist_empty": "<i>Пусто</i>",
         "st_pending": "Ожидает", "st_processing": "В процессе", "st_approved": "Выполнено",
         "st_rejected": "Отклонено", "st_failed": "Ошибка",
         "advertise": "📢 Реклама",
-        "advertise_title": f"📢 <b>РЕКЛАМА</b>\n{DIV}\nРекламируйте канал/группу!\n👇 Выберите тариф:",
+        "advertise_title": "📢 <b>РЕКЛАМА</b>\n" + DIV + "\nРекламируйте канал/группу!\n👇 Выберите тариф:",
         "advertise_buy": "💳 Купить",
         "advertise_sent": "✅ <b>Заявка отправлена!</b>",
-        "advertise_none": f"📢 <b>ТАРИФОВ НЕТ</b>\n{DIV}\nПока недоступно.",
+        "advertise_none": "📢 <b>ТАРИФОВ НЕТ</b>\n" + DIV + "\nПока недоступно.",
         "more": "⚙️ Ещё",
     },
     "en": {
         "flag": "🇬🇧", "name": "English",
-        "choose_lang": f"🌐 <b>CHOOSE LANGUAGE</b>\n{DIV}\nPlease choose 👇",
+        "choose_lang": "🌐 <b>CHOOSE LANGUAGE</b>\n" + DIV + "\nPlease choose 👇",
         "lang_set": "✅ <b>Language changed!</b>",
         "welcome": "✨ <b>Welcome, {name}!</b>\n" + DIV + "\n🚀 <b>StarRush</b> — Stars collecting platform\n\n👥  Invite friends\n🎁  Collect Stars and get Gifts\n🔥  Daily bonus and tasks\n🏆  Be #1 on the leaderboard\n" + DIV + "\nChoose a section 👇",
-        "menu_title": f"🏠 <b>MAIN MENU</b>\n{DIV}\n👇 Choose a section:",
+        "menu_title": "🏠 <b>MAIN MENU</b>\n" + DIV + "\n👇 Choose a section:",
         "profile": "👤 Profile", "stats": "📊 Statistics", "banner": "🎨 Banner",
         "webapp": "🚀 Mini App", "ref_link": "🔗 Referral link", "rating": "🏆 Rating",
         "withdraw": "💰 Withdraw", "donate": "💝 Donate",
@@ -382,83 +384,83 @@ LANGS = {
         "review": "⭐ Leave review", "admin": "🛠 Admin Panel",
         "share": "📤 Share", "back": "⬅️ Back", "menu": "🏠 Main menu",
         "cancel": "❌ Cancel", "close_chat": "🔚 Close chat",
-        "more_btn": "⚙️ More", "more_title": f"⚙️ <b>MORE</b>\n{DIV}\nExtra sections 👇",
+        "more_btn": "⚙️ More", "more_title": "⚙️ <b>MORE</b>\n" + DIV + "\nExtra sections 👇",
         "history": "📜 My requests",
         "remind_on": "🔔 Reminders: on", "remind_off": "🔕 Reminders: off",
-        "banned": f"🚫 <b>YOU ARE BANNED!</b>\n{DIV}\nContact admin.",
-        "subscribe": f"📢 <b>SUBSCRIBE TO CHANNELS</b>\n{DIV}\nSubscribe to use the bot.\n\nPress «✅ Check» 👇",
+        "banned": "🚫 <b>YOU ARE BANNED!</b>\n" + DIV + "\nContact admin.",
+        "subscribe": "📢 <b>SUBSCRIBE TO CHANNELS</b>\n" + DIV + "\nSubscribe to use the bot.\n\nPress «✅ Check» 👇",
         "check": "✅ Check",
-        "bot_check": f"🤖 <b>CONFIRM YOU'RE NOT A BOT</b>\n{DIV}\n❓ {{q}}\n👇 Choose:",
+        "bot_check": "🤖 <b>CONFIRM YOU'RE NOT A BOT</b>\n" + DIV + "\n❓ {q}\n👇 Choose:",
         "wrong_answer": "❌ Wrong!", "correct": "✅ Confirmed!",
-        "wrong_ans_retry": f"❌ <b>WRONG!</b>\n{DIV}\nTry: /start",
+        "wrong_ans_retry": "❌ <b>WRONG!</b>\n" + DIV + "\nTry: /start",
         "start_first": "ℹ️ Please send /start",
         "not_enough": "❌ <b>NOT ENOUGH!</b>",
         "min_withdraw": "❌ Min: <b>{n} ⭐</b>", "max_withdraw": "❌ Max: <b>{n} ⭐</b>",
         "enter_number": "❌ Numbers only.", "choose_reward": "🎁 <b>Choose reward:</b>",
         "stars_withdraw": "⭐ Get Stars", "gift_withdraw": "🎁 Get Gift",
-        "sent_to_admin": f"✅ <b>SENT!</b>\n{DIV}\n⭐ <b>{{n}} ⭐</b>\n⏳ <i>Wait...</i>",
-        "gift_processing": f"⏳ <b>SENDING GIFT...</b>\n{DIV}\n{{gift}}\n⭐ {{n}} ⭐",
-        "gift_done": f"🎉 <b>GIFT SENT!</b>\n{DIV}\n{{gift}}\n⭐ {{n}} ⭐",
-        "gift_failed": f"⚠️ <b>FAILED</b>\n{DIV}\n{{gift}}\n💰 <b>{{n}} ⭐</b> refunded.",
-        "gift_ask_anon": f"🎁 <b>GIFT SELECTED</b>\n{DIV}\n{{gift}}\n⭐ {{n}} ⭐\n🕶 Anonymous?",
+        "sent_to_admin": "✅ <b>SENT!</b>\n" + DIV + "\n⭐ <b>{n} ⭐</b>\n⏳ <i>Wait...</i>",
+        "gift_processing": "⏳ <b>SENDING GIFT...</b>\n" + DIV + "\n{gift}\n⭐ {n} ⭐",
+        "gift_done": "🎉 <b>GIFT SENT!</b>\n" + DIV + "\n{gift}\n⭐ {n} ⭐",
+        "gift_failed": "⚠️ <b>FAILED</b>\n" + DIV + "\n{gift}\n💰 <b>{n} ⭐</b> refunded.",
+        "gift_ask_anon": "🎁 <b>GIFT SELECTED</b>\n" + DIV + "\n{gift}\n⭐ {n} ⭐\n🕶 Anonymous?",
         "gift_anon_yes": "🕶 Anonymous", "gift_anon_no": "👤 Show name",
-        "gift_ask_comment": f"💬 <b>COMMENT</b>\n{DIV}\nText (max 120) or «No comment» 👇",
+        "gift_ask_comment": "💬 <b>COMMENT</b>\n" + DIV + "\nText (max 120) or «No comment» 👇",
         "gift_no_comment": "➡️ No comment",
         "approved": "✅ <b>Approved!</b>", "rejected": "❌ <b>Rejected.</b>",
-        "referral_reward": f"🎉 <b>NEW REFERRAL!</b>\n{DIV}\n➕ <b>+{{n}} ⭐</b>",
+        "referral_reward": "🎉 <b>NEW REFERRAL!</b>\n" + DIV + "\n➕ <b>+{n} ⭐</b>",
         "total": "Total", "balance": "You have", "need": "Need",
-        "stars_added": f"🎁 <b>STARS ADDED!</b>\n{DIV}\n➕ {{n}} ⭐\n📝 <i>{{reason}}</i>\n💰 {{total}} ⭐",
-        "stars_removed": f"⚠️ <b>STARS REMOVED!</b>\n{DIV}\n➖ {{n}} ⭐\n📝 <i>{{reason}}</i>\n💰 {{total}} ⭐",
-        "support_title": f"💬 <b>CONTACT ADMIN</b>\n{DIV}\nWrite your question:",
+        "stars_added": "🎁 <b>STARS ADDED!</b>\n" + DIV + "\n➕ {n} ⭐\n📝 <i>{reason}</i>\n💰 {total} ⭐",
+        "stars_removed": "⚠️ <b>STARS REMOVED!</b>\n" + DIV + "\n➖ {n} ⭐\n📝 <i>{reason}</i>\n💰 {total} ⭐",
+        "support_title": "💬 <b>CONTACT ADMIN</b>\n" + DIV + "\nWrite your question:",
         "support_sent": "✅ <b>Sent!</b>",
         "support_new_msg": "📩 <b>NEW!</b>\n\n👤 {name}\n🔗 {username}\n🆔 <code>{uid}</code>\n📅 {time}",
         "reply_sent": "✅ <b>Reply sent!</b>",
-        "chat_active": f"💬 <b>CHAT ACTIVE</b>\n{DIV}\nSend your message:",
+        "chat_active": "💬 <b>CHAT ACTIVE</b>\n" + DIV + "\nSend your message:",
         "chat_closed_by_admin": "🔚 <b>Admin closed chat.</b>",
         "admin_reply": "📬 <b>REPLY:</b>", "user_msg": "📩 <b>FROM USER:</b>",
-        "gift_stars_title": f"🎁 <b>GIFT STARS</b>\n{DIV}\n💰 <b>You:</b> {{bal}} ⭐\n\nEnter username or ID:",
-        "gift_stars_amount": f"👤 {{name}}\n{DIV}\nHow many stars?",
-        "gift_stars_confirm": f"🎁 <b>CONFIRM</b>\n{DIV}\n👤 {{name}}\n⭐ {{n}} ⭐",
+        "gift_stars_title": "🎁 <b>GIFT STARS</b>\n" + DIV + "\n💰 <b>You:</b> {bal} ⭐\n\nEnter username or ID:",
+        "gift_stars_amount": "👤 {name}\n" + DIV + "\nHow many stars?",
+        "gift_stars_confirm": "🎁 <b>CONFIRM</b>\n" + DIV + "\n👤 {name}\n⭐ {n} ⭐",
         "gift_stars_sent": "✅ <b>{n} ⭐ → {name}!</b>",
-        "gift_stars_received": f"🎁 <b>YOU GOT STARS!</b>\n{DIV}\n👤 {{name}}\n⭐ +{{n}} ⭐\n💰 {{total}} ⭐",
+        "gift_stars_received": "🎁 <b>YOU GOT STARS!</b>\n" + DIV + "\n👤 {name}\n⭐ +{n} ⭐\n💰 {total} ⭐",
         "gift_stars_not_found": "❌ Not found.", "gift_stars_self": "❌ Can't gift yourself.",
-        "review_title": f"⭐ <b>LEAVE REVIEW</b>\n{DIV}\nWrite:",
+        "review_title": "⭐ <b>LEAVE REVIEW</b>\n" + DIV + "\nWrite:",
         "review_sent": "✅ <b>Sent!</b>",
         "review_approved": "✅ <b>Approved!</b>", "review_rejected": "❌ <b>Rejected.</b>",
         "level": "Level",
-        "stars_will_send": f"✅ <b>APPROVED!</b>\n{DIV}\n⭐ {{n}} ⭐",
-        "level_up": f"🎉 <b>CONGRATS!</b>\n{DIV}\n{{emoji}} <b>{{name}}</b>!\n⬆️ {{next_emoji}} <b>{{next_name}}</b> — {{need}} ⭐",
+        "stars_will_send": "✅ <b>APPROVED!</b>\n" + DIV + "\n⭐ {n} ⭐",
+        "level_up": "🎉 <b>CONGRATS!</b>\n" + DIV + "\n{emoji} <b>{name}</b>!\n⬆️ {next_emoji} <b>{next_name}</b> — {need} ⭐",
         "banner_caption": "🎨 <b>Your banner</b>",
-        "ask_phone": f"📱 <b>CONFIRM PHONE</b>\n{DIV}\nOnly 🇺🇿 <b>+998</b>.\n👇",
+        "ask_phone": "📱 <b>CONFIRM PHONE</b>\n" + DIV + "\nOnly 🇺🇿 <b>+998</b>.\n👇",
         "share_phone": "📱 Share number",
         "phone_not_own": "❌ Only your own.",
         "phone_only_uz": "❌ Uzbekistan only.",
         "phone_used": "❌ Number linked.",
         "phone_use_button": "ℹ️ Use the button.",
-        "donate_title": f"💝 <b>DONATE</b>\n{DIV}\nSupport via <b>Telegram Stars</b>.\n⭐ <b>How many?</b>",
-        "donate_ok": f"💝 <b>THANKS!</b>\n{DIV}\n{{n}} ⭐!",
+        "donate_title": "💝 <b>DONATE</b>\n" + DIV + "\nSupport via <b>Telegram Stars</b>.\n⭐ <b>How many?</b>",
+        "donate_ok": "💝 <b>THANKS!</b>\n" + DIV + "\n{n} ⭐!",
         "donate_invoice_title": "Donate", "donate_invoice_desc": "{n} Stars", "donate_invoice_btn": "⭐ {n} Stars",
-        "rating_choose": f"🏆 <b>RATING</b>\n{DIV}\nWhich?",
+        "rating_choose": "🏆 <b>RATING</b>\n" + DIV + "\nWhich?",
         "rating_stars": "⭐ Most Stars", "rating_donate": "💝 Most Donations", "rating_ref": "👥 Most Referrals",
         "bonus_menu": "Daily bonus", "contest_menu": "Contest", "promo_menu": "Promocode", "tasks_menu": "Tasks",
         "bonus_title": "BONUS",
-        "bonus_available": f"🔥 <b>BONUS</b>\n{DIV}\n🎁 {{reward}} ⭐\n🔥 {{streak}} days\n⏭ {{next}} ⭐",
-        "bonus_claimed": f"✅ <b>CLAIMED!</b>\n{DIV}\n🔥 {{streak}} days\n⏰ Tomorrow: {{next}} ⭐",
-        "bonus_btn": "🎁 {n} ⭐", "bonus_ok": f"🎉 <b>+{{n}} ⭐!</b>\n🔥 {{streak}} days",
+        "bonus_available": "🔥 <b>BONUS</b>\n" + DIV + "\n🎁 {reward} ⭐\n🔥 {streak} days\n⏭ {next} ⭐",
+        "bonus_claimed": "✅ <b>CLAIMED!</b>\n" + DIV + "\n🔥 {streak} days\n⏰ Tomorrow: {next} ⭐",
+        "bonus_btn": "🎁 {n} ⭐", "bonus_ok": "🎉 <b>+{n} ⭐!</b>\n🔥 {streak} days",
         "bonus_already": "⏰ Already claimed today!",
-        "promo_title": f"🎟 <b>PROMOCODE</b>\n{DIV}\nEnter code:",
+        "promo_title": "🎟 <b>PROMOCODE</b>\n" + DIV + "\nEnter code:",
         "promo_ok": "🎉 <b>+{n} ⭐</b>!",
         "promo_not_found": "❌ Not found.", "promo_used": "❌ Used.", "promo_empty": "❌ Expired.",
         "tasks_title": "TASKS", "contest_title": "CONTEST",
-        "contest_none": f"🏆 <b>NO CONTEST</b>\n{DIV}\nSoon! 🔥",
+        "contest_none": "🏆 <b>NO CONTEST</b>\n" + DIV + "\nSoon! 🔥",
         "hist_title": "📜 MY REQUESTS", "hist_empty": "<i>Empty</i>",
         "st_pending": "Pending", "st_processing": "Processing", "st_approved": "Done",
         "st_rejected": "Rejected", "st_failed": "Failed",
         "advertise": "📢 Advertising",
-        "advertise_title": f"📢 <b>ADVERTISING</b>\n{DIV}\nAdvertise your channel!\n👇 Choose:",
+        "advertise_title": "📢 <b>ADVERTISING</b>\n" + DIV + "\nAdvertise your channel!\n👇 Choose:",
         "advertise_buy": "💳 Buy",
         "advertise_sent": "✅ <b>Sent!</b>",
-        "advertise_none": f"📢 <b>NO TARIFFS</b>\n{DIV}\nComing soon.",
+        "advertise_none": "📢 <b>NO TARIFFS</b>\n" + DIV + "\nComing soon.",
         "more": "⚙️ More",
     },
 }
@@ -471,6 +473,7 @@ def T(lang, key, **kwargs):
         return text.format(**kwargs)
     except Exception:
         return text
+
 
 # ═══════════════════════════════════════════════════════════
 # DB
@@ -664,6 +667,7 @@ def init_db():
     c.close()
     conn.close()
     logger.info("PostgreSQL DB tayyor")
+
 
 # ═══════════════════════════════════════════════════════════
 # YORDAMCHI
@@ -1025,6 +1029,7 @@ def pe(key, fallback):
         return f'<tg-emoji emoji-id="{eid}">{fallback}</tg-emoji>'
     return fallback
 
+
 # ═══════════════════════════════════════════════════════════
 # BOT
 # ═══════════════════════════════════════════════════════════
@@ -1096,6 +1101,7 @@ class AS(StatesGroup):
     pe_key = State()
     pe_id = State()
     pe_fallback = State()
+
 
 # ═══════════════════════════════════════════════════════════
 # KLAVIATURALAR
@@ -1177,6 +1183,7 @@ def back_to_menu_kb(uid):
     b.adjust(1)
     return b.as_markup()
 
+
 # ═══════════════════════════════════════════════════════════
 # OBUNA
 # ═══════════════════════════════════════════════════════════
@@ -1210,6 +1217,7 @@ async def subs_kb(uid):
     b.button(text=T(lang, "check"), callback_data="check_sub")
     b.adjust(1)
     return b.as_markup()
+
 
 # ═══════════════════════════════════════════════════════════
 # HUMAN CHECK
@@ -1267,6 +1275,7 @@ async def phone_received(message, state):
 async def phone_other(message, state):
     await message.answer(T(get_user_lang(message.from_user.id), "phone_use_button"))
 
+
 # ═══════════════════════════════════════════════════════════
 # /start
 # ═══════════════════════════════════════════════════════════
@@ -1320,8 +1329,9 @@ async def cmd_start(message, state):
 
     await send_human_check(message, state, uid, lang, user)
 
+
 # ═══════════════════════════════════════════════════════════
-# ASOSIY MENYU HANDLERLARI
+# MENYU HANDLERLARI
 # ═══════════════════════════════════════════════════════════
 @dp.callback_query(F.data == "m_menu")
 async def cb_menu(cb, state):
@@ -1443,7 +1453,7 @@ async def check_ans(cb, state):
             ref = get_user(ref_id)
             if ref and not ref["is_banned"]:
                 if not await security.referral_velocity_ok(ref_id):
-                    await notify_admins(f"⚠️ Shubhali referal\nReferer: <code>{ref_id}</code>\nYangi: <code>{uid}</code>")
+                    await notify_admins("⚠️ Shubhali referal\nReferer: <code>" + str(ref_id) + "</code>\nYangi: <code>" + str(uid) + "</code>")
                 else:
                     reward = int(get_setting("stars_per_referral", "2"))
                     new_stars = add_stars(ref_id, reward)
@@ -1451,7 +1461,7 @@ async def check_ans(cb, state):
                         ref_lang = get_user_lang(ref_id)
                         try:
                             await bot.send_message(ref_id,
-                                T(ref_lang, "referral_reward", n=reward) + f"\n💰 {T(ref_lang, 'total')}: <b>{new_stars} ⭐</b>",
+                                T(ref_lang, "referral_reward", n=reward) + "\n💰 " + T(ref_lang, "total") + ": <b>" + str(new_stars) + " ⭐</b>",
                                 parse_mode="HTML")
                         except Exception:
                             pass
@@ -1518,7 +1528,7 @@ async def check_level_up(user_id, old_stars, new_stars):
 
 
 # ═══════════════════════════════════════════════════════════
-# PROFIL / STATISTIKA (bir xil format)
+# PROFIL / STATISTIKA
 # ═══════════════════════════════════════════════════════════
 def _profile_text(uid, lang, user):
     refs = db_exec("SELECT COUNT(*) AS c FROM users WHERE referrer_id=%s AND is_verified=1", (uid,), fetch=True)
@@ -1529,7 +1539,7 @@ def _profile_text(uid, lang, user):
     week_ref_count = week_refs["c"] if week_refs else 0
     rank_row = db_exec("SELECT COUNT(*) + 1 AS rank FROM users WHERE stars > %s AND is_verified=1 AND is_banned=0",
                       (user["stars"],), fetch=True)
-    rank = rank_row["rank"] if rank_row else "—"
+    rank = rank_row["rank"] if rank_row else 0
     donated = total_donated(uid)
     lvl = get_user_level(user["stars"])
     nxt = _next_level(user["stars"])
@@ -1537,6 +1547,11 @@ def _profile_text(uid, lang, user):
     next_text = (f"{nxt.get('emoji', '')} {nxt.get('name', '')} — {nxt['min_stars']} ⭐"
                  if nxt else "👑 <b>Eng yuqori daraja!</b>")
     uname = f"@{user['username']}" if user["username"] else "—"
+
+    lbl_rank = "O'rin"
+    unit = "ta"
+    verified_line = "✅ Tasdiqlangan" if user["is_verified"] else "❌ Tasdiqlangan"
+
     return (
         f"{box_title('👤 PROFIL')}\n"
         f"<b>{user['first_name'] or 'N/A'}</b> · {uname}\n<code>{uid}</code>\n\n"
@@ -1545,13 +1560,12 @@ def _profile_text(uid, lang, user):
         f"⭐ <b>{format_number(user['stars'])}</b> Stars\n"
         f"⬆️ Keyingi: {next_text}\n\n"
         f"{DIV}\n"
-        f"{kv('👥', 'Takliflar', format_number(ref_count) + ' ta')}\n"
+        f"{kv('👥', 'Takliflar', format_number(ref_count) + ' ' + unit)}\n"
         f"{kv('📈', 'Bu hafta', '+' + format_number(week_ref_count))}\n"
-        f"{kv('🏆', \"O'rin\", '#' + format_number(rank))}\n"
+        f"{kv('🏆', lbl_rank, '#' + format_number(rank))}\n"
         f"{kv('💝', 'Donat', format_number(donated) + ' ⭐')}\n\n"
         f"{DIV}\n"
-        f"{'✅' if user['is_verified'] else '❌'} Tasdiqlangan   "
-        f"{'🚫' if user['is_banned'] else '✅'} Holat\n"
+        f"{verified_line}   "
         f"📅 Qo'shilgan: {(user['joined_at'] or '—')[:10]}"
     )
 
@@ -1659,15 +1673,19 @@ async def cb_contest(cb, state):
     except Exception:
         end = now_uz()
     diff = (end - now_uz()).total_seconds()
-    days, hours = int(diff // 86400), int((diff % 86400) // 3600)
+    days = int(diff // 86400)
+    hours = int((diff % 86400) // 3600)
     title_pe = pe("contest", "🏆") + " <b>" + esc(contest["title"]) + "</b>"
-    text = (f"{box_title(T(lang, 'contest_title'))}\n"
-            f"{title_pe}\n\n"
-            f"<i>{esc(contest['description'])}</i>\n\n"
-            f"{DIV}\n"
-            f"🎁 <b>Sovrin:</b> {esc(contest['reward_emoji'])} <b>{esc(contest['reward_name'])}</b>\n"
-            f"⏰ <b>Qoldi:</b> {days} kun {hours} soat\n\n{DIV}\n"
-            f"📊 <b>LEADERBOARD:</b>\n\n")
+    text = (
+        f"{box_title(T(lang, 'contest_title'))}\n"
+        f"{title_pe}\n\n"
+        f"<i>{esc(contest['description'])}</i>\n\n"
+        f"{DIV}\n"
+        f"🎁 <b>Sovrin:</b> {esc(contest['reward_emoji'])} <b>{esc(contest['reward_name'])}</b>\n"
+        f"⏰ <b>Qoldi:</b> {days} kun {hours} soat\n\n"
+        f"{DIV}\n"
+        f"📊 <b>LEADERBOARD:</b>\n\n"
+    )
     if lb["leaders"]:
         for i, l in enumerate(lb["leaders"], 1):
             medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"<b>{i}.</b>"
@@ -1721,7 +1739,8 @@ async def cb_tasks(cb, state):
                 status = f"✅ <b>{t['reward']} ⭐ olindi</b>"
             elif t["claimable"]:
                 status = "🎁 <b>Mukofot tayyor!</b>"
-                b.button(text=f"🎁 {t['title'][:25]} → +{t['reward']}", callback_data=f"claimtask_{t['id']}")
+                b.button(text=f"🎁 {t['title'][:25]} → +{t['reward']}",
+                         callback_data=f"claimtask_{t['id']}")
             elif t["done"]:
                 status = "✅ <b>Bajarildi</b>"
             else:
@@ -1796,6 +1815,8 @@ async def promo_code_input(message, state):
     except Exception:
         pass
     await message.answer(T(lang, "menu_title"), reply_markup=main_menu(uid), parse_mode="HTML")
+
+
 # ═══════════════════════════════════════════════════════════
 # BANNER
 # ═══════════════════════════════════════════════════════════
@@ -1825,12 +1846,11 @@ def generate_banner(user, ref_link):
         g = int(12 + ratio * 20)
         b = int(28 + ratio * 60)
         draw.rectangle([0, y, W, y + 1], fill=(min(r, 60), min(g, 60), min(b, 100)))
-    import random as _r
-    _r.seed(42)
+    rnd = random.Random(42)
     for _ in range(120):
-        sx, sy = _r.randint(0, W), _r.randint(0, H)
-        sr = _r.choice([1, 1, 1, 2])
-        bright = _r.randint(180, 255)
+        sx, sy = rnd.randint(0, W), rnd.randint(0, H)
+        sr = rnd.choice([1, 1, 1, 2])
+        bright = rnd.randint(180, 255)
         draw.ellipse([sx, sy, sx + sr, sy + sr], fill=(bright, bright, bright))
     cx, cy, rad = W - 200, 140, 130
     for r in range(rad, 0, -3):
@@ -2059,7 +2079,7 @@ async def cb_donate(cb, state):
     await cb.answer()
 
 
-@dp.callback_query(F.data.startswith("don_") & ~F.data.in_({"don_custom"}))
+@dp.callback_query(F.data.regexp(r"^don_\d+$"))
 async def donate_quick(cb):
     try:
         amount = int(cb.data.replace("don_", ""))
@@ -2155,7 +2175,9 @@ async def on_donate_payment(message):
     if not (p.invoice_payload or "").startswith("donate:"):
         return
     parts = p.invoice_payload.split(":")
-    uid, amount, charge_id = int(parts[1]), int(parts[2]), p.telegram_payment_charge_id
+    uid = int(parts[1])
+    amount = int(parts[2])
+    charge_id = p.telegram_payment_charge_id
     if db_exec("SELECT 1 FROM donations WHERE charge_id=%s", (charge_id,), fetch=True):
         return
     db_exec("INSERT INTO donations (user_id, stars, charge_id, payload, status, created_at) VALUES (%s, %s, %s, %s, 'received', %s) ON CONFLICT (charge_id) DO NOTHING",
@@ -2677,7 +2699,8 @@ async def gift_confirm(cb, state):
     uid = cb.from_user.id
     lang = get_user_lang(uid)
     data = await state.get_data()
-    target_id, amount = data.get("gift_target"), data.get("gift_amount")
+    target_id = data.get("gift_target")
+    amount = data.get("gift_amount")
     await state.clear()
     if not target_id or not amount:
         await cb.answer("Xato", show_alert=True)
@@ -2946,7 +2969,7 @@ async def cb_history(cb, state):
         item = f"{esc(r['emoji'] or '🎁')} {esc(r['name'] or 'Gift')}" if r["reward_type"] == "gift" else "⭐ Stars"
         d = r["created_at"] or ""
         date = f"{d[8:10]}.{d[5:7]}" if len(d) >= 10 else ""
-        st = T(lang, f"st_{r['status']}")
+        st = T(lang, "st_" + r["status"])
         text += f"\n{icons.get(r['status'], '•')} <b>#{r['id']}</b> {item} · {format_number(r['stars'])} ⭐\n    {st} · <i>{date}</i>"
     b = InlineKeyboardBuilder()
     b.button(text=T(lang, "back"), callback_data="m_more")
@@ -3307,42 +3330,6 @@ async def init_userbot():
         logger.error(f"❌ Userbot ulanmadi: {e}")
         tg_client = None
 
-
-# ═══════════════════════════════════════════════════════════
-# ISHGA TUSHIRISH
-# ═══════════════════════════════════════════════════════════
-async def main():
-    init_db()
-    await init_userbot()
-    security.setup(dp, db_exec=db_exec, now_uz=now_uz, T=T, LANGS=LANGS,
-                   is_admin=is_admin, check_subs=check_subs, subs_kb=subs_kb)
-
-    app = web.Application(middlewares=[cors_middleware])
-    app.router.add_get("/", index)
-    app.router.add_get("/health", health)
-    for path, builder in (
-        ("/api/profile", build_profile), ("/api/rating", build_rating),
-        ("/api/levels", build_levels), ("/api/contest", build_contest_api),
-        ("/api/bonus", build_bonus_api), ("/api/referrals", build_referrals),
-        ("/api/advertise", build_advertise),
-    ):
-        app.router.add_get(path, make_api(builder))
-    app.router.add_post("/api/claim", api_claim)
-    app.router.add_post("/api/promo", api_promo)
-    app.router.add_post("/api/ad_buy", api_ad_buy)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    await web.TCPSite(runner, "0.0.0.0", PORT).start()
-    logger.info(f"Web server {PORT} portda ishga tushdi")
-
-    await bot.delete_webhook(drop_pending_updates=True)
-    logger.info(f"{BOT_NAME} ishga tushdi")
-    try:
-        await dp.start_polling(bot)
-    finally:
-        if tg_client:
-            await tg_client.disconnect()
 # ═══════════════════════════════════════════════════════════
 # ADMIN PANEL
 # ═══════════════════════════════════════════════════════════
@@ -5022,8 +5009,7 @@ async def del_admin_do(cb):
     await a_admins(cb)
 
 
-# ─────────── Konkurslar ───────────
-@dp.callback_query(F.data == "a_contests")
+# ─────────── Konkurslar ───────────@dp.callback_query(F.data == "a_contests")
 async def a_contests(cb):
     if not is_admin(cb.from_user.id):
         return
@@ -5580,7 +5566,8 @@ async def userbot_session_input(message, state):
         await message.answer("❌ Juda qisqa.")
         return
     data = await state.get_data()
-    api_id, api_hash = data.get("new_api_id"), data.get("new_api_hash")
+    api_id = data.get("new_api_id")
+    api_hash = data.get("new_api_hash")
     await message.answer("⏳...")
     try:
         test_client = TelegramClient(StringSession(session_str), api_id, api_hash)
